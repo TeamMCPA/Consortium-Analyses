@@ -19,11 +19,21 @@ function new_filename = preproc_hmr(filename,params_file)
 
 %% TODO:
 % - Need to revise to pull command sequence and parameters from .cfg file
+% - Gracefully handle exceptions for missing files, missing parameters
+% - Test batching
 
 %% 
 % these were originally hardcoded for adult Shimadzu
 % nChannels = 139;
 % fs = 8.1301;
+
+%% Handle batching of filename with cell array
+if iscell(filename)
+    new_filename = cell(length(filename),1);
+    for filenum = 1:length(filename)
+        new_filename(filenum) = preproc_hmr(filename{filenum},params_file);
+    end
+end
 
 %% Import nirs file and preprocessing parameters file
 nirs_dat = load(filename,'-mat');
