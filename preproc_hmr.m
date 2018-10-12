@@ -42,7 +42,7 @@ params = load(params_file,'-mat');
 %% Preapre some additional needed parameters based on provided data
 params.nWav = length(params.ppf);
 params.nChannels = size(nirs_dat.d,2) / params.nWav;
-params.fs = mean(diff(nirs_dat.t));
+params.fs = 1/mean(diff(nirs_dat.t));
 if ~exist('nirs_dat.tIncMan','var')
     nirs_dat.tIncMan = ones(size(nirs_dat.t));
 end
@@ -61,8 +61,14 @@ nirs_dat.procResult.dodSpline = hmrMotionCorrectSpline(...
     nirs_dat.procResult.dod,nirs_dat.t,nirs_dat.SD,tIncCh,params.p);
 
 % Apply wavelet correction for motion artifacts
-nirs_dat.procResult.dodWavelet = hmrMotionCorrectWavelet(...
-    nirs_dat.procResult.dodSpline,nirs_dat.SD,params.IQR);
+try
+    nirs_dat.procResult.dodWavelet = hmrMotionCorrectWavelet(...
+        nirs_dat.procResult.dodSpline,nirs_dat.SD,params.IQR);
+catch
+    % Just move the Spline output to Wavelet
+    disp('Warning Wavelet Motion Correction failed.')
+    nirs_dat.procResult.dodWavelet = nirs_dat.procResult.dodSpline;
+end
 
 % Bandpass filter the optical density data
 nirs_dat.procResult.dodBP = hmrBandpassFilt(...
@@ -74,7 +80,8 @@ nirs_dat.procResult.dc = hmrOD2Conc(...
 
 % Generate a list of bad channels and NaN-out their data
 nirs_dat.badCh = any(squeeze(any(nirs_dat.procResult.dc < params.dRange(1) | nirs_dat.procResult.dc > params.dRange(2))));
-nirs_dat.procResult.dcFix(:,:,badCh) = nan;
+nirs_dat.procResult.dcFix = nirs_dat.procResult.dc;
+nirs_dat.procResult.dcFix(:,:,nirs_dat.badCh) = nan;
 
 % Perform block-averaging on the dcFix data (motion-corrected, filtered,
 % and bad channels removed)
@@ -86,7 +93,7 @@ nirs_dat.procResult.dcFix(:,:,badCh) = nan;
     nirs_dat.procResult.dcSum2,...
     nirs_dat.procResult.dcTrials...
     ]...
-    = hmrBlockAvg( procResult.dcFix, nirs_dat.sFix, nirs_dat.tFix, nirs_dat.tRange );
+    = hmrBlockAvg( nirs_dat.procResult.dcFix, nirs_dat.s, nirs_dat.t, params.tRange );
 
 %% Save the preprocessed data out to a new file and return the filename
 [filePath,fileName] = fileparts(filename);
