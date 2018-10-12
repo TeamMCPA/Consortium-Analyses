@@ -31,7 +31,7 @@ function new_filename = preproc_hmr(filename,params_file)
 if iscell(filename)
     new_filename = cell(length(filename),1);
     for filenum = 1:length(filename)
-        new_filename(filenum) = preproc_hmr(filename{filenum},params_file);
+        new_filename{filenum} = preproc_hmr(filename{filenum},params_file);
     end
 end
 
