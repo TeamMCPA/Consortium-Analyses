@@ -40,17 +40,17 @@ nirs_dat = load(filename,'-mat');
 params = load(params_file,'-mat');
 
 %% Preapre some additional needed parameters based on provided data
-params.nWav = length(params.ppm);
-params.nChannels = size(nirs_dat.d,2) / nWav;
+params.nWav = length(params.ppf);
+params.nChannels = size(nirs_dat.d,2) / params.nWav;
 params.fs = mean(diff(nirs_dat.t));
 if ~exist('nirs_dat.tIncMan','var')
-    nirs_dat.tIncMan = ones(size(t));
+    nirs_dat.tIncMan = ones(size(nirs_dat.t));
 end
 
 %% Perform preprocessing
 
 % Convert intensity data to optical density
-procResult.dod = hmrIntensity2OD(nirs_data.d);
+procResult.dod = hmrIntensity2OD(nirs_dat.d);
 
 % Perform motion artifact detection
 [tInc,tIncCh] = hmrMotionArtifactByChannel(...
