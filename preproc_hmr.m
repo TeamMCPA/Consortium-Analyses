@@ -33,6 +33,7 @@ if iscell(filename)
     for filenum = 1:length(filename)
         new_filename{filenum} = preproc_hmr(filename{filenum},params_file);
     end
+    return
 end
 
 %% Import nirs file and preprocessing parameters file
