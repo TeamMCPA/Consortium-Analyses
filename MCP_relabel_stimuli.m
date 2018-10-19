@@ -20,7 +20,7 @@ end
 
 % Open the old MCP file
 if isstruct(mcp_file)
-    old_mcp_file = mcp_file
+    old_mcp_file = mcp_file;
 else
     [mcpdir mcpfile ext] = fileparts(mcp_file);
     old_mcp_file = load([mcpdir mcpfile '.mcp'],'-mat');
@@ -29,7 +29,14 @@ end
 % Extract the onsets vector for the condition that will be replaced
 % This data will not be deleted from the MCP file. The replacement
 % conditions are appended as new conditions.
-old_cond_index = arrayfun(@(x)(strcmp(x.Name,old_label_name)),old_mcp_file.Experiment.Conditions);
+
+% If old_label_name is numeric, check Mark instead of Name
+
+if isnumeric(old_label_name)
+    old_cond_index = arrayfun(@(x)(x.Mark==old_label_name),old_mcp_file.Experiment.Conditions);
+else
+    old_cond_index = arrayfun(@(x)(strcmp(x.Name,old_label_name)),old_mcp_file.Experiment.Conditions);
+end
 old_cond_onsets = old_mcp_file.fNIRS_Data.Onsets_Matrix(:,old_cond_index);
 
 % If the number of new labels is not equal to the number of onsets in the
