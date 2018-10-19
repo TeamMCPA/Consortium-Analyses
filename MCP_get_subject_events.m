@@ -8,6 +8,7 @@ function [event_matrix] = MCP_get_subject_events(mcp_multiple, subject, channels
 % them into the output matrix.
 %
 % Chengyu Deng & Benjamin Zinszer 5 may 2017
+% revised bdz 19 oct 2018
 
 %% Index matrix handling (We use MCP struct so we don't need distinguish Homer file version anymore)
 

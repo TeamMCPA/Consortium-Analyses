@@ -25,6 +25,7 @@ function MCPA_struct = MCP_to_MCPA(mcp_multiple, incl_subjects, incl_channels, t
 % multichannel patterns for each participant and condition.
 %
 % Chengyu Deng & Benjamin Zinszer 5 may 2017
+% revised bdz 19 oct 2018
 
 %% Event type Handling
 
