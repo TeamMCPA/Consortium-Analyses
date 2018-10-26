@@ -6,7 +6,7 @@ function MCPA_struct = MCP_to_MCPA(mcp_multiple, incl_subjects, incl_channels, t
 % mcp: An customized MCP struct that contains all data for the analysis.
 % Using MCP struct to store data can unify the way that data stored in the
 % struct. Directly grabbing data from homer file might cause problems such
-% as failure to find specific data. 
+% as failure to find specific data.
 %
 % incl_subjects: a vector of indices for subjects to include in the
 % analysis. Importantly the subject numbers correspond to the index in the
@@ -17,15 +17,29 @@ function MCPA_struct = MCP_to_MCPA(mcp_multiple, incl_subjects, incl_channels, t
 % analysis. Again, only the channel's position in the HomER struct matters,
 % not any other channel number assignment.
 %
-% time_window: defined in number of measures. For data measured at 10 Hz,
-% the time_window will be in 1/10 s units (e.g., 0:100 is 0-10 s). For data
-% measured at 2 Hz, time will be in 1/2 s units (e.g., 0:20 is 0-10 s).
+% time_window: defined in number of seconds. If two subjects have different
+% sampling frequencies, the same time window will be searched (except for
+% rounding error of first and last samples). Time window can be specified
+% as either [start, end] or [start : end] since only first and last times
+% are used.
 %
 % The function will return a new struct containing some metadata and the
 % multichannel patterns for each participant and condition.
 %
 % Chengyu Deng & Benjamin Zinszer 5 may 2017
-% revised bdz 19 oct 2018
+% revised bdz 26 oct 2018
+
+%% Convert time window from seconds to scans
+Fs_val = unique(arrayfun(@(x) x.fNIRS_Data.Sampling_frequency,mcp_multiple));
+if length(Fs_val) > 1
+    minFs = min(Fs_val);
+    maxFs = max(Fs_val);
+    disp(['Warning: ' num2str(length(Fs_val)) ' different sampling frequencies found.']);
+    disp(['Ranging from ' num2str(minFs) ' to ' num2str(maxFs) ' Hz']);
+    disp('Data may be resampled during analysis if comparisons are made in time-domain');
+end
+num_time_samps = length(floor(time_window(1)*max(Fs_val)) : ceil(time_window(end)*max(Fs_val)));
+
 
 %% Event type Handling
 
@@ -40,7 +54,7 @@ event_types = unique(cellstr(char(unique_names)));
 %% Extract data from the data file into the empty output matrix
 
 % Initiate the subj_mat matrix that will be output later(begin with NaN)
-subj_mat = nan(length(time_window), length(event_types), length(incl_channels), length(incl_subjects));
+subj_mat = nan(num_time_samps, length(event_types), length(incl_channels), length(incl_subjects));
 fprintf('Output matrix for MCPA_struct is in dimension: time_window x types x channels x subjects\n');
 
 % Extract data from each subject
@@ -49,21 +63,30 @@ fprintf('\nExtracting data for subject: \n');
 for subject = 1 : length(incl_subjects)
     
     fprintf('subject: %d. \n', incl_subjects(subject));
+    
     % Event_matrix format:
     % (time x channels x repetition x types)
-    event_matrix = MCP_get_subject_events(mcp_multiple, incl_subjects(subject), incl_channels, time_window, event_types);
+    event_matrix = MCP_get_subject_events(mcp_multiple(subject), incl_channels, time_window, event_types);
     
     % Event_repetition_mean:
-    % (time x channels x event_types_types)
+    % (time x channels x event_type)
     event_repetition_mean = nanmean(event_matrix, 3);
-    event_repetition_mean = reshape(event_repetition_mean, length(time_window), length(incl_channels), length(event_types));
+    event_repetition_mean = reshape(event_repetition_mean, size(event_matrix,1), size(event_matrix,2), size(event_matrix,4));
     event_repetition_mean = permute(event_repetition_mean, [1 3 2]);
     % Now the dimension of Event_repetition_mean:
     % (time x event_types x channels )
     
-    % Output format: subj_mat(time_window x channels x event_types x subjects)
-    subj_mat(:, :, :, subject) = event_repetition_mean;
-   
+    subj_time_samps = size(event_repetition_mean,1);
+    if subj_time_samps == num_time_samps,
+        % Output format: subj_mat(time_window x event_types x channels x subjects)
+        subj_mat(:, :, :, subject) = event_repetition_mean;
+    else
+        time_mask = round(linspace(1,num_time_samps,subj_time_samps));
+        % Output format: subj_mat(time_window x event_types x channels x subjects)
+        subj_mat(time_mask, :, :, subject) = event_repetition_mean;
+        
+    end
+    
 end
 
 %% Return the MCPA_struct
@@ -84,22 +107,3 @@ end
 
 
 end
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

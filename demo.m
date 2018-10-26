@@ -30,5 +30,5 @@ end
 save(['MCP_data_' date '.mcp'],'MCP_data');
 
 % Extract events into MCPA struct
-MCPA_data = MCP_to_MCPA(MCP_data,[1:2],[1:139],[0:60]);
+MCPA_data = MCP_to_MCPA(MCP_data,[1:2],[1:139],[0.5:2.5]);
 save(['MCPA_data_' date '.mat'],'MCPA_data');
