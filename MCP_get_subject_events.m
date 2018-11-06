@@ -82,7 +82,7 @@ end
 
 %% Extract the individual events for each event type
 Fs_val = mcp_struct.fNIRS_Data.Sampling_frequency;
-time_window_samp = [floor(time_window(1)*Fs_val) : ceil(time_window(end)*Fs_val)];
+time_window_samp = [round(time_window(1)*Fs_val) : round(time_window(end)*Fs_val)];
 % The output matrix setup(time x channels x type repetition x types)
 event_matrix = nan(length(time_window_samp), length(channels), size(marks_mat, 1), length(event_types));
 

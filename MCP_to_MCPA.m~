@@ -32,12 +32,11 @@ function MCPA_struct = MCP_to_MCPA(mcp_multiple, incl_subjects, incl_channels, t
 %% Convert time window from seconds to scans
 % rounds off sampling frequencies to 8 places to accomodate floating point
 % errors
-Fs_val = unique(round(arrayfun(@(x) x.fNIRS_Data.Sampling_frequency,mcp_multiple),8));
+Fs_val = unique(round(arrayfun(@(x) x.fNIRS_Data.Sampling_frequency,mcp_multiple),16));
 if length(Fs_val) > 1
     minFs = min(Fs_val);
     maxFs = max(Fs_val);
-    warning([num2str(length(Fs_val)) ' different sampling frequencies found, ranging from ' num2str(minFs) ' to ' num2str(maxFs) ' Hz. '...
-        'Data may be resampled during analysis if comparisons are made in time-domain']);
+    warning([num2str(length(Fs_val)) ' different sampling frequencies found, ranging from ' num2str(minFs) ' to ' num2str(maxFs) ' Hz. Data may be resampled during analysis if comparisons are made in time-domain']);
 end
 num_time_samps = length(floor(time_window(1)*max(Fs_val)) : ceil(time_window(end)*max(Fs_val)));
 

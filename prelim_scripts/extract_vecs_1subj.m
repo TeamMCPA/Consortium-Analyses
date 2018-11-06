@@ -8,6 +8,9 @@ function subj_data = extract_vecs_1subj(file_path, cond_name_list, scan_window, 
 %   SUBJ_DATA_STRUCT = EXTRACT_VECS_1SUBJ( FILE_PATH, CONDITIONS_NAME_LIST,...
 %       SCAN WINDOW, EXCLUDE_BY)
 %
+%   FILE_PATH may be a string or cell array specifying multiple data sets
+%   to be horizontally concatenated (i.e., two different probe files)
+%
 %   bdz 05 oct 2018
 
 if ~exist('exclude_by','var'),

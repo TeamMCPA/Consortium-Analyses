@@ -77,8 +77,10 @@ if nargin < 4
 else
     
     if setsize > size(subj_mat,2)
-        warning('Setsize is larger than the total number of channels. Running analysis on all %d channels simultaneously', setsize);
-        setsize = size(subj_mat,2);
+        error('ERROR: set size is larger than the total number of channels.');
+            warning('Setsize not specified. Running analysis on all %d channels simultaneously', setsize);
+
+        return;
     end
     
     warning('Setsize not specified. Running analysis on all %d channels simultaneously', setsize);

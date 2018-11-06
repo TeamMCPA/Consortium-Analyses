@@ -29,6 +29,10 @@ end
 % Save the compiled dataset
 save(['MCP_data_' date '.mcp'],'MCP_data');
 
-% Extract events into MCPA struct
+% Extract events into MCPA struct and summarize by taking average over time
 MCPA_data = MCP_to_MCPA(MCP_data,[1:2],[1:139],[0.5:2.5]);
 save(['MCPA_data_' date '.mat'],'MCPA_data');
+MCPA_data_summarized = summarize_MCPA_Struct(@nanmean,MCPA_data,1);
+
+% Between Subjects decoding
+Between_Subj_Result = leave_one_Ss_out_classifyAverages(MCPA_data_summarized,1,2);
