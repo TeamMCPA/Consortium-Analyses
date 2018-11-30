@@ -45,9 +45,12 @@ if size(marks_vec, 2) > 1
     for type_i = 1:length(event_types)
         %Find the array index in the marks_vec
         temp_marks = find(marks_vec(:, type_i) == 1);
-        
-        %Abandon the offsets
-        temp_marks = temp_marks(1:2:end);
+
+% This line was meant to remove every offset mark (every-other-mark) but it
+% only applies if there *are* offsets, and if there aren't, it removes half
+% of your events. Oops!
+%         %Abandon the offsets
+%         temp_marks = temp_marks(1:2:end);
         
         marks_mat(1:length(temp_marks), type_i) = temp_marks;
     end
@@ -64,6 +67,10 @@ elseif size(marks_vec, 2) == 1
     for type_i = 1 : length(event_types)
         %Find the array index (vector index) in the marks_vec
         temp_marks = find(marks_vec == event_types(type_i));
+        
+% This line was meant to remove every offset mark (every-other-mark) but it
+% only applies if there *are* offsets, and if there aren't, it removes half
+% of your events. Oops!
         %Now abandon the offsets
         temp_marks = temp_marks(1:2:end);
         
@@ -98,6 +105,7 @@ for type_i = 1 : length(event_types)
             event_matrix(:,:,event_j:end,type_i) = NaN;
         end
     end
+
 end
 
 
