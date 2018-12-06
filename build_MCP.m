@@ -74,18 +74,18 @@ MCP_Struct.fNIRS_Data.Hb_data.Total = [];
 current_data_index = 0;
 current_num_channels = 0;
 
-for current_run = 1:number_of_runs,
+for current_run = 1:number_of_runs
     
-    for current_probe = 1:number_of_probes,
+    for current_probe = 1:number_of_probes
         % Extract the MCP formatted data for each individual probe file
         mcp_data(current_probe) = homer2_to_mcp(data_file_array{current_run,current_probe},subject_id,probe_array_id{current_probe},marks_matrix_name);
         % Note the directory that this probe's data was found in
         MCP_Struct.Experiment.Runs(current_run).Directory{current_probe} = mcp_data(current_probe).Subject.Directory;
         
-        if isempty(MCP_Struct.Experiment.Probe_arrays(current_probe).Channels),
+        if isempty(MCP_Struct.Experiment.Probe_arrays(current_probe).Channels)
             MCP_Struct.Experiment.Probe_arrays(current_probe).Channels = mcp_data(current_probe).Experiment.Probe_arrays.Channels_in_Array + current_num_channels;
             current_num_channels = max(MCP_Struct.Experiment.Probe_arrays(current_probe).Channels);
-        elseif length(MCP_Struct.Experiment.Probe_arrays(max(current_probe-1,1)).Channels) ~= length(MCP_Struct.Experiment.Probe_arrays(current_probe).Channels);
+        elseif length(MCP_Struct.Experiment.Probe_arrays(max(current_probe-1,1)).Channels) ~= length(MCP_Struct.Experiment.Probe_arrays(current_probe).Channels)
             disp(['Number of channels in ' data_file_array{current_run,current_probe} ' different from previous runs!']);
             disp(['I QUIT!']);
             return
@@ -95,7 +95,7 @@ for current_run = 1:number_of_runs,
         
         % Probe geometry is acquired from the first run in which a probe is
         % used. May be later than Run 1 if probe is missing in earlier runs
-        if isempty(MCP_Struct.Experiment.Probe_arrays(current_probe).Geometry),
+        if isempty(MCP_Struct.Experiment.Probe_arrays(current_probe).Geometry)
             MCP_Struct.Experiment.Probe_arrays(current_probe).Geometry = mcp_data(current_probe).Experiment.Probe_arrays.Geometry;
         end
         
@@ -134,7 +134,7 @@ for current_run = 1:number_of_runs,
     
     % Cycle through all the conditions and integrate them into the main
     % struct MCP_Struct.Experiment.Conditions by matching names
-    for this_cond = 1:length(this_run_conditions),
+    for this_cond = 1:length(this_run_conditions)
         this_cond_name = this_run_conditions(this_cond).Name;
         
         % Compare the name of the condition in the new data to the list of
@@ -143,7 +143,7 @@ for current_run = 1:number_of_runs,
         index_in_main_struct = arrayfun(@(x)(strcmp(x.Name,this_cond_name)),MCP_Struct.Experiment.Conditions);
         
         % Test whether this condition already exists in the main experiment
-        if sum(index_in_main_struct)>0, % The condition already exists
+        if sum(index_in_main_struct)>0 % The condition already exists
             % Insert the onsets vector for this condition in the
             % appropriate column of onsets matrix
             working_onsets_matrix(MCP_Struct.Experiment.Runs(current_run).Index:end,index_in_main_struct) = new_onsets_matrix(:,this_cond);
@@ -169,7 +169,7 @@ for current_run = 1:number_of_runs,
     this_run_deoxy = nan(max_index_this_run,current_num_channels);
     this_run_total = nan(max_index_this_run,current_num_channels);    
     
-    for current_probe = 1:number_of_probes,
+    for current_probe = 1:number_of_probes
         this_run_oxy(1:max_index_each_probe(current_probe),MCP_Struct.Experiment.Probe_arrays(current_probe).Channels) = mcp_data(current_probe).fNIRS_Data.Hb_data.Oxy;
         this_run_deoxy(1:max_index_each_probe(current_probe),MCP_Struct.Experiment.Probe_arrays(current_probe).Channels) = mcp_data(current_probe).fNIRS_Data.Hb_data.Deoxy;
         this_run_total(1:max_index_each_probe(current_probe),MCP_Struct.Experiment.Probe_arrays(current_probe).Channels) = mcp_data(current_probe).fNIRS_Data.Hb_data.Total;

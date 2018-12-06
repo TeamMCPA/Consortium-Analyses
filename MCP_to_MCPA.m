@@ -29,6 +29,22 @@ function MCPA_struct = MCP_to_MCPA(mcp_multiple, incl_subjects, incl_channels, t
 % Chengyu Deng & Benjamin Zinszer 5 may 2017
 % revised bdz 26 oct 2018
 
+%% Check whether importing an MCP file or just converting from workspace
+% Pulling from a file will be much faster for individual event
+% classification later, so this method is preferred.
+
+if isstruct(mcp_multiple)
+    no_mcp_file = true;
+else
+    if iscell(mcp_multiple), mcp_multiple = mcp_multiple{:}; end
+    MCPA_struct.data_file = {mcp_multiple};
+    no_mcp_file = false;
+    mcp_file_content = load(mcp_multiple,'-mat');
+    varname = fieldnames(mcp_file_content);
+    mcp_multiple = eval(['mcp_file_content.' varname{1}]);
+    clear('mcp_file_content')
+end
+
 %% Convert time window from seconds to scans
 % rounds off sampling frequencies to 8 places to accomodate floating point
 % errors
@@ -39,7 +55,7 @@ if length(Fs_val) > 1
     warning([num2str(length(Fs_val)) ' different sampling frequencies found, ranging from ' num2str(minFs) ' to ' num2str(maxFs) ' Hz. '...
         'Data may be resampled during analysis if comparisons are made in time-domain']);
 end
-num_time_samps = length(floor(time_window(1)*max(Fs_val)) : ceil(time_window(end)*max(Fs_val)));
+num_time_samps = length(round(time_window(1)*max(Fs_val)) : round(time_window(end)*max(Fs_val)));
 
 
 %% Event type Handling
@@ -61,13 +77,17 @@ fprintf('Output matrix for MCPA_struct is in dimension: time_window x types x ch
 % Extract data from each subject
 fprintf('\nExtracting data for subject: \n');
 
-for subject = 1 : length(incl_subjects)
+for subj_idx = 1 : length(incl_subjects)
     
-    fprintf('subject: %d. \n', incl_subjects(subject));
+    fprintf('subject: %d. \n', incl_subjects(subj_idx));
+    
+    if no_mcp_file
+    MCPA_struct.data_file{subj_idx} = [mcp_multiple(incl_subjects(subj_idx)).Experiment.Runs.Source_files]';
+    end
     
     % Event_matrix format:
     % (time x channels x repetition x types)
-    event_matrix = MCP_get_subject_events(mcp_multiple(subject), incl_channels, time_window, event_types);
+    event_matrix = MCP_get_subject_events(mcp_multiple(incl_subjects(subj_idx)), incl_channels, time_window, event_types);
     
     % Event_repetition_mean:
     % (time x channels x event_type)
@@ -80,11 +100,11 @@ for subject = 1 : length(incl_subjects)
     subj_time_samps = size(event_repetition_mean,1);
     if subj_time_samps == num_time_samps,
         % Output format: subj_mat(time_window x event_types x channels x subjects)
-        subj_mat(:, :, :, subject) = event_repetition_mean;
+        subj_mat(:, :, :, subj_idx) = event_repetition_mean;
     else
         time_mask = round(linspace(1,num_time_samps,subj_time_samps));
         % Output format: subj_mat(time_window x event_types x channels x subjects)
-        subj_mat(time_mask, :, :, subject) = event_repetition_mean;
+        subj_mat(time_mask, :, :, subj_idx) = event_repetition_mean;
         
     end
     

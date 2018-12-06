@@ -18,7 +18,6 @@ MCP_data = build_MCP(...
     {'shimadzu139','shimadzu139'},...                   % probe IDs
     's');                                               % field for stims
 
-
 %cond_names = {'baby', 'book', 'bottle', 'cat', 'dog', 'hand', 'shoe', 'spoon'};
 cond_names = {'anim', 'inan', 'inan', 'anim', 'anim', 'anim', 'inan', 'inan'};
 
@@ -27,7 +26,8 @@ for old_mark = 1:8
 end
 
 % Save the compiled dataset
-save(['MCP_data_' date '.mcp'],'MCP_data');
+MCP_file_name = ['MCP_data_' date '.mcp'];
+save(MCP_file_name,'MCP_data');
 
 % Extract events into MCPA struct and summarize by taking average over time
 MCPA_data = MCP_to_MCPA(MCP_data,[1:2],[1:139],[0.5:2.5]);

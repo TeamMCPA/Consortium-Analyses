@@ -3,10 +3,10 @@ function MCP_Struct = homer2_to_mcp(data_file, subject_id, probe_array_id, marks
 %HOMER2_to_MCP Grabs data from the struct in a Homer2-formatted .nirs file
 %and creates an MCP struct for multivariate pattern analyses
 %
-% NOTICE: The funtion is for one single subject, one single probe, one run.
-% There is a superceding function that can call multiple files (for
-% multiple probes and/or multiple runs) and stitch them together by looping
-% over this function.
+% NOTICE: The funtion is for one .nirs file at a time only (i.e., one 
+% single subject, one single probe, one run. There is a superceding 
+% function that can call multiple files (for multiple probes and/or 
+% multiple runs) and stitch them together by looping over this function.
 %
 % The MCP_struct contains the following fields:
 %
