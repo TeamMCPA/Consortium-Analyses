@@ -72,7 +72,7 @@ elseif size(marks_vec, 2) == 1
 % only applies if there *are* offsets, and if there aren't, it removes half
 % of your events. Oops!
         %Now abandon the offsets
-        temp_marks = temp_marks(1:2:end);
+%        temp_marks = temp_marks(1:2:end);
         
         marks_mat(1:length(temp_marks), type_i) = temp_marks;
     end
@@ -99,7 +99,7 @@ for type_i = 1 : length(event_types)
     event_marks = [mcp_struct.Experiment.Conditions(matched_conditions).Mark];
     
     for event_j = 1 : length(marks_mat(:, event_marks))
-        if marks_mat(event_j,type_i) + time_window_samp(end) <= length(oxy_timeser),
+        if marks_mat(event_j,type_i) + time_window_samp(end) <= length(oxy_timeser)
             event_matrix(:,:,event_j,type_i) = oxy_timeser(marks_mat(event_j,type_i)+time_window_samp,:) - ones(length(time_window_samp),1)*oxy_timeser(marks_mat(event_j,type_i)+time_window_samp(1),:);
         else
             event_matrix(:,:,event_j:end,type_i) = NaN;
