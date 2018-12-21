@@ -18,12 +18,16 @@ function summarized_MCPA_struct = summarize_MCPA_Struct(function_name,MCPA_struc
 
 if ~exist('dimension','var'), dimension = 1; end
 
+if ischar(function_name)
+    function_name = str2func(function_name);
+elseif iscell(function_name)
+    function_name = str2func(function_name{:});
+end
+
 %% Get summarized:
-if isa(function_name,'function_handle')
+try
     summarized_MCPA_struct_pattern = squeeze(function_name(MCPA_struct.patterns,dimension));
-elseif ischar(function_name)
-    summarized_MCPA_struct_pattern = squeeze(feval(function_name, MCPA_struct.patterns));
-else
+catch
     error('Failed to successfully summarize MCPA_struct to a desired form.');
 end
 
@@ -31,6 +35,7 @@ end
 try
     summarized_MCPA_struct = MCPA_struct;
     summarized_MCPA_struct.created = datestr(now);
+    summarized_MCPA_struct.summarizing_function = function_name;
     summarized_MCPA_struct.patterns = summarized_MCPA_struct_pattern;
     fprintf(' Done.\n');
     
