@@ -11,17 +11,17 @@ function MCPA_struct = MCP_to_MCPA(mcp_multiple, incl_subjects, incl_channels, t
 % incl_subjects: a vector of indices for subjects to include in the
 % analysis. Importantly the subject numbers correspond to the index in the
 % struct array (e.g., MyData([1 3 5]) not any other subject number
-% assignment.
+% assignment. Use [] to just get all subjects.
 %
 % incl_channels: a vector of indices for channels to include in the
 % analysis. Again, only the channel's position in the HomER struct matters,
-% not any other channel number assignment.
+% not any other channel number assignment. Use [] to get all channels.
 %
 % time_window: defined in number of seconds. If two subjects have different
 % sampling frequencies, the same time window will be searched (except for
 % rounding error of first and last samples). Time window can be specified
 % as either [start, end] or [start : end] since only first and last times
-% are used.
+% are used. Default (use []) is [-5,20] sec.
 %
 % The function will return a new struct containing some metadata and the
 % multichannel patterns for each participant and condition.
@@ -43,6 +43,17 @@ else
     varname = fieldnames(mcp_file_content);
     mcp_multiple = eval(['mcp_file_content.' varname{1}]);
     clear('mcp_file_content')
+end
+
+%% Double-check for missing data
+if ~exist('incl_subjects','var') || isempty(incl_subjects)
+    incl_subjects = 1:length(mcp_multiple);
+end
+if ~exist('incl_channels','var') || isempty(incl_channels)
+    incl_channels = [1:max(arrayfun(@(x) size(x.fNIRS_Data.Hb_data.Oxy,2),mcp_multiple))];
+end
+if ~exist('time_window','var') || isempty(time_window)
+    time_window = [-5,20];
 end
 
 %% Convert time window from seconds to scans

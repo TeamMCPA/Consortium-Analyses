@@ -135,14 +135,14 @@ allsubj_results.accuracy.subsetXsubj = nan(size(sets,1),num_subjs);
 
 %% Iterate through all the subjects and attempt classification
 
-if setsize==size(subj_mat,2), 
+if setsize==size(subj_mat,2)
     fprintf('  Subject\tAcc\tSimilarity Matrix\n');
 else
     fprintf('  Subject-wise results suppressed for subset analysis.\n');
     %fprintf('  Channel\tMean Acc\n');
 end
 
-for i = 1:num_subjs,
+for i = 1:num_subjs
 
     % Group holds the _indexes_ of the included subjects, not their actual
     % subject numbers. Drop the index for the subject who is going to be

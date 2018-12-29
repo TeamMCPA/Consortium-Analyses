@@ -5,17 +5,14 @@ nirs_files = arrayfun(@(x) x.name,dir('*.nirs'),'UniformOutput',false);
 nirs_files_raw = nirs_files(cellfun(@(x) isempty(x),strfind(nirs_files,'_proc.nirs')));
 nirs_files_proc = setdiff(nirs_files,nirs_files_raw);
 
-% Preprocess the raw nirs files and get a list of preprocessed filenames
-if length(nirs_files_proc) < length(nirs_files_raw),
-    nirs_files_proc_today = preproc_hmr(nirs_files_raw,'Pton_standard_20180924.mat');
-    nirs_files_proc = [nirs_files_proc; nirs_files_proc_today];
-end
+% Generate a list of files we can use in the MCP builder
+[nirs_files_forMCP, unique_subjs] = prep_nirsfiles_mcp(nirs_files_proc,'_','subject');
 
 % Build an MCP struct to describe all of the preprocessed data
 MCP_data = build_MCP(...
-    {nirs_files_proc(1:4),nirs_files_proc(5:8)},...     % the filenames
-    {'subject02','subject04'},...                       % subject IDs
-    {'shimadzu139','shimadzu139'},...                   % probe IDs
+    nirs_files_forMCP,...                               % the filenames
+    unique_subjs,...                                       % subject IDs
+    repmat({'shimadzu139'},length(unique_subjs),1),...   % probe IDs
     's');                                               % field for stims
 
 %cond_names = {'baby', 'book', 'bottle', 'cat', 'dog', 'hand', 'shoe', 'spoon'};
@@ -29,8 +26,15 @@ end
 MCP_file_name = ['MCP_data_' date '.mcp'];
 save(MCP_file_name,'MCP_data');
 
+% Perform individual event classification (MCPA method)
+eventResults = nfold_classify_IndividualEvents(MCP_data, ...
+    'cond1','anim','cond2','inan', ...
+    'time_window',[2,6], ...
+    'summary_handle',@nanmean,'test_handle',@mcpa_classify, ...
+    'setsize',139);
+
 % Extract events into MCPA struct and summarize by taking average over time
-MCPA_data = MCP_to_MCPA(MCP_data,[1:2],[1:139],[0.5:2.5]);
+MCPA_data = MCP_to_MCPA(MCP_data,[],[],[2:6]);
 save(['MCPA_data_' date '.mat'],'MCPA_data');
 MCPA_data_summarized = summarize_MCPA_Struct(@nanmean,MCPA_data,1);
 

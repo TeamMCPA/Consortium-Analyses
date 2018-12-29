@@ -183,7 +183,7 @@ for current_run = 1:number_of_runs
 end
 
 MCP_Struct.Subject.Directory = unique(MCP_Struct.Subject.Directory);
-MCP_Struct.fNIRS_Data.Sampling_frequency = unique(MCP_Struct.fNIRS_Data.Sampling_frequency);
+MCP_Struct.fNIRS_Data.Sampling_frequency = unique(round(MCP_Struct.fNIRS_Data.Sampling_frequency,8)); % Round off to 8th place
 
 end
 

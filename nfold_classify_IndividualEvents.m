@@ -105,10 +105,18 @@ for s_idx = 1:length(MCP_struct)
     group_subvec = 1:length(MCP_struct);
     group_subvec(s_idx) = [];
     
-    group_cond1 = squeeze(mcpa_summ.patterns(cond1_flag,p.Results.incl_channels,group_subvec));
-    group_cond2 = squeeze(mcpa_summ.patterns(cond2_flag,p.Results.incl_channels,group_subvec));
-    group_labels = [ cellstr(repmat('cond1',size(group_cond1,2),1)) ; cellstr(repmat('cond2',size(group_cond2,2),1)) ];
-    group_data = [group_cond1';group_cond2'];
+    if length(group_subvec)>1
+        group_cond1 = squeeze(mcpa_summ.patterns(cond1_flag,p.Results.incl_channels,group_subvec));
+        group_cond2 = squeeze(mcpa_summ.patterns(cond2_flag,p.Results.incl_channels,group_subvec));
+        group_labels = [ cellstr(repmat('cond1',size(group_cond1,2),1)) ; cellstr(repmat('cond2',size(group_cond2,2),1)) ];
+        group_data = [group_cond1';group_cond2'];
+        
+    else
+        group_cond1 = squeeze(mcpa_summ.patterns(cond1_flag,p.Results.incl_channels,group_subvec));
+        group_cond2 = squeeze(mcpa_summ.patterns(cond2_flag,p.Results.incl_channels,group_subvec));
+        group_labels = [ cellstr(repmat('cond1',size(group_cond1,1),1)) ; cellstr(repmat('cond2',size(group_cond2,1),1)) ];
+        group_data = [group_cond1;group_cond2];
+    end
     
     
     %% Extract test data
@@ -117,12 +125,12 @@ for s_idx = 1:length(MCP_struct)
     subj_patterns2 = squeeze(p.Results.summary_handle(subj_events(:,:,:,cond2_flag)));
     subj_labels = [ cellstr(repmat('cond1',size(subj_patterns1,2),1)) ; cellstr(repmat('cond2',size(subj_patterns2,2),1)) ];
     subj_data = [subj_patterns1';subj_patterns2'];
-
+    
     %% Run over channel subsets
     tic;
     temp_set_results_cond1 = nan(n_sets,n_chan);
     temp_set_results_cond2 = nan(n_sets,n_chan);
-
+    
     for set_idx = 1:n_sets
         
         % Report at every 5% progress
@@ -133,7 +141,7 @@ for s_idx = 1:length(MCP_struct)
         
         % Select the channels for this subset
         set_chans = sets(set_idx,:);
-       
+        
         % Run classifier
         temp_test_labels = p.Results.test_handle(...
             group_data(:,set_chans), ...
@@ -150,14 +158,14 @@ for s_idx = 1:length(MCP_struct)
             subj_labels(strcmp('cond2',subj_labels)),... % known labels
             temp_test_labels(strcmp('cond2',subj_labels))... % classifier labels
             );
-                
+        
         % Temporary results from each set are stored in a n_sets x n_chan
         % matrix, so that averaging can be done both across sets (to
         % determine channel mean performance) and across channels (to
         % determine set mean performance)
         temp_set_results_cond1(set_idx,set_chans) = nanmean(temp_acc1);
         temp_set_results_cond2(set_idx,set_chans) = nanmean(temp_acc2);
-
+        
     end
     
     % After running at the subsets, write out the results to the arrays
@@ -166,13 +174,13 @@ for s_idx = 1:length(MCP_struct)
     allsubj_results.accuracy.cond1.subjXchan(s_idx,:) = nanmean(temp_set_results_cond1,1);
     allsubj_results.accuracy.cond2.subjXchan(s_idx,:) = nanmean(temp_set_results_cond2,1);
     
-    fprintf('%0.1f mins\n',toc/60);
+    fprintf(' %0.1f mins\n',toc/60);
     
 end
 
 %% Visualization
 if n_sets > 1
-
+    
     figure
     errorbar(1:size(allsubj_results.accuracy.cond1.subjXchan,2),mean(allsubj_results.accuracy.cond1.subjXchan),std(allsubj_results.accuracy.cond1.subjXchan)/sqrt(size(allsubj_results.accuracy.cond1.subjXchan,1)),'r')
     hold;
