@@ -1,3 +1,4 @@
+%% File identification and preprocessing
 % Get a list of NIRS files
 nirs_files = arrayfun(@(x) x.name,dir('*.nirs'),'UniformOutput',false);
 
@@ -8,15 +9,16 @@ nirs_files_proc = setdiff(nirs_files,nirs_files_raw);
 % Generate a list of files we can use in the MCP builder
 [nirs_files_forMCP, unique_subjs] = prep_nirsfiles_mcp(nirs_files_proc,'_','subject');
 
+%% MCP data extraction and labeling
 % Build an MCP struct to describe all of the preprocessed data
 MCP_data = build_MCP(...
     nirs_files_forMCP,...                               % the filenames
-    unique_subjs,...                                       % subject IDs
-    repmat({'shimadzu139'},length(unique_subjs),1),...   % probe IDs
+    unique_subjs,...                                    % subject IDs
+    repmat({'shimadzu139'},length(unique_subjs),1),...  % probe IDs
     's');                                               % field for stims
 
-%cond_names = {'baby', 'book', 'bottle', 'cat', 'dog', 'hand', 'shoe', 'spoon'};
-cond_names = {'anim', 'inan', 'inan', 'anim', 'anim', 'anim', 'inan', 'inan'};
+cond_names = {'baby', 'book', 'bottle', 'cat', 'dog', 'hand', 'shoe', 'spoon'};
+%cond_names = {'anim', 'inan', 'inan', 'anim', 'anim', 'anim', 'inan', 'inan'};
 
 for old_mark = 1:8
     MCP_data = MCP_relabel_stimuli(MCP_data,old_mark,cond_names{old_mark},0);
@@ -26,6 +28,7 @@ end
 MCP_file_name = ['MCP_data_' date '.mcp'];
 save(MCP_file_name,'MCP_data');
 
+%% MCPA data / Classification
 % Perform individual event classification (MCPA method)
 eventResults = nfold_classify_IndividualEvents(MCP_data, ...
     'cond1','anim','cond2','inan', ...
