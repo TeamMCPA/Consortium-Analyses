@@ -21,7 +21,6 @@ model_pattern2 = nanmean(model_data(strcmp(model_classes{2},model_labels),:),1)'
 % all others.
 corr_matrix = atanh(corr([model_pattern1,model_pattern2,test_data'],'type',opts.corr_stat,'rows','pairwise'));
 
-
 test_model_corrs = corr_matrix(3:end,1:2);
 
 %% Save out the classification results based on greatest correlation coefficient for each test pattern

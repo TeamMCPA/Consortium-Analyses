@@ -45,7 +45,9 @@ parse(p,varargin{:})
 % be n-choose-k subsets to analyze.
 sets = nchoosek(p.Results.incl_channels,p.Results.setsize);
 
+
 %% Build MCPA struct for all subjects in the MCP
+
 % Step 1: Epoching the data by time window and averaging the epochs
 % together at the subject level
 mcpa_struct = MCP_to_MCPA(MCP_struct,p.Results.incl_subjects,p.Results.incl_channels,p.Results.time_window);
@@ -56,6 +58,7 @@ mcpa_struct = MCP_to_MCPA(MCP_struct,p.Results.incl_subjects,p.Results.incl_chan
 % function along the first dimension of the MCPA pattern, but this can also
 % be changed.
 mcpa_summ = summarize_MCPA_Struct(p.Results.summary_handle,mcpa_struct);
+
 
 %% Set up the results structure which includes a copy of MCPA_pattern
 allsubj_results = [];
@@ -77,7 +80,6 @@ n_chan = length(p.Results.incl_channels);
 n_cond = length(p.Results.conditions);
 
 for cond_id = 1:n_cond
-    allsubj_results.accuracy(cond_id).condition = allsubj_results.conditions(cond_id);
     allsubj_results.accuracy(cond_id).subjXchan = nan(n_subj,n_chan);
     allsubj_results.accuracy(cond_id).subsetXsubj = nan(n_sets,n_subj);
 end
@@ -107,31 +109,35 @@ for s_idx = 1:length(mcpa_summ.incl_subjects)
         % group_data_tmp averages across all matching triggers for a
         % condition and outputs a subj-x-chan matrix
         group_data_tmp = squeeze(mean(mcpa_summ.patterns(cond_flags{cond_idx},p.Results.incl_channels,group_subvec),1))';
-        group_labels_tmp = repmat(cellstr(string(p.Results.conditions{cond_idx})),size(group_data_tmp,1),1);
+        group_labels_tmp = repmat(p.Results.conditions(cond_idx),size(group_data_tmp,1),1);
         group_data = [ group_data; group_data_tmp ];
         group_labels = [ group_labels; group_labels_tmp ];
         
         % Extract test data
         subj_data_tmp = mcpa_summ.patterns(cond_flags{cond_idx},p.Results.incl_channels,s_idx);
-        subj_labels_tmp = repmat(cellstr(string(p.Results.conditions{cond_idx})),size(subj_data_tmp,1),1);
+        subj_labels_tmp = repmat(p.Results.conditions(cond_idx),size(subj_data_tmp,1),1);
         subj_data = [ subj_data; subj_data_tmp ];
         subj_labels = [ subj_labels; subj_labels_tmp ];
     end
     
-    %% Run over channel subsets
-    temp_set_results_cond = nan(n_cond,n_sets,n_chan);
-    
     for set_idx = 1:n_sets
+        temp_set_results_cond = nan(n_cond,n_sets,n_chan);
         tic;
-        % Report at every 5% progress
-        status_jump = floor(n_sets/20);
-        if ~mod(set_idx,status_jump)
-            fprintf(' .')
-        end
-        % Select the channels for this subset
-        set_chans = sets(set_idx,:);
-        
         if n_cond==2
+            
+            %% Run over channel subsets
+            tic;
+            
+            
+            % Report at every 5% progress
+            status_jump = floor(n_sets/20);
+            if ~mod(set_idx,status_jump)
+                fprintf(' .')
+            end
+            
+            % Select the channels for this subset
+            set_chans = sets(set_idx,:);
+            
             % Run classifier
             temp_test_labels = p.Results.test_handle(...
                 group_data(:,set_chans), ...
@@ -157,14 +163,15 @@ for s_idx = 1:length(mcpa_summ.incl_subjects)
             temp_set_results_cond(2,set_idx,set_chans) = nanmean(temp_acc2);
             
         else
+            
             % Write the multiclass version here
             allsubj_results = pairwise_rsa_leaveoneout(mcpa_summ.patterns);
         end
         
         % After running at the subsets, write out the results to the arrays
         for cond_idx = 1:n_cond
-            allsubj_results.accuracy(cond_idx).subsetXsubj(:,s_idx) = nanmean(temp_set_results_cond(cond_idx,:,:),3);
-            allsubj_results.accuracy(cond_idx).subjXchan(s_idx,:) = nanmean(temp_set_results_cond(cond_idx,:,:),2);
+            allsubj_results.accuracy(cond_idx).subsetXsubj(:,s_idx) = nanmean(temp_set_results_cond(cond_idx,:,:),2);
+            allsubj_results.accuracy(cond_idx).subjXchan(s_idx,:) = nanmean(temp_set_results_cond(cond_idx,:,:),1);
         end
         
         fprintf(' %0.1f mins\n',toc/60);

@@ -55,23 +55,23 @@ if length(p.Results.conditions)==2
     % This is the special case where there are only two conditions to
     % discriminate, and RSA cannot be applied. Instead, a two-class
     % classifier is applied directly (such as MCPA or SVM) to the data.
-    p.Results.cond1 = p.Results.conditions{1};
-    p.Results.cond2 = p.Results.conditions{2};
+    cond1 = p.Results.conditions{1};
+    cond2 = p.Results.conditions{2};
     
     %% Identify the conditions that will be compared
     % Condition flags can be string, cell, integer, or logical. If string or
     % cell, a search is run over the summarized MCPA data to determine which
     % condition # matches the condition name. Otherwise, integer or logical
     % values are applied directly to indexing.
-    if ischar(p.Results.cond1) || isstring(p.Results.cond1) || iscellstr(p.Results.cond1)
-        cond1_flag = strcmp(p.Results.cond1,mcpa_summ.event_types);
+    if ischar(cond1) || isstring(cond1) || iscellstr(cond1)
+        cond1_flag = strcmp(cond1,mcpa_summ.event_types);
     else
-        cond1_flag = p.Results.cond1;
+        cond1_flag = cond1;
     end
-    if ischar(p.Results.cond2) || isstring(p.Results.cond2) || iscellstr(p.Results.cond2)
-        cond2_flag = strcmp(p.Results.cond2,mcpa_summ.event_types);
+    if ischar(cond2) || isstring(cond2) || iscellstr(cond2)
+        cond2_flag = strcmp(cond2,mcpa_summ.event_types);
     else
-        cond2_flag = p.Results.cond2;
+        cond2_flag = cond2;
     end
     
     %% Setting up the combinations of channel subsets
@@ -91,8 +91,8 @@ if length(p.Results.conditions)==2
     allsubj_results.setsize = p.Results.setsize;
     allsubj_results.func_handle = p.Results.summary_handle;
     allsubj_results.incl_channels = mcpa_struct.incl_channels;
-    allsubj_results.cond1 = p.Results.cond1;
-    allsubj_results.cond2 = p.Results.cond2;
+    allsubj_results.cond1 = p.Results.conditions{1};
+    allsubj_results.cond2 = p.Results.conditions{2};
     allsubj_results.subsets = sets;
     
     n_subj = length(MCP_struct);
