@@ -96,27 +96,6 @@ for s_idx = 1:length(mcpa_summ.incl_subjects)
     group_labels = [];
     subj_data = [];
     subj_labels = [];
-    for cond_idx = 1:n_cond
-        if ischar(p.Results.conditions{cond_idx}) || isstring(p.Results.conditions{cond_idx}) || iscellstr(p.Results.conditions{cond_idx})
-            cond_flags{cond_idx} = strcmp(p.Results.conditions{cond_idx},mcpa_summ.event_types);
-        else
-            cond_flags{cond_idx} = p.Results.conditions{cond_idx};
-        end
-        
-        % Extract training data
-        % group_data_tmp averages across all matching triggers for a
-        % condition and outputs a subj-x-chan matrix
-        group_data_tmp = squeeze(mean(mcpa_summ.patterns(cond_flags{cond_idx},p.Results.incl_channels,group_subvec),1))';
-        group_labels_tmp = repmat(cellstr(string(p.Results.conditions{cond_idx})),size(group_data_tmp,1),1);
-        group_data = [ group_data; group_data_tmp ];
-        group_labels = [ group_labels; group_labels_tmp ];
-        
-        % Extract test data
-        subj_data_tmp = mcpa_summ.patterns(cond_flags{cond_idx},p.Results.incl_channels,s_idx);
-        subj_labels_tmp = repmat(cellstr(string(p.Results.conditions{cond_idx})),size(subj_data_tmp,1),1);
-        subj_data = [ subj_data; subj_data_tmp ];
-        subj_labels = [ subj_labels; subj_labels_tmp ];
-    end
     
     %% Run over channel subsets
     temp_set_results_cond = nan(n_cond,n_sets,n_chan);
@@ -132,6 +111,29 @@ for s_idx = 1:length(mcpa_summ.incl_subjects)
         set_chans = sets(set_idx,:);
         
         if n_cond==2
+            
+            for cond_idx = 1:n_cond
+                if ischar(p.Results.conditions{cond_idx}) || isstring(p.Results.conditions{cond_idx}) || iscellstr(p.Results.conditions{cond_idx})
+                    cond_flags{cond_idx} = strcmp(p.Results.conditions{cond_idx},mcpa_summ.event_types);
+                else
+                    cond_flags{cond_idx} = p.Results.conditions{cond_idx};
+                end
+                
+                % Extract training data
+                % group_data_tmp averages across all matching triggers for a
+                % condition and outputs a subj-x-chan matrix
+                group_data_tmp = squeeze(mean(mcpa_summ.patterns(cond_flags{cond_idx},p.Results.incl_channels,group_subvec),1))';
+                group_labels_tmp = repmat(cellstr(string(p.Results.conditions{cond_idx})),size(group_data_tmp,1),1);
+                group_data = [ group_data; group_data_tmp ];
+                group_labels = [ group_labels; group_labels_tmp ];
+                
+                % Extract test data
+                subj_data_tmp = mcpa_summ.patterns(cond_flags{cond_idx},p.Results.incl_channels,s_idx);
+                subj_labels_tmp = repmat(cellstr(string(p.Results.conditions{cond_idx})),size(subj_data_tmp,1),1);
+                subj_data = [ subj_data; subj_data_tmp ];
+                subj_labels = [ subj_labels; subj_labels_tmp ];
+            end
+            
             % Run classifier
             temp_test_labels = p.Results.test_handle(...
                 group_data(:,set_chans), ...
