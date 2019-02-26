@@ -75,9 +75,9 @@ num_time_samps = length(round(time_window(1)*max(Fs_val)) : round(time_window(en
 % event_types = 1:max(arrayfun(@(x) length(x.Experiment.Conditions),MCP_data));
 
 % This version uses names from the MCP array
-all_names = arrayfun(@(x) unique({x.Experiment.Conditions.Name}),mcp_multiple(incl_subjects), 'UniformOutput',false);
+all_names = arrayfun(@(x) unique({x.Experiment.Conditions.Name},'stable'),mcp_multiple(incl_subjects), 'UniformOutput',false);
 unique_names = cellfun(@(x) char(x{:}),all_names,'UniformOutput',false);
-event_types = unique(cellstr(char(unique_names)));
+[event_types iev] = unique(cellstr(char(unique_names)),'stable');
 
 %% Extract data from the data file into the empty output matrix
 
@@ -102,7 +102,8 @@ for subj_idx = 1 : length(incl_subjects)
     
     % Event_repetition_mean:
     % (time x channels x event_type)
-    event_repetition_mean = nanmean(event_matrix, 3);
+%    event_repetition_mean = nanmean(event_matrix, 3);
+    event_repetition_mean = mean(event_matrix, 3,'omitnan');
     event_repetition_mean = reshape(event_repetition_mean, size(event_matrix,1), size(event_matrix,2), size(event_matrix,4));
     event_repetition_mean = permute(event_repetition_mean, [1 3 2]);
     % Now the dimension of Event_repetition_mean:

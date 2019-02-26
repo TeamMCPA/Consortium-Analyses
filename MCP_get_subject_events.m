@@ -98,10 +98,46 @@ for type_i = 1 : length(event_types)
     matched_conditions = cell2mat(arrayfun(@(x) strcmp(event_types{type_i},x.Name), mcp_struct.Experiment.Conditions,'UniformOutput',false)); 
     event_marks = [mcp_struct.Experiment.Conditions(matched_conditions).Mark];
     
+    % Each instance of a given condition (i.e., each individual event) is
+    % extracted and entered into the event_matrix. Since there are often an
+    % unbalanced number of events per condition, the events_matrix is
+    % preallocated to accomodate the largest number of events for any given
+    % condition, and the conditions with fewer events have NaN values
+    % filling in the rest. These NaNs are important to remember if you're
+    % taking a mean value later (use mean(x,dim,'omitnan) or nanmean(x,dim)
     for event_j = 1 : length(marks_mat(:, event_marks))
+        
+        % For events where the full duration of time_window is available
         if marks_mat(event_j,type_i) + time_window_samp(end) <= length(oxy_timeser)
-            event_matrix(:,:,event_j,type_i) = oxy_timeser(marks_mat(event_j,type_i)+time_window_samp,:) - ones(length(time_window_samp),1)*oxy_timeser(marks_mat(event_j,type_i)+time_window_samp(1),:);
+            
+            % Grab the trial data (for this event) directly from the oxy
+            % timeseries. It will be re-baselined momentarily.
+            event_data = oxy_timeser(marks_mat(event_j,type_i)+time_window_samp,:);
+            
+            % Get the oxy data from one scan prior to stimulus onset and
+            % use that as the baselining value.
+            % There is good reason to think we should use maybe the average
+            % of a few seconds prior to stimulus onset, but sometimes the 
+            % events are only seconds apart, and we don't want to bleed
+            % information about the previous trial into the current trial
+            % by baselining off of it. For now, this approach is quick and
+            % easy and probably wrong.
+            rebaseline_data = ones(length(time_window_samp),1)* ...
+                oxy_timeser(marks_mat(event_j,type_i)-1,:);
+
+            event_matrix(:,:,event_j,type_i) = event_data - rebaseline_data;
+
+            % This was the old way, and it caused problems. The new way is
+            % easier to read, so you can see the problems more clearly.
+            %event_matrix(:,:,event_j,type_i) = ...
+            %    oxy_timeser(marks_mat(event_j,type_i)+time_window_samp,:) -...
+            %    ones(length(time_window_samp),1)*oxy_timeser(marks_mat(event_j,type_i)+time_window_samp(1),:);
+        
+        % For events that might get truncated (e.g., end of recording)
         else
+            % For the moment, we carelessly discard these trials. There is
+            % a better way to do it, but you have to match up the lengths
+            % of the vectors. Todo.
             event_matrix(:,:,event_j:end,type_i) = NaN;
         end
     end
