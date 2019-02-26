@@ -20,7 +20,7 @@ function allsubj_results = nfold_classify_ParticipantLevel(MCP_struct,varargin)
 % opts_struct: contains additional classifier options. Default: empty struct
 
 %% Load MCP struct if necessary
-if isstring(MCP_struct)
+if isstring(MCP_struct) || ischar(MCP_struct)
     MCP_struct = load(MCP_struct,'-mat');
     varname = fieldnames(MCP_struct);
     MCP_struct = eval(['MCP_struct.' varname{1}]);
@@ -40,7 +40,7 @@ parse(p,varargin{:})
 
 %% Setting up the combinations of channel subsets
 % Create all possible subsets. If setsize is equal to the total number of
-% channels, there will only be one 'subset' which is the full channel
+% channels, there will only be on`e 'subset' which is the full channel
 % array. If setsize is less than the total number of channels, there will
 % be n-choose-k subsets to analyze.
 sets = nchoosek(p.Results.incl_channels,p.Results.setsize);
@@ -57,6 +57,13 @@ mcpa_struct = MCP_to_MCPA(MCP_struct,p.Results.incl_subjects,p.Results.incl_chan
 % be changed.
 mcpa_summ = summarize_MCPA_Struct(p.Results.summary_handle,mcpa_struct);
 
+%% Prep some basic parameters
+n_subj = length(p.Results.incl_subjects);
+n_sets = size(sets,1);
+n_chan = length(p.Results.incl_channels);
+% n_events = max(arrayfun(@(x) max(sum(x.fNIRS_Data.Onsets_Matrix)),MCP_struct));
+n_cond = length(p.Results.conditions);
+
 %% Set up the results structure which includes a copy of MCPA_pattern
 allsubj_results = [];
 allsubj_results.MCPA_patterns = mcpa_struct.patterns;
@@ -70,18 +77,14 @@ allsubj_results.incl_channels = mcpa_struct.incl_channels;
 allsubj_results.conditions = p.Results.conditions;
 allsubj_results.subsets = sets;
 
-n_subj = length(MCP_struct);
-n_sets = size(sets,1);
-n_chan = length(p.Results.incl_channels);
-% n_events = max(arrayfun(@(x) max(sum(x.fNIRS_Data.Onsets_Matrix)),MCP_struct));
-n_cond = length(p.Results.conditions);
-
 for cond_id = 1:n_cond
     allsubj_results.accuracy(cond_id).condition = allsubj_results.conditions(cond_id);
     allsubj_results.accuracy(cond_id).subjXchan = nan(n_subj,n_chan);
     allsubj_results.accuracy(cond_id).subsetXsubj = nan(n_sets,n_subj);
 end
 
+
+%% Begin the n-fold process: Select one test subj at a time from MCPA struct
 for s_idx = 1:length(mcpa_summ.incl_subjects)
     fprintf('Running %g feature subsets for Subject %g / %g',n_sets,s_idx,n_subj);
     
@@ -91,7 +94,7 @@ for s_idx = 1:length(mcpa_summ.incl_subjects)
     
     % Set logical flags for indexing the conditions that will be compared.
     % Loop through the whole list of conditions and create flags for each.
-    cond_flags = cell(n_cond,1);
+    cond_flags = cell(n_cond,1); % These are, for the moment, empty
     group_data = [];
     group_labels = [];
     subj_data = [];
@@ -102,6 +105,8 @@ for s_idx = 1:length(mcpa_summ.incl_subjects)
     
     for set_idx = 1:n_sets
         tic;
+        
+        %% Progress reporting bit (not important to function. just sanity)
         % Report at every 5% progress
         status_jump = floor(n_sets/20);
         if ~mod(set_idx,status_jump)
@@ -110,6 +115,22 @@ for s_idx = 1:length(mcpa_summ.incl_subjects)
         % Select the channels for this subset
         set_chans = sets(set_idx,:);
         
+        %% Folding & Dispatcher: Here's the important part
+        % Right now, the data have to be treated differently for 2
+        % conditions vs. many conditions. In MCPA this is because 2
+        % conditions can only be compared in channel space (or, hopefully,
+        % MNI space some day). If there are a sufficient number of
+        % conditions (6ish or more), we abstract away from channel space
+        % using RSA methods. Then classifier is trained/tested on the RSA
+        % structures. This works for our previous MCPA studies, but might
+        % not be appropriate for other classifiers (like SVM).
+        
+        
+        %% Two conditions
+        % This block should work with most classifiers, provided adequate
+        % data are available. We are making the assumption that
+        % subject-level averages are the granularity of data that will be
+        % both trained and tested.
         if n_cond==2
             
             for cond_idx = 1:n_cond
@@ -134,7 +155,7 @@ for s_idx = 1:length(mcpa_summ.incl_subjects)
                 subj_labels = [ subj_labels; subj_labels_tmp ];
             end
             
-            % Run classifier
+            %% Run classifier and compare output with correct labels
             temp_test_labels = p.Results.test_handle(...
                 group_data(:,set_chans), ...
                 group_labels,...
@@ -143,12 +164,12 @@ for s_idx = 1:length(mcpa_summ.incl_subjects)
             
             % Compare the labels output by the classifier to the known labels
             temp_acc1 = cellfun(@strcmp,...
-                subj_labels(strcmp('cond1',subj_labels)),... % known labels
-                temp_test_labels(strcmp('cond1',subj_labels))...% classifier labels
+                subj_labels(strcmp(string(p.Results.conditions{1}),subj_labels)),... % known labels
+                temp_test_labels(strcmp(string(p.Results.conditions{1}),subj_labels))...% classifier labels
                 );
             temp_acc2 = cellfun(@strcmp,...
-                subj_labels(strcmp('cond2',subj_labels)),... % known labels
-                temp_test_labels(strcmp('cond2',subj_labels))... % classifier labels
+                subj_labels(strcmp(string(p.Results.conditions{2}),subj_labels)),... % known labels
+                temp_test_labels(strcmp(string(p.Results.conditions{2}),subj_labels))... % classifier labels
                 );
             
             % Temporary results from each set are stored in a n_sets x n_chan
@@ -158,17 +179,39 @@ for s_idx = 1:length(mcpa_summ.incl_subjects)
             temp_set_results_cond(1,set_idx,set_chans) = nanmean(temp_acc1);
             temp_set_results_cond(2,set_idx,set_chans) = nanmean(temp_acc2);
             
+            for cond_idx = 1:n_cond
+                allsubj_results.accuracy(cond_idx).subsetXsubj(:,s_idx) = nanmean(temp_set_results_cond(cond_idx,:,:),3);
+                allsubj_results.accuracy(cond_idx).subjXchan(s_idx,:) = nanmean(temp_set_results_cond(cond_idx,:,:),2);
+            end
+            
+        %% Multiple conditions
+        % A bit of complication for how this block should run. If we want
+        % an RSA-based classifier, we can either do the all-possible-2way
+        % comparisons approach OR we can try doing structural alignment of
+        % the whole test dataset (similarity structure) to the training
+        % dataset (another similarity structure), a la Zinszer et al.,
+        % 2016, Journal of Cognitive Neuroscience (fMRI-based translation).
+        %
+        % If we don't want to do RSA based (i.e., stay in channel or MNI
+        % space), then we need to ask whether we're doing all-possible-2way
+        % comparisons or some n-alternative-forced-choice test with chance
+        % performance at 1/n.
+        %
+        % No graceful way to handle these branching decisions yet.  We are
+        % also still making the assumption that subject-level averages are
+        % the granularity of data that will be both trained and tested.
         else
-            % Write the multiclass version here
+            % Write the multiclass dispatcher here
+            %
+            % For now, just using the Neurophotonics script which has
+            % result-writing built into it. This is not a good long term
+            % solution because it breaks the modularity of the software
+            % (and does nothing to support n-fold for all the other
+            % possible classifiers we might want.
             allsubj_results = pairwise_rsa_leaveoneout(mcpa_summ.patterns);
         end
         
-        % After running at the subsets, write out the results to the arrays
-        for cond_idx = 1:n_cond
-            allsubj_results.accuracy(cond_idx).subsetXsubj(:,s_idx) = nanmean(temp_set_results_cond(cond_idx,:,:),3);
-            allsubj_results.accuracy(cond_idx).subjXchan(s_idx,:) = nanmean(temp_set_results_cond(cond_idx,:,:),2);
-        end
-        
+        %% Progress reporting
         fprintf(' %0.1f mins\n',toc/60);
         
     end
