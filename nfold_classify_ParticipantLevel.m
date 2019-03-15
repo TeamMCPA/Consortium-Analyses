@@ -9,6 +9,8 @@ function allsubj_results = nfold_classify_ParticipantLevel(MCP_struct,varargin)
 % classifier is trained. See Arguments below:
 %
 % Arguments:
+% MCP_struct: either an MCP-formatted struct or the path to a Matlab file
+% (.mat or .mcp) containing the MCP_struct.
 % incl_channels: channels to include in the analysis. Default: all channels
 % incl_subjects: index of participants to include. Default: all participants
 % time_window: [onset, offset] in seconds. Default [2,6]
@@ -18,6 +20,7 @@ function allsubj_results = nfold_classify_ParticipantLevel(MCP_struct,varargin)
 % setsize: number of channels to analyze (for subset analyses) Default: all
 % test_handle: function handle for classifier. Default: mcpa_classify
 % opts_struct: contains additional classifier options. Default: empty struct
+% verbose: logical flag to report status updates and results. Default: true
 
 %% Load MCP struct if necessary
 if isstring(MCP_struct) || ischar(MCP_struct)
@@ -35,7 +38,9 @@ addParameter(p,'conditions',{1,2},@iscell);
 addParameter(p,'summary_handle',@nanmean);
 addParameter(p,'setsize',max(arrayfun(@(x) size(x.fNIRS_Data.Hb_data.Oxy,2),MCP_struct)),@isnumeric);
 addParameter(p,'test_handle',@mcpa_classify);
-addParameter(p,'opts_struct',struct,@isstruct);
+addParameter(p,'opts_struct',[],@isstruct);
+addParameter(p,'verbose',true,@islogical);
+
 parse(p,varargin{:})
 
 %% Setting up the combinations of channel subsets
@@ -70,7 +75,7 @@ allsubj_results.MCPA_patterns = mcpa_struct.patterns;
 allsubj_results.MCP_data = MCP_struct;
 allsubj_results.created = datestr(now);
 allsubj_results.test_handle = p.Results.test_handle;
-allsubj_results.test_type = 'N-fold (Leave one subject out), Classify participant level';
+allsubj_results.test_type = 'N-fold (Leave one subject out), Classify participant-level averages';
 allsubj_results.setsize = p.Results.setsize;
 allsubj_results.func_handle = p.Results.summary_handle;
 allsubj_results.incl_channels = mcpa_struct.incl_channels;
@@ -86,8 +91,9 @@ end
 
 %% Begin the n-fold process: Select one test subj at a time from MCPA struct
 for s_idx = 1:length(mcpa_summ.incl_subjects)
-    fprintf('Running %g feature subsets for Subject %g / %g',n_sets,s_idx,n_subj);
-    
+    if p.Results.verbose
+        fprintf('Running %g feature subsets for Subject %g / %g',n_sets,s_idx,n_subj);
+    end
     %% Extract training and testing data
     group_subvec = 1:length(mcpa_summ.incl_subjects);
     group_subvec(s_idx) = [];
@@ -108,9 +114,11 @@ for s_idx = 1:length(mcpa_summ.incl_subjects)
         
         %% Progress reporting bit (not important to function. just sanity)
         % Report at every 5% progress
-        status_jump = floor(n_sets/20);
-        if ~mod(set_idx,status_jump)
-            fprintf(' .')
+        if p.Results.verbose
+            status_jump = floor(n_sets/20);
+            if ~mod(set_idx,status_jump)
+                fprintf(' .')
+            end
         end
         % Select the channels for this subset
         set_chans = sets(set_idx,:);
@@ -184,22 +192,22 @@ for s_idx = 1:length(mcpa_summ.incl_subjects)
                 allsubj_results.accuracy(cond_idx).subjXchan(s_idx,:) = nanmean(temp_set_results_cond(cond_idx,:,:),2);
             end
             
-        %% Multiple conditions
-        % A bit of complication for how this block should run. If we want
-        % an RSA-based classifier, we can either do the all-possible-2way
-        % comparisons approach OR we can try doing structural alignment of
-        % the whole test dataset (similarity structure) to the training
-        % dataset (another similarity structure), a la Zinszer et al.,
-        % 2016, Journal of Cognitive Neuroscience (fMRI-based translation).
-        %
-        % If we don't want to do RSA based (i.e., stay in channel or MNI
-        % space), then we need to ask whether we're doing all-possible-2way
-        % comparisons or some n-alternative-forced-choice test with chance
-        % performance at 1/n.
-        %
-        % No graceful way to handle these branching decisions yet.  We are
-        % also still making the assumption that subject-level averages are
-        % the granularity of data that will be both trained and tested.
+            %% Multiple conditions
+            % A bit of complication for how this block should run. If we want
+            % an RSA-based classifier, we can either do the all-possible-2way
+            % comparisons approach OR we can try doing structural alignment of
+            % the whole test dataset (similarity structure) to the training
+            % dataset (another similarity structure), a la Zinszer et al.,
+            % 2016, Journal of Cognitive Neuroscience (fMRI-based translation).
+            %
+            % If we don't want to do RSA based (i.e., stay in channel or MNI
+            % space), then we need to ask whether we're doing all-possible-2way
+            % comparisons or some n-alternative-forced-choice test with chance
+            % performance at 1/n.
+            %
+            % No graceful way to handle these branching decisions yet.  We are
+            % also still making the assumption that subject-level averages are
+            % the granularity of data that will be both trained and tested.
         else
             % Write the multiclass dispatcher here
             %
@@ -212,32 +220,35 @@ for s_idx = 1:length(mcpa_summ.incl_subjects)
         end
         
         %% Progress reporting
-        fprintf(' %0.1f mins\n',toc/60);
-        
+        if p.Results.verbose
+            fprintf(' %0.1f mins\n',toc/60);
+        end
     end
     
 end
 
 %% Visualization
-if n_sets > 1 && length(p.Results.conditions)==2
-    
-    figure
-    errorbar(1:size(allsubj_results.accuracy.cond1.subjXchan,2),mean(allsubj_results.accuracy.cond1.subjXchan),std(allsubj_results.accuracy.cond1.subjXchan)/sqrt(size(allsubj_results.accuracy.cond1.subjXchan,1)),'r')
-    hold;
-    errorbar(1:size(allsubj_results.accuracy.cond2.subjXchan,2),mean(allsubj_results.accuracy.cond2.subjXchan),std(allsubj_results.accuracy.cond2.subjXchan)/sqrt(size(allsubj_results.accuracy.cond2.subjXchan,1)),'k')
-    title('Decoding Accuracy across all channels: Red = Cond1, Black = Cond2')
-    set(gca,'XTick',[1:length(p.Results.incl_channels)])
-    set(gca,'XTickLabel',p.Results.incl_channels)
-    hold off;
-    
-    figure
-    errorbar(1:size(allsubj_results.accuracy.cond1.subjXchan,1),mean(allsubj_results.accuracy.cond1.subjXchan'),repmat(std(mean(allsubj_results.accuracy.cond1.subjXchan'))/sqrt(size(allsubj_results.accuracy.cond1.subjXchan,2)),1,size(allsubj_results.accuracy.cond1.subjXchan,1)),'r')
-    hold;
-    errorbar(1:size(allsubj_results.accuracy.cond2.subjXchan,1),mean(allsubj_results.accuracy.cond2.subjXchan'),repmat(std(mean(allsubj_results.accuracy.cond2.subjXchan'))/sqrt(size(allsubj_results.accuracy.cond2.subjXchan,2)),1,size(allsubj_results.accuracy.cond2.subjXchan,1)),'k')
-    title('Decoding Accuracy across all subjects: Red = Cond1, Black = Cond2')
-    set(gca,'XTick',[1:p.Results.incl_subjects])
-    hold off;
-    
+if p.Results.verbose
+    if n_sets > 1 && length(p.Results.conditions)==2
+        
+        figure
+        errorbar(1:size(allsubj_results.accuracy.cond1.subjXchan,2),mean(allsubj_results.accuracy.cond1.subjXchan),std(allsubj_results.accuracy.cond1.subjXchan)/sqrt(size(allsubj_results.accuracy.cond1.subjXchan,1)),'r')
+        hold;
+        errorbar(1:size(allsubj_results.accuracy.cond2.subjXchan,2),mean(allsubj_results.accuracy.cond2.subjXchan),std(allsubj_results.accuracy.cond2.subjXchan)/sqrt(size(allsubj_results.accuracy.cond2.subjXchan,1)),'k')
+        title('Decoding Accuracy across all channels: Red = Cond1, Black = Cond2')
+        set(gca,'XTick',[1:length(p.Results.incl_channels)])
+        set(gca,'XTickLabel',p.Results.incl_channels)
+        hold off;
+        
+        figure
+        errorbar(1:size(allsubj_results.accuracy.cond1.subjXchan,1),mean(allsubj_results.accuracy.cond1.subjXchan'),repmat(std(mean(allsubj_results.accuracy.cond1.subjXchan'))/sqrt(size(allsubj_results.accuracy.cond1.subjXchan,2)),1,size(allsubj_results.accuracy.cond1.subjXchan,1)),'r')
+        hold;
+        errorbar(1:size(allsubj_results.accuracy.cond2.subjXchan,1),mean(allsubj_results.accuracy.cond2.subjXchan'),repmat(std(mean(allsubj_results.accuracy.cond2.subjXchan'))/sqrt(size(allsubj_results.accuracy.cond2.subjXchan,2)),1,size(allsubj_results.accuracy.cond2.subjXchan,1)),'k')
+        title('Decoding Accuracy across all subjects: Red = Cond1, Black = Cond2')
+        set(gca,'XTick',[1:p.Results.incl_subjects])
+        hold off;
+        
+    end
 end
 
 end

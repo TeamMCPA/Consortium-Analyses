@@ -1,7 +1,12 @@
 function classification = mcpa_classify(model_data, model_labels, test_data, opts)
+%% mcpa_classify implements a correlation-based, feature-space classifier
+% following Emberson, Zinszer, Raizada & Aslin's (2017, PLoS One) method.
+%
+% Currently implementation only works for two conditions at a time.
+% Multiple conditions is under developments (fingers crossed...)
 
 %% If the options struct is not provided, set default parameters
-if ~exist('opts','var')
+if ~exist('opts','var') || isempty(opts)
     opts = struct;
     opts.corr_stat = 'spearman';
     opts.exclusive = false;
@@ -18,9 +23,13 @@ model_pattern2 = nanmean(model_data(strcmp(model_classes{2},model_labels),:),1)'
 % 1. Build a matrix with [ModelA, ModelB, Test1, Test2,... TestN]
 % 2. Run correlation over all of them, and get a the matrix of corr coeffs.
 % 3. First column is Model A vs. all others, Second column is Model B vs.
-% all others.
+%	all others.
 corr_matrix = atanh(corr([model_pattern1,model_pattern2,test_data'],'type',opts.corr_stat,'rows','pairwise'));
 
+% Isolate the first and second columns (Matrix A and Matrix B), and the
+% rows 3 to end (correlations to Matrix A and B of each test vector). Thus
+% each row of column 1 is Matrix A vs. Test r (for row r). Each row of
+% column 2 is Matrix B vs. Test r (for row r).
 test_model_corrs = corr_matrix(3:end,1:2);
 
 %% Save out the classification results based on greatest correlation coefficient for each test pattern
@@ -45,9 +54,13 @@ if opts.exclusive && length(model_classes)==size(test_data,1)
             classification(2) = NaN;
         end
     else
+        % The search-all-label-permutations method would work here for 3 to
+        % 10 classes, but the search space becomes too large after 10.
         disp('Currently no method for exclusive labeling with >2 test cases');
     end
+    
 else
+    
     %% Otherwise, just label by best fit for each test_data row
     % Classify based on greatest correlation coefficient
     classification(test_model_corrs(:,1)>test_model_corrs(:,2)) = model_classes(1);
