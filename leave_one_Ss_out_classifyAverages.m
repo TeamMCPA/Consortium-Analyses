@@ -89,11 +89,11 @@ end
 
 %% Report the test type and which conditions (event_types) are being compared
 
-fprintf('\nLabel by Condition (2x2 similarity matrix for conditions [');
-fprintf(' %d', cond1);
-fprintf(' ] vs. [');
-fprintf(' %d', cond2);
-fprintf(' ])\n');
+% fprintf('\nLabel by Condition (2x2 similarity matrix for conditions [');
+% fprintf(' %d', cond1);
+% fprintf(' ] vs. [');
+% fprintf(' %d', cond2);
+% fprintf(' ])\n');
 
 
 %% Setting up the combinations of channel subsets
@@ -134,13 +134,13 @@ allsubj_results.accuracy.subsetXsubj = nan(size(sets,1),num_subjs);
 
 
 %% Iterate through all the subjects and attempt classification
-
-if setsize==size(subj_mat,2)
-    fprintf('  Subject\tAcc\tSimilarity Matrix\n');
-else
-    fprintf('  Subject-wise results suppressed for subset analysis.\n');
-    %fprintf('  Channel\tMean Acc\n');
-end
+% 
+% if setsize==size(subj_mat,2)
+%     fprintf('  Subject\tAcc\tSimilarity Matrix\n');
+% else
+%     fprintf('  Subject-wise results suppressed for subset analysis.\n');
+%     %fprintf('  Channel\tMean Acc\n');
+% end
 
 for i = 1:num_subjs
 
@@ -201,11 +201,11 @@ for i = 1:num_subjs
             % When setsize is equal to the full channel array (only one
             % subset to test), the results can be printed directly to the
             % Matlab command window
-            if accuracy,
-                fprintf('  %.0f\t\t%d\t%0.2f + %0.2f > %0.2f + %0.2f\n',incl_subjects(i),accuracy,g1t1,g2t2,g1t2,g2t1)
-            else
-                fprintf('  %.0f\t\t%d\t%0.2f + %0.2f < %0.2f + %0.2f\n',incl_subjects(i),accuracy,g1t1,g2t2,g1t2,g2t1)
-            end
+%             if accuracy,
+%                 fprintf('  %.0f\t\t%d\t%0.2f + %0.2f > %0.2f + %0.2f\n',incl_subjects(i),accuracy,g1t1,g2t2,g1t2,g2t1)
+%             else
+%                 fprintf('  %.0f\t\t%d\t%0.2f + %0.2f < %0.2f + %0.2f\n',incl_subjects(i),accuracy,g1t1,g2t2,g1t2,g2t1)
+%             end
             results(curr_subset,sets(curr_subset,:)) = accuracy;
             
         elseif setsize == 1

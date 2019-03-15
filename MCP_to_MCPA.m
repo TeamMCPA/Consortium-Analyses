@@ -83,14 +83,14 @@ unique_names = cellfun(@(x) char(x{:}),all_names,'UniformOutput',false);
 
 % Initiate the subj_mat matrix that will be output later(begin with NaN)
 subj_mat = nan(num_time_samps, length(event_types), length(incl_channels), length(incl_subjects));
-fprintf('Output matrix for MCPA_struct is in dimension: time_window x types x channels x subjects\n');
+%fprintf('Output matrix for MCPA_struct is in dimension: time_window x types x channels x subjects\n');
 
 % Extract data from each subject
-fprintf('\nExtracting data for subject: \n');
+%fprintf('\nExtracting data for subject: \n');
 
 for subj_idx = 1 : length(incl_subjects)
     
-    fprintf('subject: %d. \n', incl_subjects(subj_idx));
+    %fprintf('subject: %d. \n', incl_subjects(subj_idx));
     
     if no_mcp_file
     MCPA_struct.data_file{subj_idx} = [mcp_multiple(incl_subjects(subj_idx)).Experiment.Runs.Source_files]';
@@ -123,7 +123,7 @@ for subj_idx = 1 : length(incl_subjects)
 end
 
 %% Return the MCPA_struct
-fprintf('\nWriting MCPA_struct for this dataset...');
+%fprintf('\nWriting MCPA_struct for this dataset...');
 try
     MCPA_struct.created = datestr(now);
     MCPA_struct.time_window = [round(time_window(1)*max(Fs_val))/max(Fs_val) : 1/max(Fs_val) : round(time_window(end)*max(Fs_val))/max(Fs_val)];
@@ -132,9 +132,9 @@ try
     MCPA_struct.event_types = event_types;
     MCPA_struct.patterns = subj_mat;
     
-    fprintf('Done.\n');
+%    fprintf('Done.\n');
 catch
-    fprintf('Failed to create the new struct (MCP_to_MCPA).\n');
+%    fprintf('Failed to create the new struct (MCP_to_MCPA).\n');
     MCPA_struct = struct;
 end
 

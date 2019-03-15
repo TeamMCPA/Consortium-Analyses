@@ -37,7 +37,7 @@ try
     summarized_MCPA_struct.created = datestr(now);
     summarized_MCPA_struct.summarizing_function = function_name;
     summarized_MCPA_struct.patterns = summarized_MCPA_struct_pattern;
-    fprintf(' Done.\n');
+    %fprintf(' Done.\n');
     
 catch
     error('Failed to create the new struct')

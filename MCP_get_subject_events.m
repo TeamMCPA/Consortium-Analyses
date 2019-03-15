@@ -108,7 +108,8 @@ for type_i = 1 : length(event_types)
     for event_j = 1 : length(marks_mat(:, event_marks))
         
         % For events where the full duration of time_window is available
-        if marks_mat(event_j,type_i) + time_window_samp(end) <= length(oxy_timeser)
+        if marks_mat(event_j,type_i) + time_window_samp(1)>0 && ...
+            marks_mat(event_j,type_i) + time_window_samp(end) <= length(oxy_timeser)
             
             % Grab the trial data (for this event) directly from the oxy
             % timeseries. It will be re-baselined momentarily.
@@ -122,8 +123,9 @@ for type_i = 1 : length(event_types)
             % information about the previous trial into the current trial
             % by baselining off of it. For now, this approach is quick and
             % easy and probably wrong.
-            rebaseline_data = ones(length(time_window_samp),1)* ...
-                oxy_timeser(marks_mat(event_j,type_i)-1,:);
+            %rebaseline_data = ones(length(time_window_samp),1)* ...
+            %    oxy_timeser(marks_mat(event_j,type_i)-1,:);
+            rebaseline_data = 0;
 
             event_matrix(:,:,event_j,type_i) = event_data - rebaseline_data;
 
