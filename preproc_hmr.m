@@ -50,10 +50,10 @@ end
 
 %% Perform preprocessing
 
-% Convert intensity data to optical density
+% 1. Convert intensity data to optical density
 procResult.dod = hmrIntensity2OD(nirs_dat.d);
 
-% Perform motion artifact detection
+% 2. Perform motion artifact detection
 [tInc,tIncCh] = hmrMotionArtifactByChannel(...
     nirs_dat.d, params.fs, nirs_dat.SD, nirs_dat.tIncMan, params.tMotion, params.tMask, params.STDEVthresh, params.AMPthresh);
 
@@ -61,7 +61,7 @@ procResult.dod = hmrIntensity2OD(nirs_dat.d);
 nirs_dat.procResult.dodSpline = hmrMotionCorrectSpline(...
     nirs_dat.procResult.dod,nirs_dat.t,nirs_dat.SD,tIncCh,params.p);
 
-% Apply wavelet correction for motion artifacts
+% 3. Apply wavelet correction for motion artifacts
 try
     nirs_dat.procResult.dodWavelet = hmrMotionCorrectWavelet(...
         nirs_dat.procResult.dodSpline,nirs_dat.SD,params.IQR);
@@ -71,11 +71,11 @@ catch
     nirs_dat.procResult.dodWavelet = nirs_dat.procResult.dodSpline;
 end
 
-% Bandpass filter the optical density data
+% 4. Bandpass filter the optical density data
 nirs_dat.procResult.dodBP = hmrBandpassFilt(...
     nirs_dat.procResult.dodWavelet,params.fs,params.hpf,params.lpf);
 
-% Convert corrected/filtered optical density data to concentration data
+% 5. Convert corrected/filtered optical density data to concentration data
 nirs_dat.procResult.dc = hmrOD2Conc(...
     nirs_dat.procResult.dodBP,nirs_dat.SD,params.ppf);
 

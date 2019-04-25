@@ -219,12 +219,12 @@ for s_idx = 1:length(mcpa_summ.incl_subjects)
             allsubj_results = pairwise_rsa_leaveoneout(mcpa_summ.patterns);
         end
         
-        %% Progress reporting
-        if p.Results.verbose
-            fprintf(' %0.1f mins\n',toc/60);
-        end
+        
     end
-    
+    %% Progress reporting
+    if p.Results.verbose
+        fprintf(' %0.1f mins\n',toc/60);
+    end
 end
 
 %% Visualization

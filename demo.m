@@ -17,29 +17,30 @@ MCP_data = build_MCP(...
     repmat({'shimadzu139'},length(unique_subjs),1),...  % probe IDs
     's');                                               % field for stims
 
-cond_names = {'baby', 'book', 'bottle', 'cat', 'dog', 'hand', 'shoe', 'spoon'};
-%cond_names = {'anim', 'inan', 'inan', 'anim', 'anim', 'anim', 'inan', 'inan'};
+%cond_names = {'baby', 'book', 'bottle', 'cat', 'dog', 'hand', 'shoe', 'spoon'};
+cond_names = {'anim', 'inan', 'inan', 'anim', 'anim', 'anim', 'inan', 'inan'};
 
 for old_mark = 1:8
     MCP_data = MCP_relabel_stimuli(MCP_data,old_mark,cond_names{old_mark},0);
 end
 
-% Save the compiled dataset
-MCP_file_name = ['MCP_data_' date '.mcp'];
-save(MCP_file_name,'MCP_data');
+% % Save the compiled dataset
+% MCP_file_name = ['MCP_data_' date '.mcp'];
+% save(MCP_file_name,'MCP_data');
 
 %% MCPA data / Classification
 % Perform individual event classification (MCPA method)
 eventResults = nfold_classify_IndividualEvents(MCP_data, ...
-    'cond1','anim','cond2','inan', ...
+    'conditions',{'anim','inan'}, ...
     'time_window',[2,6], ...
     'summary_handle',@nanmean,'test_handle',@mcpa_classify, ...
     'setsize',139);
 
-% Extract events into MCPA struct and summarize by taking average over time
-MCPA_data = MCP_to_MCPA(MCP_data,[],[],[2:6]);
-save(['MCPA_data_' date '.mat'],'MCPA_data');
-MCPA_data_summarized = summarize_MCPA_Struct(@nanmean,MCPA_data,1);
+% % Extract events into MCPA struct and summarize by taking average over time
+% MCPA_data = MCP_to_MCPA(MCP_data,[],[],[2:6]);
+% save(['MCPA_data_' date '.mat'],'MCPA_data');
+% MCPA_data_summarized = summarize_MCPA_Struct(@nanmean,MCPA_data,1);
 
 % Between Subjects decoding
-Between_Subj_Result = leave_one_Ss_out_classifyAverages(MCPA_data_summarized,1,2);
+%Between_Subj_Result = leave_one_Ss_out_classifyAverages(MCPA_data_summarized,1,2);
+subjlevelResults = nfold_classify_ParticipantLevel(MCP_data,'conditions',{'anim','inan'});
