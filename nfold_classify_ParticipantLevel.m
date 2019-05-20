@@ -34,7 +34,7 @@ p = inputParser;
 addParameter(p,'incl_channels',[1:max(arrayfun(@(x) size(x.fNIRS_Data.Hb_data.Oxy,2),MCP_struct))],@isnumeric);
 addParameter(p,'incl_subjects',[1:length(MCP_struct)],@isnumeric);
 addParameter(p,'time_window',[2,6],@isnumeric);
-addParameter(p,'conditions',{1,2},@iscell);
+addParameter(p,'conditions',unique(cellstr(char(cellfun(@(x) char(x{:}), arrayfun(@(x) unique({x.Experiment.Conditions.Name},'stable'),MCP_struct, 'UniformOutput',false),'UniformOutput',false))),'stable'),@iscell);
 addParameter(p,'summary_handle',@nanmean);
 addParameter(p,'setsize',max(arrayfun(@(x) size(x.fNIRS_Data.Hb_data.Oxy,2),MCP_struct)),@isnumeric);
 addParameter(p,'test_handle',@mcpa_classify);
@@ -216,7 +216,12 @@ for s_idx = 1:length(mcpa_summ.incl_subjects)
             % solution because it breaks the modularity of the software
             % (and does nothing to support n-fold for all the other
             % possible classifiers we might want.
-            allsubj_results = pairwise_rsa_leaveoneout(mcpa_summ.patterns);
+            %allsubj_results = pairwise_rsa_leaveoneout(mcpa_summ.patterns);
+            if s_idx==1, allsubj_results.accuracy_matrix = nan(n_cond,n_cond,n_subj); end
+            [subj_acc comparisons] = pairwise_rsa_test(mcpa_summ.patterns(:,:,s_idx),nanmean(mcpa_summ.patterns(:,:,group_subvec),3));
+            for comp = 1:size(comparisons,1)
+                allsubj_results.accuracy_matrix(comparisons(comp,1),comparisons(comp,2),s_idx) = subj_acc(comp);
+            end
         end
         
         
