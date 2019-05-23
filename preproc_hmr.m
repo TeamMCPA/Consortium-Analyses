@@ -22,10 +22,6 @@ function new_filename = preproc_hmr(filename,params_file)
 % - Gracefully handle exceptions for missing files, missing parameters
 % - Test batching
 
-%% 
-% these were originally hardcoded for adult Shimadzu
-% nChannels = 139;
-% fs = 8.1301;
 
 %% Handle batching of filename with cell array
 if iscell(filename)
@@ -50,8 +46,12 @@ end
 
 %% Perform preprocessing
 
+if ~exist('nirs_dat.procResult','var')
+    nirs_dat.procResult = struct();
+end
+
 % 1. Convert intensity data to optical density
-procResult.dod = hmrIntensity2OD(nirs_dat.d);
+nirs_dat.procResult.dod = hmrIntensity2OD(nirs_dat.d);
 
 % 2. Perform motion artifact detection
 [tInc,tIncCh] = hmrMotionArtifactByChannel(...

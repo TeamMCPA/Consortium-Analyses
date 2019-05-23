@@ -49,8 +49,8 @@ for this_comp = 1:number_of_comparisons
     trainB = training_matrix_temp(:,test_classes(2));
     
     % Compare the correlations for A-A,B-B vs. A-B,B-A
-    correct_labels = corr(testA,trainA,'rows','pairwise') + corr(testB,trainB,'rows','pairwise');
-    incorrect_labels = corr(testB,trainA,'rows','pairwise') + corr(testA,trainB,'rows','pairwise');
+    correct_labels = corr(testA,trainA,'rows','pairwise','type','Spearman') + corr(testB,trainB,'rows','pairwise','type','Spearman');
+    incorrect_labels = corr(testB,trainA,'rows','pairwise','type','Spearman') + corr(testA,trainB,'rows','pairwise','type','Spearman');
     
     % Test the accuracy, whether correct label correlations were greater
     % than the incorrect label correlations

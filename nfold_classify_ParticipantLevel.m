@@ -209,19 +209,31 @@ for s_idx = 1:length(mcpa_summ.incl_subjects)
             % also still making the assumption that subject-level averages are
             % the granularity of data that will be both trained and tested.
         else
-            % Write the multiclass dispatcher here
+            % TO DO: Write the multiclass dispatcher here
             %
-            % For now, just using the Neurophotonics script which has
+            % For now, just adapting the Neurophotonics script which has
             % result-writing built into it. This is not a good long term
             % solution because it breaks the modularity of the software
             % (and does nothing to support n-fold for all the other
             % possible classifiers we might want.
             %allsubj_results = pairwise_rsa_leaveoneout(mcpa_summ.patterns);
+            
+            % On first fold, initialize the matrix for pairwise results
             if s_idx==1, allsubj_results.accuracy_matrix = nan(n_cond,n_cond,n_subj); end
-            [subj_acc comparisons] = pairwise_rsa_test(mcpa_summ.patterns(:,:,s_idx),nanmean(mcpa_summ.patterns(:,:,group_subvec),3));
+            
+            % Perform the test for this fold (all possible pairs of conds)
+            [subj_acc, comparisons] = pairwise_rsa_test(mcpa_summ.patterns(:,:,s_idx),nanmean(mcpa_summ.patterns(:,:,group_subvec),3));
+            
+            % Record the results into the results struct
             for comp = 1:size(comparisons,1)
                 allsubj_results.accuracy_matrix(comparisons(comp,1),comparisons(comp,2),s_idx) = subj_acc(comp);
             end
+            for cond_idx = 1:n_cond
+                %mean_cond_acc = nanmean([allsubj_results.accuracy_matrix(cond_idx,:,s_idx)';allsubj_results.accuracy_matrix(:,cond_idx,s_idx)]);
+                %allsubj_results.accuracy(cond_idx).subsetXsubj(:,s_idx) = nanmean(temp_set_results_cond(cond_idx,:,:),3);
+                %allsubj_results.accuracy(cond_idx).subjXchan(s_idx,:) = nanmean(temp_set_results_cond(cond_idx,:,:),2);
+            end
+
         end
         
         
