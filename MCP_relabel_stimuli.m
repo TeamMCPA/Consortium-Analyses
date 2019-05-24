@@ -39,9 +39,6 @@ if length(old_mcp_struct) > 1
 end
 
 % Extract the onsets vector for the condition that will be replaced
-% This data will not be deleted from the MCP file. The replacement
-% conditions are appended as new conditions.
-
 
 if isnumeric(old_label_name)
     % If old_label_name is numeric, check Mark instead of Name
@@ -60,15 +57,14 @@ if length(new_labels) ~= sum(old_cond_onsets),
         new_labels = repmat(new_labels,max(sum(old_cond_onsets)),1);
     else
         new_mcp_file = old_mcp_struct;
-        disp(sprintf('ERROR: %g new labels to replace %g items in existing condition!',length(new_labels),sum(old_cond_onsets)));
-        disp('These values must be equal.');
+        error(['ERROR: %g new labels to replace %g items in existing condition!',length(new_labels),sum(old_cond_onsets),'. These values must be equal.']);
         return
     end
 end
 
 % Turn the list of labels into a set of integers which can be acted upon.
-num_existing_conds = size(old_mcp_struct.fNIRS_Data.Onsets_Matrix,2);
-[ unique_new unique_integers new_integer_labels ] = unique(new_labels);
+num_existing_conds = length(old_mcp_struct.Experiment.Conditions);
+[ unique_new, unique_integers, new_integer_labels ] = unique(new_labels);
 num_new_conds = length(unique_integers);
 
 % Fill out a new set of onsets, first as integers in a single vector.
@@ -93,6 +89,10 @@ for new_cond = 1:length(unique_new),
     % the Onsets_Matrix
     new_mcp_file.Experiment.Conditions(num_existing_conds+new_cond).Mark = old_mcp_struct.Experiment.Conditions(old_cond_index).Mark;
 end
+
+% After conversion is finished, delete the old condition. It turns out this
+% is kind of necessary because otherwise it gums up the RSA matrix later
+new_mcp_file.Experiment.Conditions(old_cond_index)=[];
 
 % If the save_flag is true, write the data out.
 if save_flag,
