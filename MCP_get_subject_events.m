@@ -32,26 +32,23 @@ marks_vec = mcp_struct.fNIRS_Data.Onsets_Matrix;
 % Handle different type of marks vector
 
 if size(marks_vec, 2) > 1
-    max_condition_type = length(find(marks_vec(:, 1) == 1));
     
-    for i = 2:length(event_types)
-        if max_condition_type < length(find(marks_vec(:,i) == 1))
-            max_condition_type = length(find(marks_vec(:, i) == 1));
-        end
-    end
+    % Determine the maximum number of reps for any given marker (iterates
+    % through the columns of marks_vec and finds values >0, aka events)
     
-    marks_mat = nan(max_condition_type, length(event_types));
+    max_condition_type = max(sum(marks_vec>0,1));
+%     max_condition_type = 0;
+%     for i = 1:size(marks_vec,2)
+%         if max_condition_type < length(find(marks_vec(:,i) == 1))
+%             max_condition_type = length(find(marks_vec(:, i) == 1));
+%         end
+%     end
     
-    for type_i = 1:length(event_types)
+    marks_mat = nan(max_condition_type, size(marks_vec,2));
+    
+    for type_i = 1:size(marks_vec,2)
         %Find the array index in the marks_vec
-        temp_marks = find(marks_vec(:, type_i) == 1);
-
-% This line was meant to remove every offset mark (every-other-mark) but it
-% only applies if there *are* offsets, and if there aren't, it removes half
-% of your events. Oops!
-%         %Abandon the offsets
-%         temp_marks = temp_marks(1:2:end);
-        
+        temp_marks = find(marks_vec(:, type_i) == 1); 
         marks_mat(1:length(temp_marks), type_i) = temp_marks;
     end
     

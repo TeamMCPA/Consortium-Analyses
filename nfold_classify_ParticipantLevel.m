@@ -67,7 +67,7 @@ n_subj = length(p.Results.incl_subjects);
 n_sets = size(sets,1);
 n_chan = length(p.Results.incl_channels);
 % n_events = max(arrayfun(@(x) max(sum(x.fNIRS_Data.Onsets_Matrix)),MCP_struct));
-n_cond = length(p.Results.conditions);
+n_cond = length(unique(p.Results.conditions));
 
 %% Set up the results structure which includes a copy of MCPA_pattern
 allsubj_results = [];
