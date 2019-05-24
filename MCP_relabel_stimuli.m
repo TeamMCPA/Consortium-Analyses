@@ -104,10 +104,7 @@ new_mcp_file.fNIRS_Data.Onsets_Matrix = [old_mcp_struct.fNIRS_Data.Onsets_Matrix
 for new_cond = 1:length(unique_new)
     % Append the new condition names to the list of conditions
     new_mcp_file.Experiment.Conditions(num_existing_conds+new_cond).Name = unique_new{new_cond};
-    % Retain the old Mark number, since that is a reference to the
-    % original .nirs file information. Thus several differently-named
-    % conditions may share the same Mark number, but different columns in
-    % the Onsets_Matrix
+    % Assign a new mark number that refers to the column of Onsets_Matrix
     new_mcp_file.Experiment.Conditions(num_existing_conds+new_cond).Mark = num_existing_conds+new_cond;
 end
 
