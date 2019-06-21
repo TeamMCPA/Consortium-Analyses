@@ -78,7 +78,7 @@ if length(new_labels) ~= sum(old_cond_onsets)
     % Case (2): Throw an error and quit.
     else
         new_mcp_file = old_mcp_struct;
-        error(['ERROR: %g new labels to replace %g items in existing condition!',length(new_labels),sum(old_cond_onsets),'. These values must be equal.']);
+        error('Provided %g new labels to replace %g items in existing condition! These values must be equal.',length(new_labels),sum(old_cond_onsets));
         return
     end
 end
