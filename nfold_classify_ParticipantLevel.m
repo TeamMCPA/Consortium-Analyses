@@ -67,7 +67,7 @@ n_subj = length(p.Results.incl_subjects);
 n_sets = size(sets,1);
 n_chan = length(p.Results.incl_channels);
 % n_events = max(arrayfun(@(x) max(sum(x.fNIRS_Data.Onsets_Matrix)),MCP_struct));
-n_cond = length(unique(p.Results.conditions));
+try n_cond = length(unique(p.Results.conditions)); catch n_cond = length(p.Results.conditions); end
 
 %% Set up the results structure which includes a copy of MCPA_pattern
 allsubj_results = [];
@@ -143,7 +143,7 @@ for s_idx = 1:length(mcpa_summ.incl_subjects)
             
             for cond_idx = 1:n_cond
                 if ischar(p.Results.conditions{cond_idx}) || isstring(p.Results.conditions{cond_idx}) || iscellstr(p.Results.conditions{cond_idx})
-                    cond_flags{cond_idx} = strcmp(p.Results.conditions{cond_idx},mcpa_summ.event_types);
+                    [~, ~, cond_flags{cond_idx}] = intersect(p.Results.conditions{cond_idx},mcpa_summ.event_types);
                 else
                     cond_flags{cond_idx} = p.Results.conditions{cond_idx};
                 end
@@ -152,13 +152,13 @@ for s_idx = 1:length(mcpa_summ.incl_subjects)
                 % group_data_tmp averages across all matching triggers for a
                 % condition and outputs a subj-x-chan matrix
                 group_data_tmp = squeeze(mean(mcpa_summ.patterns(cond_flags{cond_idx},p.Results.incl_channels,group_subvec),1))';
-                group_labels_tmp = repmat(cellstr(string(p.Results.conditions{cond_idx})),size(group_data_tmp,1),1);
+                group_labels_tmp = repmat(cellstr(strjoin(string(p.Results.conditions{cond_idx}),'+')),size(group_data_tmp,1),1);
                 group_data = [ group_data; group_data_tmp ];
                 group_labels = [ group_labels; group_labels_tmp ];
                 
                 % Extract test data
                 subj_data_tmp = mcpa_summ.patterns(cond_flags{cond_idx},p.Results.incl_channels,s_idx);
-                subj_labels_tmp = repmat(cellstr(string(p.Results.conditions{cond_idx})),size(subj_data_tmp,1),1);
+                subj_labels_tmp = repmat(cellstr(strjoin(string(p.Results.conditions{cond_idx}),'+')),size(subj_data_tmp,1),1);
                 subj_data = [ subj_data; subj_data_tmp ];
                 subj_labels = [ subj_labels; subj_labels_tmp ];
             end
@@ -172,12 +172,12 @@ for s_idx = 1:length(mcpa_summ.incl_subjects)
             
             % Compare the labels output by the classifier to the known labels
             temp_acc1 = cellfun(@strcmp,...
-                subj_labels(strcmp(string(p.Results.conditions{1}),subj_labels)),... % known labels
-                temp_test_labels(strcmp(string(p.Results.conditions{1}),subj_labels))...% classifier labels
+                subj_labels(strcmp(strjoin(string(p.Results.conditions{1}),'+'),subj_labels)),... % known labels
+                temp_test_labels(strcmp(strjoin(string(p.Results.conditions{1}),'+'),subj_labels))...% classifier labels
                 );
             temp_acc2 = cellfun(@strcmp,...
-                subj_labels(strcmp(string(p.Results.conditions{2}),subj_labels)),... % known labels
-                temp_test_labels(strcmp(string(p.Results.conditions{2}),subj_labels))... % classifier labels
+                subj_labels(strcmp(strjoin(string(p.Results.conditions{2}),'+'),subj_labels)),... % known labels
+                temp_test_labels(strcmp(strjoin(string(p.Results.conditions{2}),'+'),subj_labels))... % classifier labels
                 );
             
             % Temporary results from each set are stored in a n_sets x n_chan

@@ -56,7 +56,7 @@ elseif isa(MCPA_pattern,'float')
     incl_channels = input('Please enter the vector of channels to include (ex: [1 2 5]) or hit ENTER to include all: ');
     if isempty(incl_channels), incl_channels = 1:size(subj_mat,2); end
     %data_file = input('Please enter path to the NIRS data file (*.mat) (multiple files example:char(x.mat, y.mat, z.mat): ');
-    %data_file = cellstr(data_file);
+    %data_file = cellstr(data_file);F
     %time_window = input('Please enter the time window (in seconds) used to generate the multivoxel pattern (ex: [0,10]): ');
     
     
@@ -244,7 +244,7 @@ if setsize ~= size(subj_mat,2)
     
     % Channel-wise mean accuracy figure
     figure;
-    if isstruct(MCPA_pattern), 
+    if isstruct(MCPA_pattern) 
         xvals = MCPA_pattern.incl_channels;
     else
         xvals = 1:size(allsubj_results.accuracy.subjXchan,2);
