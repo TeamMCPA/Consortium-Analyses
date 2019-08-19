@@ -122,11 +122,12 @@ for type_i = 1 : length(event_types)
             % Get the oxy data from one scan prior to stimulus onset and
             % use that as the baselining value.
             if ~inan(base_window)
-                rebaseline_data = oxy_timeser(marks_mat(event_j,type_i)+min(base_window_samp):marks_mat(event_j,type_i)+max(base_window_samp),:);
+                rebaseline_data = nanmean(oxy_timeser(marks_mat(event_j,type_i)+min(base_window_samp):marks_mat(event_j,type_i)+max(base_window_samp),:));
             else
-                rebaseline_data = 0;
+                rebaseline_data=0;
             end
-            event_matrix(:,:,event_j,type_i) = event_data - nanmean(rebaseline_data);
+
+            event_matrix(:,:,event_j,type_i) = event_data - rebaseline_data;
 
             % This was the old way, and it caused problems. The new way is
             % easier to read, so you can see the problems more clearly.

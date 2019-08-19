@@ -1,4 +1,4 @@
-function new_filename = preproc_hmr(filename,params_file)
+function new_filename = preproc_hmr(filename,params_file,overwrite)
 %PREPROC_HMR  Use Homer2 functions to preprocess .nirs data file according
 %to standard Princeton Baby Lab pipeline
 %
@@ -22,6 +22,13 @@ function new_filename = preproc_hmr(filename,params_file)
 % - Gracefully handle exceptions for missing files, missing parameters
 % - Test batching
 
+if ~exist('overwrite','var')
+    overwrite = false;
+    elseif ~islogical(overwrite)
+        if isnumeric(overwrite), overwrite = logical(overwrite);
+        else overwrite = false;
+        end
+end
 
 %% Handle batching of filename with cell array
 if iscell(filename)
@@ -34,6 +41,7 @@ end
 
 %% Import nirs file and preprocessing parameters file
 nirs_dat = load(filename,'-mat');
+fprintf('Loaded file: %s... ',filename);
 params = load(params_file,'-mat');
 
 %% Preapre some additional needed parameters based on provided data
@@ -96,7 +104,11 @@ nirs_dat.procResult.dcFix(:,:,nirs_dat.badCh) = nan;
     ]...
     = hmrBlockAvg( nirs_dat.procResult.dcFix, nirs_dat.s, nirs_dat.t, params.tRange );
 
+fprintf('Finished preproc... ')
 %% Save the preprocessed data out to a new file and return the filename
 [filePath,fileName] = fileparts(filename);
-new_filename = fullfile(filePath,strcat(fileName,'_proc.nirs'));
+if overwrite, new_filename = filename;
+else, new_filename = fullfile(filePath,strcat(fileName,'_proc.nirs'));
+end
+fprintf('Saved.\n')
 save(new_filename,'-struct','nirs_dat');
