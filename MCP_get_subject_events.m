@@ -8,7 +8,7 @@ function [event_matrix] = MCP_get_subject_events(mcp_struct, channels, time_wind
 % them into the output matrix.
 %
 % Chengyu Deng & Benjamin Zinszer 5 may 2017
-% revised bdz 26 oct 2018
+% revised bdz 29 aug 2019
 
 %% If no base-lining window (base_window) is specified, mark NaN flag
 if ~exist('base_window','var')
@@ -40,7 +40,6 @@ if size(marks_vec, 2) > 1
     
     % Determine the maximum number of reps for any given marker (iterates
     % through the columns of marks_vec and finds values >0, aka events)
-    
     max_condition_type = max(sum(marks_vec>0,1));
 %     max_condition_type = 0;
 %     for i = 1:size(marks_vec,2)
@@ -111,9 +110,18 @@ for type_i = 1 : length(event_types)
     % taking a mean value later (use mean(x,dim,'omitnan) or nanmean(x,dim)
     for event_j = 1 : length(marks_mat(:, event_marks))
         
-        % For events where the full duration of time_window is available
-        if marks_mat(event_j,type_i) + time_window_samp(1)>0 && ...
-            marks_mat(event_j,type_i) + time_window_samp(end) <= length(oxy_timeser)
+        % Find the earliest time-point (in samples) that will be extracted
+        % and the latest time-point (in samples) that will be extracted so
+        % that we can determine the window of data to be extracted.
+        earliest_samp = min( [time_window_samp(:); base_window_samp(:)] );
+        latest_samp = max( [time_window_samp(:); base_window_samp(:)] );
+        
+        % For events where the full duration of the baseline+event is 
+        % available, extract the event_data (within the time_window) and
+        % rebaseline_data (within the baseline_window). rebaseline_data are
+        % then averaged, and the average is removed from the event_data
+        if marks_mat(event_j,type_i) + earliest_samp > 0 && ...
+            marks_mat(event_j,type_i) + latest_samp <= length(oxy_timeser)
             
             % Grab the trial data (for this event) directly from the oxy
             % timeseries. It will be re-baselined momentarily.
@@ -121,7 +129,7 @@ for type_i = 1 : length(event_types)
             
             % Get the oxy data from one scan prior to stimulus onset and
             % use that as the baselining value.
-            if ~inan(base_window)
+            if ~isnan(base_window)
                 rebaseline_data = oxy_timeser(marks_mat(event_j,type_i)+min(base_window_samp):marks_mat(event_j,type_i)+max(base_window_samp),:);
             else
                 rebaseline_data = 0;
@@ -134,11 +142,11 @@ for type_i = 1 : length(event_types)
             %    oxy_timeser(marks_mat(event_j,type_i)+time_window_samp,:) -...
             %    ones(length(time_window_samp),1)*oxy_timeser(marks_mat(event_j,type_i)+time_window_samp(1),:);
         
-        % For events that might get truncated (e.g., end of recording)
+        % For events that might get truncated (start or end of recording)
         else
             % For the moment, we carelessly discard these trials. There is
-            % a better way to do it, but you have to match up the lengths
-            % of the vectors. Todo.
+            % probably a better way to do it, but you have to match up the 
+            % lengths of the vectors and figure out rebaselining. Todo.
             event_matrix(:,:,event_j:end,type_i) = NaN;
         end
     end

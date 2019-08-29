@@ -1,4 +1,4 @@
-function MCPA_struct = MCP_to_MCPA(mcp_multiple, incl_subjects, incl_channels, time_window)
+function MCPA_struct = MCP_to_MCPA(mcp_multiple, incl_subjects, incl_channels, time_window, baseline_window)
 %MCP_TO_MCPA Convert MCP format data to MCPA_struct for analysis
 % The function is called with the following arguments:
 % MCP_to_MCPA(mcp_struct, incl_subjects, incl_channels, time_window)
@@ -22,6 +22,13 @@ function MCPA_struct = MCP_to_MCPA(mcp_multiple, incl_subjects, incl_channels, t
 % rounding error of first and last samples). Time window can be specified
 % as either [start, end] or [start : end] since only first and last times
 % are used. Default (use []) is [-5,20] sec.
+%
+% baseline_window: defined in number of seconds. If one baseline value is
+% provided, data will be baselined on that point (e.g., at t=0 s). If two
+% baseline values are provided, data will be baselined on the mean in that
+% window (e.g., [-5 0] -> average level in time window -5 to 0 s). If NaN
+% is provided, baselining will be skipped. Default (no baseline info
+% provided) baseline is range [-5, 0] sec from stimulus marker.
 %
 % The function will return a new struct containing some metadata and the
 % multichannel patterns for each participant and condition.
@@ -55,7 +62,9 @@ end
 if ~exist('time_window','var') || isempty(time_window)
     time_window = [-5,20];
 end
-
+if ~exist('baseline_window','var')
+    baseline_window = [-5,0];
+end
 %% Convert time window from seconds to scans
 % rounds off sampling frequencies to 8 places to accomodate floating point
 % errors
@@ -98,7 +107,7 @@ for subj_idx = 1 : length(incl_subjects)
     
     % Event_matrix format:
     % (time x channels x repetition x types)
-    event_matrix = MCP_get_subject_events(mcp_multiple(incl_subjects(subj_idx)), incl_channels, time_window, event_types);
+    event_matrix = MCP_get_subject_events(mcp_multiple(incl_subjects(subj_idx)), incl_channels, time_window, event_types, baseline_window);
     
     % Event_repetition_mean:
     % (time x channels x event_type)
