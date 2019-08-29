@@ -13,6 +13,7 @@ function allsubj_results = nfold_classify_ParticipantLevel(MCP_struct,varargin)
 % (.mat or .mcp) containing the MCP_struct.
 % incl_channels: channels to include in the analysis. Default: all channels
 % incl_subjects: index of participants to include. Default: all participants
+% baseline_window: [onset, offset] in seconds. Default [-5,0]
 % time_window: [onset, offset] in seconds. Default [2,6]
 % conditions: cell array of condition names / trigger #s. Default: {1,2}
 % summary_handle: function handle (or char of function name) to specify how
@@ -50,6 +51,9 @@ parse(p,varargin{:})
 % array. If setsize is less than the total number of channels, there will
 % be n-choose-k subsets to analyze.
 sets = nchoosek(p.Results.incl_channels,p.Results.setsize);
+% To-do: if size(sets,1)>1, call this function recursively with the correct
+% incl_channels for the given subset. That way the subsetting doesn't make
+% a mess of the code below.
 
 %% Build MCPA struct for all subjects in the MCP
 % Step 1: Epoching the data by time window and averaging the epochs
@@ -67,10 +71,12 @@ mcpa_summ = summarize_MCPA_Struct(p.Results.summary_handle,mcpa_struct);
 n_subj = length(p.Results.incl_subjects);
 n_sets = size(sets,1);
 n_chan = length(p.Results.incl_channels);
-% n_events = max(arrayfun(@(x) max(sum(x.fNIRS_Data.Onsets_Matrix)),MCP_struct));
 try n_cond = length(unique(p.Results.conditions)); catch n_cond = length(p.Results.conditions); end
 
 %% Set up the results structure which includes a copy of MCPA_pattern
+% To-do: write a separate constructor script for this because we need
+% results structs from all kinds of testing and should be getting the same
+% structure out each time.
 allsubj_results = [];
 allsubj_results.MCPA_patterns = mcpa_struct.patterns;
 allsubj_results.MCP_data = MCP_struct;
@@ -133,8 +139,7 @@ for s_idx = 1:length(mcpa_summ.incl_subjects)
         % using RSA methods. Then classifier is trained/tested on the RSA
         % structures. This works for our previous MCPA studies, but might
         % not be appropriate for other classifiers (like SVM).
-        
-        
+                
         %% Two conditions
         % This block should work with most classifiers, provided adequate
         % data are available. We are making the assumption that
@@ -193,22 +198,22 @@ for s_idx = 1:length(mcpa_summ.incl_subjects)
                 allsubj_results.accuracy(cond_idx).subjXchan(s_idx,:) = nanmean(temp_set_results_cond(cond_idx,:,:),2);
             end
             
-            %% Multiple conditions
-            % A bit of complication for how this block should run. If we want
-            % an RSA-based classifier, we can either do the all-possible-2way
-            % comparisons approach OR we can try doing structural alignment of
-            % the whole test dataset (similarity structure) to the training
-            % dataset (another similarity structure), a la Zinszer et al.,
-            % 2016, Journal of Cognitive Neuroscience (fMRI-based translation).
-            %
-            % If we don't want to do RSA based (i.e., stay in channel or MNI
-            % space), then we need to ask whether we're doing all-possible-2way
-            % comparisons or some n-alternative-forced-choice test with chance
-            % performance at 1/n.
-            %
-            % No graceful way to handle these branching decisions yet.  We are
-            % also still making the assumption that subject-level averages are
-            % the granularity of data that will be both trained and tested.
+        %% Multiple conditions
+        % A bit of complication for how this block should run. If we want
+        % an RSA-based classifier, we can either do the all-possible-2way
+        % comparisons approach OR we can try doing structural alignment of
+        % the whole test dataset (similarity structure) to the training
+        % dataset (another similarity structure), a la Zinszer et al.,
+        % 2016, Journal of Cognitive Neuroscience (fMRI-based translation).
+        %
+        % If we don't want to do RSA based (i.e., stay in channel or MNI
+        % space), then we need to ask whether we're doing all-possible-2way
+        % comparisons or some n-alternative-forced-choice test with chance
+        % performance at 1/n.
+        %
+        % No graceful way to handle these branching decisions yet.  We are
+        % also still making the assumption that subject-level averages are
+        % the granularity of data that will be both trained and tested.
         else
             % TO DO: Write the multiclass dispatcher here
             %

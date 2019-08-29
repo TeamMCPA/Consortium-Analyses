@@ -21,7 +21,7 @@ function MCPA_struct = MCP_to_MCPA(mcp_multiple, incl_subjects, incl_channels, t
 % sampling frequencies, the same time window will be searched (except for
 % rounding error of first and last samples). Time window can be specified
 % as either [start, end] or [start : end] since only first and last times
-% are used. Default (use []) is [-5,20] sec.
+% are used. Default (use []) is [0,20] sec.
 %
 % baseline_window: defined in number of seconds. If one baseline value is
 % provided, data will be baselined on that point (e.g., at t=0 s). If two
@@ -60,7 +60,7 @@ if ~exist('incl_channels','var') || isempty(incl_channels)
     incl_channels = [1:max(arrayfun(@(x) size(x.fNIRS_Data.Hb_data.Oxy,2),mcp_multiple))];
 end
 if ~exist('time_window','var') || isempty(time_window)
-    time_window = [-5,20];
+    time_window = [0,20];
 end
 if ~exist('baseline_window','var')
     baseline_window = [-5,0];
@@ -86,21 +86,17 @@ num_time_samps = length(round(time_window(1)*max(Fs_val)) : round(time_window(en
 % This version uses names from the MCP array
 all_names = arrayfun(@(x) unique({x.Experiment.Conditions.Name},'stable'),mcp_multiple(incl_subjects), 'UniformOutput',false);
 unique_names = cellfun(@(x) char(x{:}),all_names,'UniformOutput',false);
-[event_types iev] = unique(cellstr(char(unique_names)),'stable');
+[event_types, iev] = unique(cellstr(char(unique_names)),'stable');
 
 %% Extract data from the data file into the empty output matrix
 
 % Initiate the subj_mat matrix that will be output later(begin with NaN)
+% Output matrix for MCPA_struct is in dimension: time_window x types x channels x subjects
 subj_mat = nan(num_time_samps, length(event_types), length(incl_channels), length(incl_subjects));
-%fprintf('Output matrix for MCPA_struct is in dimension: time_window x types x channels x subjects\n');
 
 % Extract data from each subject
-%fprintf('\nExtracting data for subject: \n');
-
 for subj_idx = 1 : length(incl_subjects)
-    
-    %fprintf('subject: %d. \n', incl_subjects(subj_idx));
-    
+      
     if no_mcp_file
     MCPA_struct.data_file{subj_idx} = [mcp_multiple(incl_subjects(subj_idx)).Experiment.Runs.Source_files]';
     end
@@ -111,7 +107,6 @@ for subj_idx = 1 : length(incl_subjects)
     
     % Event_repetition_mean:
     % (time x channels x event_type)
-%    event_repetition_mean = nanmean(event_matrix, 3);
     event_repetition_mean = mean(event_matrix, 3,'omitnan');
     event_repetition_mean = reshape(event_repetition_mean, size(event_matrix,1), size(event_matrix,2), size(event_matrix,4));
     event_repetition_mean = permute(event_repetition_mean, [1 3 2]);
@@ -119,7 +114,7 @@ for subj_idx = 1 : length(incl_subjects)
     % (time x event_types x channels )
     
     subj_time_samps = size(event_repetition_mean,1);
-    if subj_time_samps == num_time_samps,
+    if subj_time_samps == num_time_samps
         % Output format: subj_mat(time_window x event_types x channels x subjects)
         subj_mat(:, :, :, subj_idx) = event_repetition_mean;
     else
@@ -132,7 +127,6 @@ for subj_idx = 1 : length(incl_subjects)
 end
 
 %% Return the MCPA_struct
-%fprintf('\nWriting MCPA_struct for this dataset...');
 try
     MCPA_struct.created = datestr(now);
     MCPA_struct.time_window = [round(time_window(1)*max(Fs_val))/max(Fs_val) : 1/max(Fs_val) : round(time_window(end)*max(Fs_val))/max(Fs_val)];
@@ -141,9 +135,8 @@ try
     MCPA_struct.event_types = event_types;
     MCPA_struct.patterns = subj_mat;
     
-%    fprintf('Done.\n');
 catch
-%    fprintf('Failed to create the new struct (MCP_to_MCPA).\n');
+    fprintf('Failed to create the new struct (MCP_to_MCPA).\n');
     MCPA_struct = struct;
 end
 

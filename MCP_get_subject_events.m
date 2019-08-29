@@ -1,11 +1,14 @@
 function [event_matrix] = MCP_get_subject_events(mcp_struct, channels, time_window, event_types, base_window)
 
 %MCP_GET_SUBJECT_EVENTS Returns a matrix that contains HbO data for target 
-%subject in each type, channel, time and type repetition.
+%subject in each type, channel, time, and type repetition.
 %
-% First we construct the index matrix that contains specific index of HbO
-% data. Then Use the index matrix to find conresponding HbO data and add
-% them into the output matrix.
+% First we construct the index matrix that contains specific index of event
+% onsets in the hemoglobin data. Then use the index matrix to find 
+% corresponding windows of hemoglobin data and copy them to the output.
+%
+% Output:
+% event_matrix: time x channel x rep x condition
 %
 % Chengyu Deng & Benjamin Zinszer 5 may 2017
 % revised bdz 29 aug 2019
@@ -28,25 +31,17 @@ if length(mcp_struct)>1
     return
 end
 
-%% Index matrix handling (We use MCP struct so we don't need distinguish Homer file version anymore)
-
-% Extract oxy data and marks from the MCP struct
-oxy_timeser = mcp_struct.fNIRS_Data.Hb_data.Oxy(:, channels);
+%% Index matrix handling
+% Extract hemoglobin data and marks from the MCP struct
+hemo_timeser = mcp_struct.fNIRS_Data.Hb_data.Oxy(:, channels);
 marks_vec = mcp_struct.fNIRS_Data.Onsets_Matrix;
 
 % Handle different type of marks vector
-
 if size(marks_vec, 2) > 1
     
     % Determine the maximum number of reps for any given marker (iterates
     % through the columns of marks_vec and finds values >0, aka events)
     max_condition_type = max(sum(marks_vec>0,1));
-%     max_condition_type = 0;
-%     for i = 1:size(marks_vec,2)
-%         if max_condition_type < length(find(marks_vec(:,i) == 1))
-%             max_condition_type = length(find(marks_vec(:, i) == 1));
-%         end
-%     end
     
     marks_mat = nan(max_condition_type, size(marks_vec,2));
     
@@ -68,13 +63,6 @@ elseif size(marks_vec, 2) == 1
     for type_i = 1 : length(event_types)
         %Find the array index (vector index) in the marks_vec
         temp_marks = find(marks_vec == event_types(type_i));
-        
-% This line was meant to remove every offset mark (every-other-mark) but it
-% only applies if there *are* offsets, and if there aren't, it removes half
-% of your events. Oops!
-        %Now abandon the offsets
-%        temp_marks = temp_marks(1:2:end);
-        
         marks_mat(1:length(temp_marks), type_i) = temp_marks;
     end
     
@@ -90,8 +78,9 @@ end
 
 %% Extract the individual events for each event type
 Fs_val = mcp_struct.fNIRS_Data.Sampling_frequency;
-time_window_samp = round(time_window.*Fs_val);
-base_window_samp = round(base_window.*Fs_val);
+time_window_samp = round(time_window.*Fs_val); % converting time (s) to number of samples
+base_window_samp = round(base_window.*Fs_val); % converting time (s) to number of samples
+
 % The output matrix setup(time x channels x type repetition x types)
 num_samps = max(time_window_samp) - min(time_window_samp) + 1;
 event_matrix = nan(num_samps, length(channels), size(marks_mat, 1), length(event_types));
@@ -112,36 +101,36 @@ for type_i = 1 : length(event_types)
         
         % Find the earliest time-point (in samples) that will be extracted
         % and the latest time-point (in samples) that will be extracted so
-        % that we can determine the window of data to be extracted.
+        % that we can determine the window of data to collect.
         earliest_samp = min( [time_window_samp(:); base_window_samp(:)] );
         latest_samp = max( [time_window_samp(:); base_window_samp(:)] );
         
         % For events where the full duration of the baseline+event is 
         % available, extract the event_data (within the time_window) and
-        % rebaseline_data (within the baseline_window). rebaseline_data are
+        % rebaseline_data (within the base_window). rebaseline_data are
         % then averaged, and the average is removed from the event_data
         if marks_mat(event_j,type_i) + earliest_samp > 0 && ...
-            marks_mat(event_j,type_i) + latest_samp <= length(oxy_timeser)
+            marks_mat(event_j,type_i) + latest_samp <= length(hemo_timeser)
             
-            % Grab the trial data (for this event) directly from the oxy
+            % Grab the trial data (for this event) directly from the hemo
             % timeseries. It will be re-baselined momentarily.
-            event_data = oxy_timeser(marks_mat(event_j,type_i)+min(time_window_samp):marks_mat(event_j,type_i)+max(time_window_samp),:);
+            event_data = hemo_timeser(...
+                (marks_mat(event_j,type_i)+min(time_window_samp)) : ... % beginning of window
+                (marks_mat(event_j,type_i)+max(time_window_samp)) ...   % end of window
+                ,:);
             
-            % Get the oxy data from one scan prior to stimulus onset and
+            % Get the hemo data from one scan prior to stimulus onset and
             % use that as the baselining value.
             if ~isnan(base_window)
-                rebaseline_data = oxy_timeser(marks_mat(event_j,type_i)+min(base_window_samp):marks_mat(event_j,type_i)+max(base_window_samp),:);
+                rebaseline_data = hemo_timeser(...
+                    (marks_mat(event_j,type_i)+min(base_window_samp)) : ...	% beginning of window
+                    (marks_mat(event_j,type_i)+max(base_window_samp)) ...   % end of window
+                    ,:);
             else
                 rebaseline_data = 0;
             end
             event_matrix(:,:,event_j,type_i) = event_data - nanmean(rebaseline_data);
 
-            % This was the old way, and it caused problems. The new way is
-            % easier to read, so you can see the problems more clearly.
-            %event_matrix(:,:,event_j,type_i) = ...
-            %    oxy_timeser(marks_mat(event_j,type_i)+time_window_samp,:) -...
-            %    ones(length(time_window_samp),1)*oxy_timeser(marks_mat(event_j,type_i)+time_window_samp(1),:);
-        
         % For events that might get truncated (start or end of recording)
         else
             % For the moment, we carelessly discard these trials. There is
@@ -152,8 +141,5 @@ for type_i = 1 : length(event_types)
     end
 
 end
-
-
-
 
 end
