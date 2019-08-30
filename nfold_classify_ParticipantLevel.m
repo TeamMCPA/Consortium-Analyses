@@ -78,7 +78,7 @@ try n_cond = length(unique(p.Results.conditions)); catch n_cond = length(p.Resul
 % results structs from all kinds of testing and should be getting the same
 % structure out each time.
 allsubj_results = [];
-allsubj_results.MCPA_patterns = mcpa_struct.patterns;
+allsubj_results.patterns = mcpa_summ.patterns;
 allsubj_results.MCP_data = MCP_struct;
 allsubj_results.created = datestr(now);
 allsubj_results.test_handle = p.Results.test_handle;

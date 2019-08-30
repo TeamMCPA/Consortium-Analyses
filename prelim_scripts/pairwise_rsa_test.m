@@ -1,6 +1,6 @@
 function [results_of_comparisons, list_of_comparisons] = pairwise_rsa_test(test_matrix, training_matrix)
 % PAIRWISE_RSA_TEST Perform all pairwise (two-alternative forced choice)
-% comparisons between two similarity structures.
+% comparisons between two similarity structures larger than 4x4.
 %   ACC = PAIRWISE_RSA_TEST( M1, M2 ) returns the results (binary) of each
 %   pairwise comparison in a vector.
 %
@@ -18,7 +18,6 @@ if sum(isnan(test_matrix(:))) || sum(isnan(training_matrix(:)))
     return
 end
 
-
 %% Prep some basic values
 
 % Number of stimulus classes to compare, based on the number of rows
@@ -35,7 +34,7 @@ for this_comp = 1:number_of_comparisons
     test_classes = list_of_comparisons(this_comp,:);
     
     % Define which classes to keep in the RSA structures (non-test classes)
-    non_test_classes = logical(ones(number_classes,1));
+    non_test_classes = true(number_classes,1);
     non_test_classes(test_classes) = 0;
     
     % Rebuild the RSA matrices with the test classes' rows deleted
@@ -54,6 +53,16 @@ for this_comp = 1:number_of_comparisons
     
     % Test the accuracy, whether correct label correlations were greater
     % than the incorrect label correlations
-    results_of_comparisons(this_comp) = correct_labels > incorrect_labels;
+    if correct_labels == incorrect_labels
+        % When the results are equal, choose one at random.
+        % This condition should almost never be met unless trying to
+        % analyze a 4x4 (all corrs will be 1 or -1), but it is necessary to
+        % un-bias that result, which would produce mostly incorrects.
+        % Shouldn't be using a 4x4 here anyway, but useful catch in case
+        % somebody tries it.
+        results_of_comparisons(this_comp) = rand(1,1)<.5; 
+    else
+        results_of_comparisons(this_comp) = correct_labels > incorrect_labels;
+    end
     
 end
