@@ -39,6 +39,7 @@ addParameter(p,'baseline_window',[-5 0],@isnumeric);
 addParameter(p,'conditions',unique(cellstr(char(cellfun(@(x) char(x{:}), arrayfun(@(x) unique({x.Experiment.Conditions.Name},'stable'),MCP_struct, 'UniformOutput',false),'UniformOutput',false))),'stable'),@iscell);
 addParameter(p,'summary_handle',@nanmean);
 addParameter(p,'setsize',max(arrayfun(@(x) size(x.fNIRS_Data.Hb_data.Oxy,2),MCP_struct)),@isnumeric);
+addParameter(p,'max_sets',1000000,@isnumeric);
 addParameter(p,'test_handle',@mcpa_classify);
 addParameter(p,'opts_struct',[],@isstruct);
 addParameter(p,'verbose',true,@islogical);
@@ -51,6 +52,7 @@ parse(p,varargin{:})
 % array. If setsize is less than the total number of channels, there will
 % be n-choose-k subsets to analyze.
 sets = nchoosek(p.Results.incl_channels,p.Results.setsize);
+sets = sets(randperm(size(sets,1)),:);
 % To-do: if size(sets,1)>1, call this function recursively with the correct
 % incl_channels for the given subset. That way the subsetting doesn't make
 % a mess of the code below.
@@ -116,7 +118,7 @@ for s_idx = 1:length(mcpa_summ.incl_subjects)
     %% Run over channel subsets
     temp_set_results_cond = nan(n_cond,n_sets,n_chan);
     
-    for set_idx = 1:n_sets
+    for set_idx = 1:min(n_sets,max_sets)
         tic;
         
         %% Progress reporting bit (not important to function. just sanity)
