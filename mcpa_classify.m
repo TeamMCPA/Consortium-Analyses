@@ -69,14 +69,14 @@ else
     classification(test_model_corrs(:,1)>test_model_corrs(:,2)) = model_classes(1);
     classification(test_model_corrs(:,1)<test_model_corrs(:,2)) = model_classes(2);
     
-    % If correlations to each model pattern are equal, enter NaN
+    % If correlations to each model pattern are equal, enter empty string
     % temporarily and then replace with random labels
-    classification(test_model_corrs(:,1)==test_model_corrs(:,2)) = {NaN};
-    num_nans = sum(cellfun(@isnan,classification));
+    classification(test_model_corrs(:,1)==test_model_corrs(:,2)) = {''};
+    num_nans = sum(cellfun(@isempty,classification));
     if num_nans>0
         % Randomly sample the model_classes labels with replacement
         sub_labels = randsample(model_classes,num_nans,true);
-        classification(isnan(classification)) = sub_labels;
+        classification(cellfun(@isempty,classification)) = sub_labels;
     end
 end
 
