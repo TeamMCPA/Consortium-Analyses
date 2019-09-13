@@ -50,8 +50,11 @@ if opts.exclusive && length(model_classes)==size(test_data,1)
             classification(1) = model_classes(2);
             classification(2) = model_classes(1);
         else
-            classification(1) = NaN;
-            classification(2) = NaN;
+            % If both options are equal, randomly assign the two labels to 
+            % the two observations.
+            order = randperm(2); % returns [1 2] or [2 1] with equal probability
+            classification(1) = model_classes(order(1));
+            classification(2) = model_classes(order(2));
         end
     else
         % The search-all-label-permutations method would work here for 3 to
@@ -67,7 +70,14 @@ else
     classification(test_model_corrs(:,1)<test_model_corrs(:,2)) = model_classes(2);
     
     % If correlations to each model pattern are equal, enter NaN
+    % temporarily and then replace with random labels
     classification(test_model_corrs(:,1)==test_model_corrs(:,2)) = {NaN};
+    num_nans = sum(isnan(classification));
+    if num_nans>0
+        % Randomly sample the model_classes labels with replacement
+        sub_labels = randsample(model_classes,num_nans,true);
+        classification(isnan(classification)) = sub_labels;
+    end
 end
 
 
