@@ -48,11 +48,50 @@ parse(p,varargin{:})
 
 %% Setting up the combinations of channel subsets
 % Create all possible subsets. If setsize is equal to the total number of
-% channels, there will only be on`e 'subset' which is the full channel
+% channels, there will only be one 'subset' which is the full channel
 % array. If setsize is less than the total number of channels, there will
 % be n-choose-k subsets to analyze.
+%
+% The size of the subsets can grow extremely quickly with the size of
+% incl_channels. Consequently, there is a default max of 1000000 sets,
+% which can be customized. If the total number of sets is larger than the
+% max number of allowed sets, the list of sets will be subsampled.
+
+% Determine how many sets will be generated. Can use this later for warning
+% messages or other branching. Sets variable turns into a huge memory hog.
+n_all_sets = nchoosek(length(p.Results.incl_channels),p.Results.setsize);
+size_of_sets_inmem = n_all_sets*p.Results.setsize*8+100;
+try
+    available_mem = memory;
+    available_mem = available_mem.MemAvailableAllArrays;
+catch
+    [~,w] = unix('free | grep Mem');
+    stats = str2double(regexp(w, '[0-9]*', 'match'));
+    available_mem = (stats(3)+stats(end))*1000;
+end
+if size_of_sets_inmem > 0.95*available_mem
+    error('Too many feature sets will cause memory problems. Reduce setsize or length of incl_channels.');
+end
+if p.Results.verbose
+    fprintf('Generating %g possible sets... ',n_all_sets);
+end
+% Start by generating list of all sets
+tic; 
 sets = nchoosek(p.Results.incl_channels,p.Results.setsize);
-sets = sets(randperm(size(sets,1)),:);
+if p.Results.verbose
+    fprintf('Done\n');
+    toc
+end
+% Case where there are more possible sets than the max_sets limit
+if p.Results.max_sets < n_all_sets
+    % Randomize the order
+    sets = sets(randperm(size(sets,1)),:);
+    % Select the first max_sets-many of the randomized order.
+    sets = sets(1:p.Results.max_sets,:);
+    if p.Results.verbose
+        fprintf('Selected %g sets to test.\n',p.Results.max_sets);
+    end
+end
 % To-do: if size(sets,1)>1, call this function recursively with the correct
 % incl_channels for the given subset. That way the subsetting doesn't make
 % a mess of the code below.
@@ -118,7 +157,7 @@ for s_idx = 1:length(mcpa_summ.incl_subjects)
     %% Run over channel subsets
     temp_set_results_cond = nan(n_cond,n_sets,n_chan);
     
-    for set_idx = 1:min(n_sets,max_sets)
+    for set_idx = 1:min(n_sets,p.Results.max_sets)
         tic;
         
         %% Progress reporting bit (not important to function. just sanity)
