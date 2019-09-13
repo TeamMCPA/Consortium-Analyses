@@ -72,7 +72,7 @@ else
     % If correlations to each model pattern are equal, enter NaN
     % temporarily and then replace with random labels
     classification(test_model_corrs(:,1)==test_model_corrs(:,2)) = {NaN};
-    num_nans = sum(isnan(classification));
+    num_nans = sum(cellfun(@isnan,classification));
     if num_nans>0
         % Randomly sample the model_classes labels with replacement
         sub_labels = randsample(model_classes,num_nans,true);
