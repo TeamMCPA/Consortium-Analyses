@@ -65,9 +65,13 @@ try
     available_mem = memory;
     available_mem = available_mem.MemAvailableAllArrays;
 catch
-    [~,w] = unix('free | grep Mem');
-    stats = str2double(regexp(w, '[0-9]*', 'match'));
-    available_mem = (stats(3)+stats(end))*1000;
+    try
+        [~,w] = unix('free | grep Mem');
+        stats = str2double(regexp(w, '[0-9]*', 'match'));
+        available_mem = (stats(3)+stats(end))*1000;
+    catch
+        available_mem = 2E9;
+    end
 end
 if size_of_sets_inmem > 0.50*available_mem
     try
@@ -207,7 +211,7 @@ for s_idx = 1:length(mcpa_summ.incl_subjects)
         
         %% Run classifier and compare output with correct labels
         for set_idx = 1:min(n_sets,p.Results.max_sets)
-                        
+            
             %% Progress reporting bit (not important to function. just sanity)
             % Report at every 5% progress
             if p.Results.verbose
