@@ -43,7 +43,8 @@ addParameter(p,'max_sets',1000000,@isnumeric);
 addParameter(p,'test_handle',@mcpa_classify);
 addParameter(p,'opts_struct',[],@isstruct);
 addParameter(p,'verbose',true,@islogical);
-addParameter(p,'norm_method', 'none', @ischar);
+addParameter(p,'norm_data', false, @islogical);
+addParameter(p, 'norm_function', @normalize_data);
 
 parse(p,varargin{:})
 
@@ -223,22 +224,12 @@ for s_idx = 1:length(mcpa_summ.incl_subjects)
             end
             % Select the channels for this subset
             set_chans = sets(set_idx,:);
+            
             % norm the data
             
-            if strcmp(p.Results.norm_method, 'normalize')  
-                mins = min(group_data);
-                maxes = max(group_data);
-                group_data = (group_data - mins) ./ (maxes - mins);
-                subj_data = (subj_data-mins) ./ (maxes-mins);
-            elseif strcmp(p.Results.norm_method, 'standardize')
-                average = mean(group_data);
-                sd = std(group_data);
-                group_data = (group_data-average) ./ sd;
-                subj_data = (subj_data - average) ./ sd;
-            else
-                group_data = group_data;
-                subj_data = subj_data;
-            end
+            if p.Results.norm_data
+                [group_data, subj_data] = p.Results.norm_function(group_data, subj_data);
+            end 
                 
 
             % classify
