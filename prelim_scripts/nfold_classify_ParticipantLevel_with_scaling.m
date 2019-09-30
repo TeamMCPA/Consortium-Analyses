@@ -44,7 +44,7 @@ addParameter(p,'test_handle',@mcpa_classify);
 addParameter(p,'opts_struct',[],@isstruct);
 addParameter(p,'verbose',true,@islogical);
 addParameter(p,'norm_data', false, @islogical);
-addParameter(p, 'norm_function', @normalize_data);
+addParameter(p, 'norm_function', @minMax_scale_0to1);
 
 parse(p,varargin{:})
 
