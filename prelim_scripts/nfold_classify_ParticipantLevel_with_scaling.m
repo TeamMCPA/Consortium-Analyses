@@ -62,52 +62,7 @@ parse(p,varargin{:})
 % Determine how many sets will be generated. Can use this later for warning
 % messages or other branching. Sets variable turns into a huge memory hog.
 n_all_sets = nchoosek(length(p.Results.incl_channels),p.Results.setsize);
-size_of_sets_inmem = n_all_sets*p.Results.setsize*8+100;
-try
-    available_mem = memory;
-    available_mem = available_mem.MemAvailableAllArrays;
-catch
-    try
-        [~,w] = unix('free | grep Mem');
-        stats = str2double(regexp(w, '[0-9]*', 'match'));
-        available_mem = (stats(3)+stats(end))*1000;
-    catch
-        available_mem = 2E9;
-    end
-end
-if size_of_sets_inmem > 0.50*available_mem
-    try
-        warning('Too many feature sets will cause memory problems. Randomly generating a subset.');
-        sets = nan(p.Results.max_sets,p.Results.setsize);
-        for i = 1:p.Results.max_sets
-            sets(i,:) = randsample(p.Results.incl_channels,p.Results.setsize);
-        end
-    catch
-        error('Too many feature sets will cause memory problems. Reduce setsize or length of incl_channels.');
-    end
-    
-else
-    if p.Results.verbose
-        fprintf('Generating %g possible sets... ',n_all_sets);
-    end
-    % Start by generating list of all sets
-    tic;
-    sets = nchoosek(p.Results.incl_channels,p.Results.setsize);
-    if p.Results.verbose
-        fprintf('Done\n');
-        toc
-    end
-    % Case where there are more possible sets than the max_sets limit
-    if p.Results.max_sets < n_all_sets
-        % Randomly select rows to use
-        sets_to_choose = randsample(1:size(sets,1),p.Results.max_sets);
-        % Select the randomly sampled rows from sets.
-        sets = sets(sets_to_choose,:);
-        if p.Results.verbose
-            fprintf('Selected %g sets to test.\n',p.Results.max_sets);
-        end
-    end
-end
+sets = find_sets(n_all_sets, p.Results);
 
 %% Build MCPA struct for all subjects in the MCP
 % Step 1: Epoching the data by time window and averaging the epochs
