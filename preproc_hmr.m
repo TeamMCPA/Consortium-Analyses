@@ -34,7 +34,7 @@ end
 if iscell(filename)
     new_filename = cell(length(filename),1);
     for filenum = 1:length(filename)
-        new_filename{filenum} = preproc_hmr(filename{filenum},params_file);
+        new_filename{filenum} = preproc_hmr(filename{filenum},params_file,overwrite);
     end
     return
 end
@@ -66,16 +66,23 @@ nirs_dat.procResult.dod = hmrIntensity2OD(nirs_dat.d);
     nirs_dat.d, params.fs, nirs_dat.SD, nirs_dat.tIncMan, params.tMotion, params.tMask, params.STDEVthresh, params.AMPthresh);
 
 % Apply spline correction to motion artifacts
+if isfield(params,'p')
 nirs_dat.procResult.dodSpline = hmrMotionCorrectSpline(...
     nirs_dat.procResult.dod,nirs_dat.t,nirs_dat.SD,tIncCh,params.p);
-
+else
+    nirs_dat.procResult.dodSpline = nirs_dat.procResult.dod;
+end
 % 3. Apply wavelet correction for motion artifacts
-try
-    nirs_dat.procResult.dodWavelet = hmrMotionCorrectWavelet(...
-        nirs_dat.procResult.dodSpline,nirs_dat.SD,params.IQR);
-catch
-    % Just move the Spline output to Wavelet
-    disp('Warning Wavelet Motion Correction failed.')
+if isfield(params,'IQR')
+    try
+        nirs_dat.procResult.dodWavelet = hmrMotionCorrectWavelet(...
+            nirs_dat.procResult.dodSpline,nirs_dat.SD,params.IQR);
+    catch
+        Just move the Spline output to Wavelet
+        disp('Warning Wavelet Motion Correction failed.')
+        nirs_dat.procResult.dodWavelet = nirs_dat.procResult.dodSpline;
+    end
+else
     nirs_dat.procResult.dodWavelet = nirs_dat.procResult.dodSpline;
 end
 
@@ -91,6 +98,11 @@ nirs_dat.procResult.dc = hmrOD2Conc(...
 nirs_dat.badCh = any(squeeze(any(nirs_dat.procResult.dc < params.dRange(1) | nirs_dat.procResult.dc > params.dRange(2))));
 nirs_dat.procResult.dcFix = nirs_dat.procResult.dc;
 nirs_dat.procResult.dcFix(:,:,nirs_dat.badCh) = nan;
+if isfield(params,'dropChans')
+    if params.dropChans
+        nirs_dat.procResult.dc = nirs_dat.procResult.dcFix;
+    end
+end
 
 % Perform block-averaging on the dcFix data (motion-corrected, filtered,
 % and bad channels removed)
@@ -105,6 +117,24 @@ nirs_dat.procResult.dcFix(:,:,nirs_dat.badCh) = nan;
     = hmrBlockAvg( nirs_dat.procResult.dcFix, nirs_dat.s, nirs_dat.t, params.tRange );
 
 fprintf('Finished preproc... ')
+
+%% Clean up the struct before writing it out.
+
+% aux field is obligatory in Homer2, so create it if needed
+if ~isfield(nirs_dat,'aux')
+    % This will take the binary s matrix and make it a single vector of
+    % length t (time) with integer values for the triggers. If two triggers
+    % co-occur, the aux value will be their sum, so it's still better to
+    % use the s matrix when possible.
+    nirs_dat.aux = nirs_dat.s * [1:size(nirs_dat.s,2)]';
+end
+
+% remove extraneous processing steps
+nirs_dat.procResult= rmfield(nirs_dat.procResult,'dodSpline');
+nirs_dat.procResult= rmfield(nirs_dat.procResult,'dodWavelet');
+nirs_dat.procResult= rmfield(nirs_dat.procResult,'dodBP');
+nirs_dat.procResult= rmfield(nirs_dat.procResult,'dcFix');
+
 %% Save the preprocessed data out to a new file and return the filename
 [filePath,fileName] = fileparts(filename);
 if overwrite, new_filename = filename;
