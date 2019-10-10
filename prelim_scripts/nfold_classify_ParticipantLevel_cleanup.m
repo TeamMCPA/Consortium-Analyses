@@ -47,7 +47,8 @@ p.Results
 
 % Determine how many sets will be generated. Can use this later for warning
 % messages or other branching. Sets variable turns into a huge memory hog.
-sets = find_sets(p.Results);
+unmapped_sets = find_sets(p.Results);
+sets = map_values(p, unmapped_sets);
 
 %% Build MCPA struct for all subjects in the MCP
 % Step 1: Epoching the data by time window and averaging the epochs
