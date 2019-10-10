@@ -13,8 +13,8 @@ function [results_of_comparisons, list_of_comparisons] = pairwise_rsa_test(test_
 %   [ ACC, COMP ] = PAIRWISE_RSA_TEST( M1, M2 )
 
 %% Sanity Check
-if sum(isnan(test_matrix(:))) || sum(isnan(training_matrix(:)))
-    disp('One or both input matrices contains all NaN values. I quit!');
+if sum(isnan(test_matrix(:)))==numel(test_matrix) || sum(isnan(training_matrix(:)))==numel(training_matrix)
+    disp('\nOne or both input matrices contains all NaN values. I quit!');
     return
 end
 
