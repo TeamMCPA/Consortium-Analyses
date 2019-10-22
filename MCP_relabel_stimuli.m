@@ -105,7 +105,7 @@ for new_cond = 1:length(unique_new)
     % Append the new condition names to the list of conditions
     new_mcp_file.Experiment.Conditions(num_existing_conds+new_cond).Name = unique_new{new_cond};
     % Assign a new mark number that refers to the column of Onsets_Matrix
-    new_mcp_file.Experiment.Conditions(num_existing_conds+new_cond).Mark = num_existing_conds+new_cond;
+    new_mcp_file.Experiment.Conditions(num_existing_conds+new_cond).Mark = size(old_mcp_struct.fNIRS_Data.Onsets_Matrix,2)+new_cond;
 end
 
 % After conversion is finished, delete the old condition. It turns out this
