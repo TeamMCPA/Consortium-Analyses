@@ -255,7 +255,7 @@ for s_idx = 1:length(mcpa_summ.incl_subjects)
             
             %% the multiclass group generalizer hasn't been written
             % so throw an error kindly excuse yourself from the task
-            error('No multiclass support for generalization yet. Please specify only two groups at a time.')
+            warning('Limited multiclass support for generalization. pairwise_rsa_test function will be used.')
             
             % For now, just adapting the Neurophotonics script which has
             % result-writing built into it. This is not a good long term
