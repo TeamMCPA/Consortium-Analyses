@@ -4,7 +4,7 @@ function allsubj_results = create_results_struct(summed_mcpa, MCP_dat, parsed_in
 % summed_mcpa: summarized MCPA struct from Summarize_MCPA_Struct
 % MCP_dat: MCP struct
 % parsed_input: struct containing either default classification parameters 
-% or those passed through when calling nfold_classify
+    % or those passed through when calling nfold_classify
 % all_sets: all channel subsets
 % num_subj: number of subjects
 % num_sets: number of sets we use for classification 
