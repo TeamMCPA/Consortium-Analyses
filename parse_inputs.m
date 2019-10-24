@@ -2,7 +2,7 @@ function p = parse_inputs(MCP_struct, varargin)
 %% input parser 
 % takes input from function that calls it and creates a struct to store
 % clasification parameters
-% if not input is provided for a particular variable, it creates default values
+% if no input is provided for a particular variable, it creates default values
 
 % Arguments:
 % MCP_struct: MCP data structure
