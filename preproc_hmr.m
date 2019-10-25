@@ -63,7 +63,7 @@ nirs_dat.procResult.dod = hmrIntensity2OD(nirs_dat.d);
 
 % 2. Perform motion artifact detection
 [tInc,tIncCh] = hmrMotionArtifactByChannel(...
-    nirs_dat.d, params.fs, nirs_dat.SD, nirs_dat.tIncMan, params.tMotion, params.tMask, params.STDEVthresh, params.AMPthresh);
+    nirs_dat.procResult.dod, params.fs, nirs_dat.SD, nirs_dat.tIncMan, params.tMotion, params.tMask, params.STDEVthresh, params.AMPthresh);
 
 % Apply spline correction to motion artifacts
 if isfield(params,'p')
