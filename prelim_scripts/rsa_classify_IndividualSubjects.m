@@ -11,6 +11,7 @@ function allsubj_results = rsa_classify_IndividualSubjects(MCP_struct, semantic_
 % Arguments:
 % MCP_struct: either an MCP-formatted struct or the path to a Matlab file
 % (.mat or .mcp) containing the MCP_struct.
+% semantic_model: The model we want to use for classification
 % incl_channels: channels to include in the analysis. Default: all channels
 % incl_subjects: index of participants to include. Default: all participants
 % baseline_window: [onset, offset] in seconds. Default [-5,0]
