@@ -1,4 +1,4 @@
-function allsubj_results = rsa_classify_IndividualSubjects(MCP_struct, semantic_model, varargin)
+function allsubj_results = rsa_classify_ParticipantLevel(MCP_struct, semantic_model, varargin)
 %% rsa_classify_IndividualSubjects takes an MCP struct and performs
 % RSA classification for n subjects to classify individual
 % participants' average response patterns using a semantic model. This wrapper assumes that
@@ -84,7 +84,7 @@ allsubj_results = create_results_struct(mcpa_summ,...
                                         n_chan,...
                                         n_cond);
 
-
+                                                                       
 %% Begin the n-fold process: Select one test subj at a time from MCPA struct
 for s_idx = 1:length(mcpa_summ.incl_subjects)
     if p.Results.verbose
@@ -99,7 +99,9 @@ for s_idx = 1:length(mcpa_summ.incl_subjects)
         set_chans = sets(set_idx,:);
         
         % Perform the test for this fold (all possible pairs of conds)
-        [subj_acc, comparisons] = pairwise_rsa_test(mcpa_summ.patterns(:,set_chans,s_idx),semantic_model);
+        participant_rsa_matrix = atanh(corr(mcpa_summ.patterns(:,set_chans,s_idx),'rows','pairwise', 'Spearman'));
+        
+        [subj_acc, comparisons] = pairwise_rsa_test(participant_rsa_matrix,semantic_model);
 
         % Record the results into the results struct
         for comp = 1:size(comparisons,1)
