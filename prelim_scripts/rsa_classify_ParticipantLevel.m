@@ -24,6 +24,9 @@ function allsubj_results = rsa_classify_ParticipantLevel(MCP_struct, semantic_mo
 % opts_struct: contains additional classifier options. Default: empty struct
 % verbose: logical flag to report status updates and results. Default: true
 
+% dimensions for the accuracy matrix in results struct is cond x cond x
+% channel subset x subject
+
 %% Load MCP struct if necessary
 if isstring(MCP_struct) || ischar(MCP_struct)
     MCP_struct = load(MCP_struct,'-mat');
@@ -83,7 +86,13 @@ allsubj_results = create_results_struct(mcpa_summ,...
                                         n_chan,...
                                         n_cond);
 
-                                                                       
+%% If the options struct is not provided, set default parameters
+if ~exist('opts','var') || isempty(opts)
+    opts = struct;
+    opts.corr_stat = 'spearman';
+    opts.exclusive = true;
+end                                    
+                                    
 %% Begin the n-fold process: Select one test subj at a time from MCPA struct
 for s_idx = 1:length(mcpa_summ.incl_subjects)
     if p.Results.verbose
@@ -98,13 +107,9 @@ for s_idx = 1:length(mcpa_summ.incl_subjects)
         set_chans = sets(set_idx,:);
         
         % Perform the test for this fold (all possible pairs of conds)
-        participant_rsa_matrix = atanh(corr(mcpa_summ.patterns(:,set_chans,s_idx)','rows','pairwise', 'type','Spearman'));
+        participant_rsa_matrix = atanh(corr(mcpa_summ.patterns(:,set_chans,s_idx)','rows','pairwise', 'type',opts.corr_stat));
         
-        save part_mat participant_rsa_matrix
-        
-        size(participant_rsa_matrix)
-        
-        [subj_acc, comparisons] = pairwise_rsa_test(participant_rsa_matrix,semantic_model);
+        [subj_acc, comparisons] = p.Results.test_handle(participant_rsa_matrix,semantic_model);
 
         % Record the results into the results struct
         for comp = 1:size(comparisons,1)
