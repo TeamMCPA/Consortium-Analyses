@@ -126,6 +126,7 @@ try
     MCPA_struct.incl_subjects = incl_subjects;
     MCPA_struct.incl_channels = incl_channels;
     MCPA_struct.event_types = event_types;
+    MCPA_struct.pattern_dimensions = {'time','condition','channel','instance','subject'};
     MCPA_struct.patterns = subj_mat;
     
 catch
