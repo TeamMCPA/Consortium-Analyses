@@ -2,7 +2,7 @@ function p = parse_inputs(MCP_struct, varargin)
 %% input parser 
 % takes input from function that calls it and creates a struct to store
 % clasification parameters
-% if no input is provided for a particular variable, it creates default values
+% if not input is provided for a particular variable, it creates default values
 
 % Arguments:
 % MCP_struct: MCP data structure
@@ -21,7 +21,10 @@ addParameter(p,'test_handle',@mcpa_classify);
 addParameter(p,'opts_struct',[],@isstruct);
 addParameter(p,'verbose',true,@islogical);
 addParameter(p,'norm_data', false, @islogical);
-addParameter(p, 'norm_function', @minMax_scale_0to1);
+addParameter(p,'norm_withinSessions', true, @islogical);
+addParameter(p, 'norm_function', @minMax_scale);
+addParameter(p, 'minMax', [0,1], @isnumeric);
+addParameter(p, 'averaging_dimension', {'instance', 'time'});
 
 parse(p,varargin{:});
 

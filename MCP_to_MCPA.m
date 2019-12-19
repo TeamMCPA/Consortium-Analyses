@@ -91,8 +91,8 @@ unique_names = cellfun(@(x) char(x{:}),all_names,'UniformOutput',false);
 %% Extract data from the data file into the empty output matrix
 
 % Initiate the subj_mat matrix that will be output later(begin with NaN)
-% Output matrix for MCPA_struct is in dimension: time_window x types x channels x subjects
-subj_mat = nan(num_time_samps, length(event_types), length(incl_channels), length(incl_subjects));
+% Output matrix for MCPA_struct is in dimension: time_window x types x channels x repetition x subjects
+subj_mat = nan(num_time_samps, length(event_types), length(incl_channels), 30, length(incl_subjects));
 
 % Extract data from each subject
 for subj_idx = 1 : length(incl_subjects)
@@ -104,23 +104,16 @@ for subj_idx = 1 : length(incl_subjects)
     % Event_matrix format:
     % (time x channels x repetition x types)
     event_matrix = MCP_get_subject_events(mcp_multiple(incl_subjects(subj_idx)), incl_channels, time_window, event_types, baseline_window);
+    event_matrix = permute(event_matrix, [1 4 2 3]);
     
-    % Event_repetition_mean:
-    % (time x channels x event_type)
-    event_repetition_mean = mean(event_matrix, 3,'omitnan');
-    event_repetition_mean = reshape(event_repetition_mean, size(event_matrix,1), size(event_matrix,2), size(event_matrix,4));
-    event_repetition_mean = permute(event_repetition_mean, [1 3 2]);
-    % Now the dimension of Event_repetition_mean:
-    % (time x event_types x channels )
-    
-    subj_time_samps = size(event_repetition_mean,1);
+    subj_time_samps = size(event_matrix,1);
     if subj_time_samps == num_time_samps
-        % Output format: subj_mat(time_window x event_types x channels x subjects)
-        subj_mat(:, :, :, subj_idx) = event_repetition_mean;
+        % Output format: subj_mat(time_window x event_types x channels x repetition x subjects)
+        subj_mat(:, :, :,:, subj_idx) = event_matrix;
     else
         time_mask = round(linspace(1,num_time_samps,subj_time_samps));
-        % Output format: subj_mat(time_window x event_types x channels x subjects)
-        subj_mat(time_mask, :, :, subj_idx) = event_repetition_mean;
+        % Output format: subj_mat(time_window x event_types x channels x repetition x subjects)
+        subj_mat(time_mask, :, :,:, subj_idx) = event_matrix;
         
     end
     

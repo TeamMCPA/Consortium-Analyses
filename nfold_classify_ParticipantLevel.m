@@ -1,10 +1,18 @@
 function allsubj_results = nfold_classify_ParticipantLevel(MCP_struct,varargin)
 %% nfold_classify_ParticipantLevel takes an MCP struct and performs
 % n-fold cross-validation for n subjects to classify individual
-% participants' average response patterns. This wrapper assumes that
+% participants' average response patterns. 
+
+
+% This wrapper allows the user to choose if 
 % features will be averaged within-participants to produce a single
-% participant-level observation. Thus the training set is constrained to
-% the number of participants minus 1. Several parameters can be changed,
+% participant-level observation or if individual events will be preserved.
+% If the featuers are averaged within-participants, the training set 
+% is constrained to the number of participants minus 1. Otherwise the
+% training set will be (participants - 1) * (number of instances of an
+% object).
+
+% Several parameters can be changed,
 % including which functions are used to generate features and what
 % classifier is trained. See Arguments below:
 %
@@ -22,6 +30,18 @@ function allsubj_results = nfold_classify_ParticipantLevel(MCP_struct,varargin)
 % test_handle: function handle for classifier. Default: mcpa_classify
 % opts_struct: contains additional classifier options. Default: empty struct
 % verbose: logical flag to report status updates and results. Default: true
+% norm_data: option to perform some for of feature scaling. Defualt: false
+% norm_withinSessions: if we do norm data, this allows the user to choose
+% if we norm within individual sessions or across a participants session.
+% It is only valid to norm across sessions for
+% nfold_classify_ParticipantLevel. Default: true
+% norm_function: function handle for how to scale the data. Default:
+% minMax_scale
+% minMax: what min and max to set the data to. Default: [0,1]
+% averaging_dimensions: what dimensions and what order to average
+% dimensions of mcpa patterns by. Will average dimensions in the order of
+% this cell array. Default: {'instance', 'time'}
+
 
 %% Load MCP struct if necessary
 if isstring(MCP_struct) || ischar(MCP_struct)
@@ -30,9 +50,9 @@ if isstring(MCP_struct) || ischar(MCP_struct)
     MCP_struct = eval(['MCP_struct.' varname{1}]);
 end
 
+
 %% Parse out the input data
 p = parse_inputs(MCP_struct, varargin{:});
-p.Results
 
 %% Setting up the combinations of channel subsets
 % Create all possible subsets. If setsize is equal to the total number of
@@ -47,19 +67,38 @@ p.Results
 
 % Determine how many sets will be generated. Can use this later for warning
 % messages or other branching. Sets variable turns into a huge memory hog.
+
 unmapped_sets = find_sets(p.Results);
 sets = map_values(p, unmapped_sets);
-%% Build MCPA struct for all subjects in the MCP
-% Step 1: Epoching the data by time window and averaging the epochs
-% together at the subject level
-mcpa_struct = MCP_to_MCPA(MCP_struct,p.Results.incl_subjects,p.Results.incl_channels,p.Results.time_window,p.Results.baseline_window);
 
+
+%% norm check - do we want to scale individual participant data?
+if p.Results.norm_data
+    MCP_struct = scale_individuals(MCP_struct, p.Results);
+end
+
+%% Build MCPA struct for all subjects in the MCP
+% Step 1: Epoching the data by time window
+
+mcpa_struct = MCP_to_MCPA(MCP_struct,...
+                                p.Results.incl_subjects,...
+                                p.Results.incl_channels,...
+                                p.Results.time_window,...
+                                p.Results.baseline_window);
+
+%% summarize MCPA struct
 % Step 2: Apply the desired function (e.g., @nanmean) for summarizing time
 % window data. You can write custom functions to deal with time- and
 % channel-domain data however you want. Default behavior is to apply the
-% function along the first dimension of the MCPA pattern, but this can also
-% be changed.
-mcpa_summ = summarize_MCPA_Struct(p.Results.summary_handle,mcpa_struct);
+% function along the first dimension of the MCPA pattern (instance) and then the second dimension (time),
+% but this can also be changed.
+
+mcpa_summ = summarize_MCPA_Struct(p.Results.summary_handle,...
+                                mcpa_struct,...
+                                {'instance','time'},...
+                                false,...
+                                MCP_struct);
+
 
 %% Prep some basic parameters
 n_subj = length(p.Results.incl_subjects);
@@ -67,26 +106,30 @@ n_sets = size(sets,1);
 n_chan = length(p.Results.incl_channels);
 try n_cond = length(unique(p.Results.conditions)); catch, n_cond = length(p.Results.conditions); end
 
+
 %% Set up the results structure which includes a copy of MCPA_pattern
-% To-do: write a separate constructor script for this because we need
-% results structs from all kinds of testing and should be getting the same
-% structure out each time.
-allsubj_results = create_results_struct(mcpa_summ,...
+
+allsubj_results = create_results_struct(false,...
+                                        mcpa_summ,...
                                         MCP_struct,...
                                         p,...
-                                        mcpa_struct,...
                                         sets,...
                                         n_subj,...
                                         n_sets,...
                                         n_chan,...
                                         n_cond);
 
+allsubj_results.test_type = 'between'; % set this flag for later use in permutation tests
+
 %% Begin the n-fold process: Select one test subj at a time from MCPA struct
 for s_idx = 1:length(mcpa_summ.incl_subjects)
+    
     if p.Results.verbose
         fprintf('Running %g feature subsets for Subject %g / %g',n_sets,s_idx,n_subj);
     end
     tic;
+    
+    
     %% Extract training and testing data
     group_subvec = 1:length(mcpa_summ.incl_subjects);
     group_subvec(s_idx) = [];
@@ -94,14 +137,11 @@ for s_idx = 1:length(mcpa_summ.incl_subjects)
     % Set logical flags for indexing the conditions that will be compared.
     % Loop through the whole list of conditions and create flags for each.
     cond_flags = cell(n_cond,1); % These are, for the moment, empty
-    group_data = [];
-    group_labels = [];
-    subj_data = [];
-    subj_labels = [];
+
     
     %% Run over channel subsets
     temp_set_results_cond = nan(n_cond,n_sets,n_chan);
-    
+
     %% Folding & Dispatcher: Here's the important part
     % Right now, the data have to be treated differently for 2
     % conditions vs. many conditions. In MCPA this is because 2
@@ -119,17 +159,18 @@ for s_idx = 1:length(mcpa_summ.incl_subjects)
     % both trained and tested.
     
     if n_cond==2
-        [group_data, group_labels, subj_data, subj_labels] = split_data(s_idx,...
-                                                                        cond_flags,...
-                                                                        p,...
-                                                                        n_cond,...
-                                                                        mcpa_summ,...
-                                                                        group_subvec,...
-                                                                        group_data,...
-                                                                        group_labels,...
-                                                                        subj_data,...
-                                                                        subj_labels);
-                                                                    
+            [group_data, group_labels, subj_data, subj_labels] = split_data(s_idx,...
+                                                                            cond_flags,...
+                                                                            p.Results,...
+                                                                            n_cond,...
+                                                                            mcpa_summ.patterns,...
+                                                                            group_subvec,...
+                                                                            [],...
+                                                                            [],...
+                                                                            [],...
+                                                                            [],...
+                                                                            mcpa_summ.event_types);
+
                                                         
         %% Run classifier and compare output with correct labels
         for set_idx = 1:min(n_sets,p.Results.max_sets)    
@@ -143,14 +184,6 @@ for s_idx = 1:length(mcpa_summ.incl_subjects)
             end
             % Select the channels for this subset
             set_chans = sets(set_idx,:);
-            %% norm the data
-            
-            
-            %[subj_data, group_data, set_chans] = pca_feature_extraction(group_data, subj_data);
-            
-            if p.Results.norm_data
-                [group_data, subj_data] = p.Results.norm_function(group_data, subj_data);
-            end 
 
             %% classify
 
@@ -218,11 +251,6 @@ for s_idx = 1:length(mcpa_summ.incl_subjects)
         for comp = 1:size(comparisons,1)
             allsubj_results.accuracy_matrix(comparisons(comp,1),comparisons(comp,2),s_idx) = subj_acc(comp);
         end
-        for cond_idx = 1:n_cond
-            %mean_cond_acc = nanmean([allsubj_results.accuracy_matrix(cond_idx,:,s_idx)';allsubj_results.accuracy_matrix(:,cond_idx,s_idx)]);
-            %allsubj_results.accuracy(cond_idx).subsetXsubj(:,s_idx) = nanmean(temp_set_results_cond(cond_idx,:,:),3);
-            %allsubj_results.accuracy(cond_idx).subjXchan(s_idx,:) = nanmean(temp_set_results_cond(cond_idx,:,:),2);
-        end
         
     end
     
@@ -256,5 +284,8 @@ if p.Results.verbose
         
     end
 end
+
+
+
 
 end
