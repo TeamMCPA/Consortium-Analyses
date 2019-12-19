@@ -65,6 +65,12 @@ nirs_dat.procResult.dod = hmrIntensity2OD(nirs_dat.d);
 [tInc,tIncCh] = hmrMotionArtifactByChannel(...
     nirs_dat.procResult.dod, params.fs, nirs_dat.SD, nirs_dat.tIncMan, params.tMotion, params.tMask, params.STDEVthresh, params.AMPthresh);
 
+% Remove nirs dat where probe lost contact with head
+tIncCh(nirs_dat.d < 0) = 0; 
+tIncChBefore = tIncCh;
+tIncCh = smooth_missing_voltage_data(params.tMask, tIncCh, params.fs);
+tIncChAfter = tIncCh;
+
 % Apply spline correction to motion artifacts
 if isfield(params,'p')
 nirs_dat.procResult.dodSpline = hmrMotionCorrectSpline(...
@@ -72,14 +78,16 @@ nirs_dat.procResult.dodSpline = hmrMotionCorrectSpline(...
 else
     nirs_dat.procResult.dodSpline = nirs_dat.procResult.dod;
 end
+
 % 3. Apply wavelet correction for motion artifacts
 if isfield(params,'IQR')
     try
         nirs_dat.procResult.dodWavelet = hmrMotionCorrectWavelet(...
             nirs_dat.procResult.dodSpline,nirs_dat.SD,params.IQR);
-    catch
-        Just move the Spline output to Wavelet
+    catch msg
+        % Just move the Spline output to Wavelet
         disp('Warning Wavelet Motion Correction failed.')
+        disp(msg)
         nirs_dat.procResult.dodWavelet = nirs_dat.procResult.dodSpline;
     end
 else
