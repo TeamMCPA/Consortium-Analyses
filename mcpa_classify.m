@@ -1,36 +1,59 @@
-function classification = mcpa_classify(model_data, model_labels, test_data, opts)
-%% mcpa_classify implements a correlation-based, feature-space classifier
-% following Emberson, Zinszer, Raizada & Aslin's (2017, PLoS One) method.
+function [classification rating] = mcpa_classify(model_data, model_labels, test_data, test_labels, opts)
+%% mcpa_classify implements a correlation-based, channel-space classifier
+% following Emberson, Zinszer, Raizada & Aslin's (2017, PLoS One) method
+% and extending this approach to multiple conditions (>2). The MCPA
+% approach treats channels as features and compares the correlation
+% coefficients between classes in the training data (averaged across all
+% examples) and instances in the test data.
 %
-% Currently implementation only works for two conditions at a time.
-% Multiple conditions is under developments (fingers crossed...)
+% Correlation statistic (pearson, spearman, or kendall) may be selected
+% using opts.corr_stat, e.g., opts.corr_stat='pearson'
+%
+% In 'non-exclusive' mode (the default), classification decisions are based
+% simply on the greatest Fisher-adjusted correlation between test instance
+% and classes in training set.
+% In 'exclusive' mode (opts.exclusive=true), the pairwise matches between
+% test classes are training classes are optimized for greatest sum of
+% Fisher-adjusted correlations.
+%
+% If opts.tiebreak is set to true (default), the correlation coefficients
+% are adjusted by <1% of the smallest observed difference to prevent exact
+% matches and thus prevent ties in the classification. If opts.tiebreak is
+% set to false, the classifier will prefer classes appearing earlier in the
+% training set.
+%
+% All-possible-pairwise comparison (opts.pairwise) is under development.
 
 %% If the options struct is not provided, set default parameters
 if ~exist('opts','var') || isempty(opts)
     opts = struct;
     opts.corr_stat = 'spearman';
     opts.exclusive = false;
+    opts.pairwise = false;
+    opts.tiebreak = true;
 end
 
-%% Average across training data to get model features for each class
 model_classes = unique(model_labels,'stable');
-model_pattern1 = nanmean(model_data(strcmp(model_classes{1},model_labels),:),1)';
-model_pattern2 = nanmean(model_data(strcmp(model_classes{2},model_labels),:),1)';
 
-%% Perform correlation (default: Pearson) between two model patterns and the test patterns
+%% Average across training data to get model features for each class
+model_patterns = nan(size(model_data,2),length(model_classes));
+for class_idx = 1:length(model_classes)
+    model_patterns(:,class_idx) = nanmean(model_data(strcmp(model_classes{class_idx},model_labels),:),1)';
+end
+
+%% Perform correlation (default: Pearson) between all model patterns and the test patterns
 % This is a quick and easy way to compute all the test items at once.
 
-% 1. Build a matrix with [ModelA, ModelB, Test1, Test2,... TestN]
+% 1. Build a matrix with [ModelA, ModelB,... ModelN, Test1, Test2,... TestN]
 % 2. Run correlation over all of them, and get a the matrix of corr coeffs.
 % 3. First column is Model A vs. all others, Second column is Model B vs.
-%	all others.
-corr_matrix = atanh(corr([model_pattern1,model_pattern2,test_data'],'type',opts.corr_stat,'rows','pairwise'));
+%	all others, nth column is Model N vs. all others.
+corr_matrix = atanh(corr([model_patterns,test_data'],'type',opts.corr_stat,'rows','pairwise'));
 
-% Isolate the first and second columns (Matrix A and Matrix B), and the
-% rows 3 to end (correlations to Matrix A and B of each test vector). Thus
-% each row of column 1 is Matrix A vs. Test r (for row r). Each row of
-% column 2 is Matrix B vs. Test r (for row r).
-test_model_corrs = corr_matrix(3:end,1:2);
+% Isolate the columns representing the model_patterns, and the rows
+% representing the test_data to get the correlations for each item
+% in test data against all the model patterns.
+test_model_corrs = corr_matrix(length(model_classes)+1:end,1:length(model_classes));
 
 %% Save out the classification results based on greatest correlation coefficient for each test pattern
 % Initialize empty cell matrix for classifications
@@ -50,11 +73,16 @@ if opts.exclusive && length(model_classes)==size(test_data,1)
             classification(1) = model_classes(2);
             classification(2) = model_classes(1);
         else
-            % If both options are equal, randomly assign the two labels to 
+            % If both options are equal, randomly assign the two labels to
             % the two observations.
-            order = randperm(2); % returns [1 2] or [2 1] with equal probability
-            classification(1) = model_classes(order(1));
-            classification(2) = model_classes(order(2));
+            if ~isfield(opts,'tiebreak') || opts.tiebreak
+                order = randperm(2); % returns [1 2] or [2 1] with equal probability
+                classification(1) = model_classes(order(1));
+                classification(2) = model_classes(order(2));
+            else
+                classification(1) = model_classes(1);
+                classification(2) = model_classes(2);
+            end
         end
     else
         % The search-all-label-permutations method would work here for 3 to
@@ -63,22 +91,20 @@ if opts.exclusive && length(model_classes)==size(test_data,1)
     end
     
 else
-    
-    %% Otherwise, just label by best fit for each test_data row
-    % Classify based on greatest correlation coefficient
-    classification(test_model_corrs(:,1)>test_model_corrs(:,2)) = model_classes(1);
-    classification(test_model_corrs(:,1)<test_model_corrs(:,2)) = model_classes(2);
-    
-    % If correlations to each model pattern are equal, enter empty string
-    % temporarily and then replace with random labels
-    classification(test_model_corrs(:,1)==test_model_corrs(:,2)) = {''};
-    num_nans = sum(cellfun(@isempty,classification));
-    if num_nans>0
-        % Randomly sample the model_classes labels with replacement
-        sub_labels = randsample(model_classes,num_nans,true);
-        classification(cellfun(@isempty,classification)) = sub_labels;
+    % If doing n-way classification (not all-possible-pairwise)
+    if ~isfield(opts,'pairwise') || opts.pairwise==false
+        
+        % Adjust all values in test_model_corrs by <1% of the smallest
+        % observed difference to prevent ties (randomly adjusts matched
+        % values by tiny amount not relevant to classification).
+        diffs = diff(sort(test_model_corrs(:)));
+        min_diff = min(diffs(diffs>0));
+        if isempty(min_diff), min_diff = min(test_model_corrs(:)); end
+        test_model_corrs = test_model_corrs + rand(size(test_model_corrs))*min_diff/100;
+        
+        % Classify based on the maximum correlation
+        [rating, test_class_idx] = max(test_model_corrs,[],2);
+        classification = model_classes(test_class_idx);
+        
     end
-end
-
-
 end
