@@ -77,7 +77,14 @@ if length(Fs_val) > 1
 end
 num_time_samps = length(round(time_window(1)*max(Fs_val)) : round(time_window(end)*max(Fs_val)));
 
-
+%% get the amount of repetitions for a category type
+num_repetitions = length(find(mcp_multiple(1).fNIRS_Data.Onsets_Matrix(:,1)));
+%% get the max amount of sessions needed to complete study
+num_sessions = [];
+for subj = 1:length(mcp_multiple)
+    num_sessions = [num_sessions; length(mcp_multiple(subj).Experiment.Runs)];
+end
+max_num_sessions = max(num_sessions);
 %% Event type Handling
 
 % % This version just gets integers up to the max number of conditions
@@ -92,29 +99,32 @@ unique_names = cellfun(@(x) char(x{:}),all_names,'UniformOutput',false);
 
 % Initiate the subj_mat matrix that will be output later(begin with NaN)
 % Output matrix for MCPA_struct is in dimension: time_window x types x channels x repetition x subjects
-subj_mat = nan(num_time_samps, length(event_types), length(incl_channels), 30, length(incl_subjects));
+subj_mat = nan(num_time_samps, length(event_types), length(incl_channels), num_repetitions, max_num_sessions, length(incl_subjects));
 
 % Extract data from each subject
 for subj_idx = 1 : length(incl_subjects)
-      
-    if no_mcp_file
-    MCPA_struct.data_file{subj_idx} = [mcp_multiple(incl_subjects(subj_idx)).Experiment.Runs.Source_files]';
-    end
     
-    % Event_matrix format:
-    % (time x channels x repetition x types)
-    event_matrix = MCP_get_subject_events(mcp_multiple(incl_subjects(subj_idx)), incl_channels, time_window, event_types, baseline_window);
-    event_matrix = permute(event_matrix, [1 4 2 3]);
-    
-    subj_time_samps = size(event_matrix,1);
-    if subj_time_samps == num_time_samps
-        % Output format: subj_mat(time_window x event_types x channels x repetition x subjects)
-        subj_mat(:, :, :,:, subj_idx) = event_matrix;
-    else
-        time_mask = round(linspace(1,num_time_samps,subj_time_samps));
-        % Output format: subj_mat(time_window x event_types x channels x repetition x subjects)
-        subj_mat(time_mask, :, :,:, subj_idx) = event_matrix;
-        
+    for session_idx = 1:length(mcp_multiple(subj_idx).Experiment.Runs)
+        if no_mcp_file
+        MCPA_struct.data_file{subj_idx} = [mcp_multiple(incl_subjects(subj_idx)).Experiment.Runs.Source_files]';
+        end
+
+        % Event_matrix format:
+        % (time x channels x repetition x types)
+        event_matrix = MCP_get_subject_events_addsessiondim(mcp_multiple(incl_subjects(subj_idx)), incl_channels, time_window, event_types, baseline_window, session_idx);
+        event_matrix = permute(event_matrix, [1 4 2 3]);
+
+        subj_time_samps = size(event_matrix,1);
+        if subj_time_samps == num_time_samps
+            repetitions_in_session = size(event_matrix,4);
+            % Output format: subj_mat(time_window x event_types x channels x repetition x subjects)
+            subj_mat(:, :, :,1:repetitions_in_session, session_idx, subj_idx) = event_matrix;
+        else
+            time_mask = round(linspace(1,num_time_samps,subj_time_samps));
+            % Output format: subj_mat(time_window x event_types x channels x repetition x subjects)
+            subj_mat(time_mask, :, :,1:repetitions_in_session, session_idx, subj_idx) = event_matrix;
+
+        end
     end
     
 end
@@ -126,8 +136,8 @@ try
     MCPA_struct.incl_subjects = incl_subjects;
     MCPA_struct.incl_channels = incl_channels;
     MCPA_struct.event_types = event_types;
-    MCPA_struct.pattern_dimensions = {'time','condition','channel','instance','subject'};
     MCPA_struct.patterns = subj_mat;
+    MCPA_struct.dimensions = {'time','condition', 'channel', 'repetition', 'session', 'subject'};
     
 catch
     fprintf('Failed to create the new struct (MCP_to_MCPA).\n');
