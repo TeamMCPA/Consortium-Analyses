@@ -1,9 +1,6 @@
-function summarized_MCPA_struct = summarize_MCPA_Struct(summary_function,MCPA_struct, averaging_dimensions, within_sub, mcp_struct)
+function summarized_MCPA_struct = summarize_MCPA_Struct(summary_function,MCPA_struct, summarize_dimensions)
 %SUMMARIZE_MCPA_STRUCT Convert an MCPA struct of windowed data to
 %multivariate patterns using any summarizing function, such as nanmean.
-% Fold_type_functions: can be 
-
-if isempty(averaging_dimensions), averaging_dimensions = {'time'}; end
 
 if ischar(summary_function)
     summary_function = str2func(summary_function);
@@ -11,50 +8,52 @@ elseif iscell(summary_function)
     summary_function = str2func(summary_function{:});
 end
 
-%% get session dimension if this is within subject decoding
-if within_sub
-    dat_to_summ = add_session_dimension(mcp_struct,MCPA_struct);
-else
-    dat_to_summ = MCPA_struct.patterns;
-end
-
+%% create copy of dimensions and of pattern matrix
+dimensions = MCPA_struct.dimensions;
+pattern_matrix = MCPA_struct.patterns;
 
 %% Get summarized:
 
-for dimension = 1:length(averaging_dimensions)
-    if dimension == 1
-        if strcmp(averaging_dimensions{dimension},'instance')
-           try
-                summarized_MCPA_struct_pattern = summary_function(dat_to_summ,4);
-           catch
-                error('Failed to successfully summarize MCPA_struct to a desired form.');
-           end      
-        elseif strcmp(averaging_dimensions{dimension},'time')
-            try
-                summarized_MCPA_struct_pattern = summary_function(dat_to_summ,1);
-            catch
-                error('Failed to successfully summarize MCPA_struct to a desired form.');
-            end
-        end
-    else
-        if strcmp(averaging_dimensions{dimension},'instance')
-           try
-                 summarized_MCPA_struct_pattern = summary_function(summarized_MCPA_struct_pattern,4);
-            catch
-                error('Failed to successfully summarize MCPA_struct to a desired form.');
-            end      
-        elseif strcmp(averaging_dimensions{dimension},'time')
-            try
-                summarized_MCPA_struct_pattern = summary_function(summarized_MCPA_struct_pattern,1);
-            catch
-                error('Failed to successfully summarize MCPA_struct to a desired form.');
-            end
-        end
+% search for what dimensions to concatenate and keep record of
+% new dimensions
+try
+    for dim = 1:length(summarize_dimensions)
+        concat = strsplit(summarize_dimensions{dim}, 'X');
+        if length(concat) == 2
+            first_dim_to_concat = find(strcmp(dimensions,concat{1}));
+            second_dim_to_concat = find(strcmp(dimensions,concat{2}));
+            [pattern_matrix, new_pattern_matrix_dimensions] = concatenate_dimensions(first_dim_to_concat,second_dim_to_concat,pattern_matrix);
+            dimensions = new_pattern_matrix_dimensions;
+        end  
     end
+catch
+    error('Failed to concatenate these dimensions.');
 end
 
+% Then average over the left over dimensions
+try
+    for dim = 1:length(summarize_dimensions)
+        % skip over the concatenate arguments
+        if length(strsplit(summarize_dimensions{dim}, 'X')) == 2
+            continue;
+        end
+        
+        % average over the specified dimension
+        dim_to_average = find(strcmp(dimensions, summarize_dimensions{dim}));
+        pattern_matrix = summary_function(pattern_matrix,dim_to_average);
+        
+        % Then keep track of remaining dimensions in list
+        dimensions{dim_to_average} = [];
+    end
+    
+    % clean up dimension cell array
+    dimensions = dimensions(~cellfun('isempty',dimensions));
+catch
+    error('Failed to successfully summarize MCPA_struct to a desired form. Cannot average over these dimensions');
+end
 
-summarized_MCPA_struct_pattern = squeeze(summarized_MCPA_struct_pattern);
+% Then get rid of all dimensions of length 1
+summarized_MCPA_struct_pattern = squeeze(pattern_matrix);
 
 
 %% Return the new struct
@@ -63,19 +62,14 @@ try
     summarized_MCPA_struct.created = datestr(now);
     summarized_MCPA_struct.summarizing_function = summary_function;
     summarized_MCPA_struct.patterns = summarized_MCPA_struct_pattern;
-    %fprintf(' Done.\n');
-    
-catch
-    error('Failed to create the new struct')
+    summarized_MCPA_struct.dimensions = dimensions;
+    fprintf(' Done.\n');
+
+catch 
+    error('Failed to create the new struct');
 end
 
 
 
 end
-
-
-
-
-
-
 
