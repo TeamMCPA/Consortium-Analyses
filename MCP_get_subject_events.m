@@ -1,4 +1,4 @@
-function [event_matrix] = MCP_get_subject_events(mcp_struct, channels, time_window, event_types, base_window)
+function [event_matrix] = MCP_get_subject_events(mcp_struct, channels, time_window, event_types, base_window, session_index)
 
 %MCP_GET_SUBJECT_EVENTS Returns a matrix that contains HbO data for target 
 %subject in each type, channel, time, and type repetition.
@@ -32,9 +32,11 @@ if length(mcp_struct)>1
 end
 
 %% Index matrix handling
+% find the location of hemoglobin data for this session
+session_locs = mcp_struct.Experiment.Runs(session_index).Index';
 % Extract hemoglobin data and marks from the MCP struct
-hemo_timeser = mcp_struct.fNIRS_Data.Hb_data.Oxy(:, channels);
-marks_vec = mcp_struct.fNIRS_Data.Onsets_Matrix;
+hemo_timeser = mcp_struct.fNIRS_Data.Hb_data.Oxy(session_locs, channels);
+marks_vec = mcp_struct.fNIRS_Data.Onsets_Matrix(session_locs,:);
 
 % Handle different type of marks vector
 if size(marks_vec, 2) > 1
@@ -84,7 +86,7 @@ base_window_samp = round(base_window.*Fs_val); % converting time (s) to number o
 % The output matrix setup(time x channels x type repetition x types)
 num_samps = max(time_window_samp) - min(time_window_samp) + 1;
 event_matrix = nan(num_samps, length(channels), size(marks_mat, 1), length(event_types));
-
+%%
 for type_i = 1 : length(event_types)
     
     matched_conditions = cell2mat(arrayfun(@(x) strcmp(event_types{type_i},x.Name), mcp_struct.Experiment.Conditions,'UniformOutput',false)); 
@@ -96,7 +98,7 @@ for type_i = 1 : length(event_types)
     % preallocated to accomodate the largest number of events for any given
     % condition, and the conditions with fewer events have NaN values
     % filling in the rest. These NaNs are important to remember if you're
-    % taking a mean value later (use mean(x,dim,'omitnan) or nanmean(x,dim)
+    % taking a mean value later (use mean(x,dim,'omitnan') or nanmean(x,dim)
     for event_j = 1 : length(marks_mat(:, event_marks))
         
         % Find the earliest time-point (in samples) that will be extracted
