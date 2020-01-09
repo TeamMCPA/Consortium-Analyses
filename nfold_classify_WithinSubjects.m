@@ -107,8 +107,7 @@ for s_idx = 1:length(MCP_struct)
                                                                                 subj_labels,...
                                                                                 mcpa_summ.event_types);
                                                                             
-              size(subj_data)
-              size(group_data)
+
             %% Run classifier and compare output with correct labels
             for set_idx = 1:min(n_sets,p.Results.max_sets)    
                 %% Progress reporting bit (not important to function. just sanity)
