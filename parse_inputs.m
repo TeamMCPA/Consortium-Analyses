@@ -24,7 +24,7 @@ addParameter(p,'norm_data', false, @islogical);
 addParameter(p,'norm_withinSessions', true, @islogical);
 addParameter(p, 'norm_function', @minMax_scale);
 addParameter(p, 'minMax', [0,1], @isnumeric);
-addParameter(p, 'averaging_dimension', {'instance', 'time'});
+addParameter(p, 'summarize_dimensions', []);
 
 parse(p,varargin{:});
 
