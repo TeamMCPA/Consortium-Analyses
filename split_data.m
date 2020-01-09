@@ -34,7 +34,7 @@ for cond_idx = 1:num_cond
 	group_labels = [ group_labels; group_labels_tmp ];
 
     % Extract test data
-	subj_data_tmp = pattern_dat(cond_flags{cond_idx},Results.incl_channels,fold_idx);
+	subj_data_tmp = squeeze(mean(pattern_dat(cond_flags{cond_idx},Results.incl_channels,fold_idx),1))';
 	subj_labels_tmp = repmat(cellstr(strjoin(string(Results.conditions{cond_idx}),'+')),size(subj_data_tmp,1),1);
 	subj_data = [ subj_data; subj_data_tmp ];
 	subj_labels = [ subj_labels; subj_labels_tmp ];
