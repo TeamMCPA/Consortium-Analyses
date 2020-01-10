@@ -111,7 +111,7 @@ for subj_idx = 1 : length(incl_subjects)
 
         % Event_matrix format:
         % (time x channels x repetition x types)
-        event_matrix = MCP_get_subject_events_addsessiondim(mcp_multiple(incl_subjects(subj_idx)), incl_channels, time_window, event_types, baseline_window, session_idx);
+        event_matrix = MCP_get_subject_events(mcp_multiple(incl_subjects(subj_idx)), incl_channels, time_window, event_types, baseline_window, session_idx);
         event_matrix = permute(event_matrix, [1 4 2 3]);
 
         subj_time_samps = size(event_matrix,1);
