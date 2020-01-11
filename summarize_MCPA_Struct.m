@@ -26,7 +26,8 @@ try
             dimensions = new_pattern_matrix_dimensions;
         end  
     end
-catch
+catch dimension_error
+    warning(dimension_error.message);
     error('Failed to concatenate these dimensions.');
 end
 
@@ -48,7 +49,8 @@ try
     
     % clean up dimension cell array
     dimensions = dimensions(~cellfun('isempty',dimensions));
-catch
+catch averaging_error
+    warning(averaging_error.message);
     error('Failed to successfully summarize MCPA_struct to a desired form. Cannot average over these dimensions');
 end
 
