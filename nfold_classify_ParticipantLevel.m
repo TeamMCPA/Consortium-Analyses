@@ -93,11 +93,21 @@ mcpa_struct = MCP_to_MCPA(MCP_struct,...
 % function along the first dimension of the MCPA pattern (instance) and then the second dimension (time),
 % but this can also be changed.
 
+%% first decide how we want to concatenate or average over our dimensions
+% intermediary step: see if the user specified the summarizing dimensions. If not,
+% recommend what dimensions to average over
+
+if ~isempty(p.Results.summarize_dimensions) || ~isfield(p.Results, 'summarize_dimensions')
+    summarize_dimensions = p.Results.summarize_dimensions;
+else
+    isWithinSubjects = false;
+    summarize_dimensions = recommend_summarize_dimensions(p.Results, isWithinSubjects);
+end
+
+%% then do the summarizing
 mcpa_summ = summarize_MCPA_Struct(p.Results.summary_handle,...
                                 mcpa_struct,...
-                                {'instance','time'},...
-                                false,...
-                                MCP_struct);
+                                averaging_dimensions);
 
 
 %% Prep some basic parameters
