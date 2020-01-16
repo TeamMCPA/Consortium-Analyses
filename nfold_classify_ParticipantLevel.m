@@ -107,7 +107,7 @@ end
 %% then do the summarizing
 mcpa_summ = summarize_MCPA_Struct(p.Results.summary_handle,...
                                 mcpa_struct,...
-                                averaging_dimensions);
+                                summarize_dimensions);
 
 
 %% Prep some basic parameters
