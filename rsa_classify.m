@@ -1,4 +1,4 @@
-function [classification rating] = rsa_classify(model_data, model_labels, test_data, test_labels, opts)
+function [accuracy comparisons] = rsa_classify(model_data, model_labels, test_data, test_labels, opts)
 %% rsa_classify implements a correlation-based, similarity-space classifier
 % following Zinszer, Bayet, Emberson, Raizada, & Aslin's (2018, Neurophotonics)
 % method for all-possible-pairwise-comparisons and Zinszer, Anderson, Kang,
@@ -24,6 +24,7 @@ if ~exist('opts','var') || isempty(opts)
     opts.exclusive = true;
     opts.pairwise = false;
     opts.tiebreak = true;
+    opts.verbose = false;
 end
 
 model_classes = unique(model_labels(:),'stable');
@@ -33,45 +34,62 @@ model_classes = unique(model_labels(:),'stable');
 % correlating between conditions and then average the similarity structures
 % together into a single model.
 
-if length(size(model_data))>4
-    % here assuming model_data are time-x-cond-x-chan-x-instance-x-session-x-subject
-    model_data = squeeze(mean(model_data,4));
-    
-    % now time-x-cond-x-chan-x-session-x-subject
-    model_data = squeeze(mean(model_data,1));
-    
-    % now cond-x-chan-x-session-x-subject
-    model_correl = nan(size(model_data,2),size(model_data,2),size(model_data,3),size(model_data,4));
-    for sub_idx = 1:size(model_data,4)
-        for ses_idx = 1:size(model_data,3)
-            model_correl = atanh(corr(model_data(:,:,ses_idx,sub_idx),'rows','pairwise','type','Spearman'));
-        end
-    end
-    
-    % now cond-x-cond-x-session-x-subject
-    training_matrix = nanmean(nanmean(model_correl,3),4);
+% First reshape the model data to concatenate all additional dimensions
+% besides the first two (presumed to be cond-x-chan)
+model_data = reshape(...
+    model_data,...
+    size(model_data,1),...
+    size(model_data,2),...
+    numel(model_data)/(size(model_data,1)*size(model_data,2))...
+    );
+
+% Next iterate through all the layers (3rd dimension) and create
+% correlation matrices
+model_correl = nan(size(model_data,1),size(model_data,1),size(model_data,3));
+for layer_idx = 1:size(model_data,3)
+    model_correl(:,:,layer_idx) = atanh(corr(model_data(:,:,layer_idx)','rows','pairwise','type','spearman'));
 end
+training_matrix = nanmean(model_correl,3);
+
+% figure;
+% imagesc(training_matrix)
+% xticklabels(model_labels)
+% yticklabels(model_labels)
+% caxis([-0.5,0.5])
+% colorbar('hot')
+% [i, j, ~] = find(~isnan(training_matrix));
+% text(i-.3,j,num2str(round(training_matrix(~isnan(training_matrix)),2)));
 
 % Transform the test_data into similiarty structures for each session by
 % correlating between conditions and then average the similarity structures
 % together into a single structure.
-if length(size(test_data))>4
-    % here assuming model_data are time-x-cond-x-chan-x-instance-x-session-x-subject
-    test_data = squeeze(mean(test_data,4));
-    
-    % now time-x-cond-x-chan-x-session-x-subject
-    test_data = squeeze(mean(test_data,1));
-    
-    % now cond-x-chan-x-session-x-subject
-    test_correl = nan(size(test_data,2),size(test_data,2),size(test_data,3),size(test_data,4));
-    for sub_idx = 1:size(test_data,4)
-        for ses_idx = 1:size(test_data,3)
-            test_correl = atanh(corr(test_data(:,:,ses_idx,sub_idx),'rows','pairwise','type','Spearman'));
-        end
-    end
-    
-    % now cond-x-cond-x-session-x-subject
-    test_matrix = nanmean(nanmean(test_correl,3),4);
+
+% First reshape the test data to stack up all additional dimensions
+% besides the first two (presumed to be cond-x-chan)
+test_data = reshape(...
+    test_data,...
+    size(test_data,1),...
+    size(test_data,2),...
+    numel(test_data)/(size(test_data,1)*size(test_data,2))...
+    );
+
+% Next iterate through all the layers (3rd dimension) and create
+% correlation matrices
+test_correl = nan(size(test_data,1),size(test_data,1),size(test_data,3));
+for layer_idx = 1:size(test_data,3)
+    test_correl(:,:,layer_idx) = atanh(corr(test_data(:,:,layer_idx)','rows','pairwise','type','spearman'));
+end
+test_matrix = nanmean(test_correl,3);
+
+if opts.verbose
+    figure;
+    imagesc(test_matrix)
+    xticklabels(test_labels)
+    yticklabels(test_labels)
+    caxis([-0.5,0.5])
+    colorbar('hot')
+    [i, j, ~] = find(~isnan(test_matrix));
+    text(i-.3,j,num2str(round(test_matrix(~isnan(test_matrix)),2)));
 end
 
 %% Sanity Check
@@ -109,6 +127,9 @@ if ~isfield(opts,'pairwise') || ~opts.pairwise
     % Choose the best of all the permutations of labels
     [rating, best_perm] = max(results_of_comparisons);
     classification = model_classes(list_of_comparisons(best_perm,:));
+    
+    accuracy = strcmp(classification,test_labels);
+    comparisons = test_labels;
     
 else
     [accuracy, comparisons] = pairwise_rsa_test(test_matrix,training_matrix);
