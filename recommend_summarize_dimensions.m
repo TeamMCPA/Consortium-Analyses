@@ -15,7 +15,7 @@ if strcmp(func2str(results_struct.test_handle),'mcpa_classify')
     else
         summarize_dimensions = {'repetitionXsession', 'repetition+session', 'time'};
     end    
-elseif strcmp(func2str(results_struct.test_handle),'pairwise_rsa_test')
+elseif strcmp(func2str(results_struct.test_handle),'rsa_classify')
     summarize_dimensions = {'repetition', 'time'};      
 else
     if isWithinSubjects
