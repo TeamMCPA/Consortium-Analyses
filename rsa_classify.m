@@ -1,4 +1,4 @@
-function [accuracy comparisons] = rsa_classify(model_data, model_labels, test_data, test_labels, opts)
+function [classification, comparisons] = rsa_classify(model_data, model_labels, test_data, test_labels, opts)
 %% rsa_classify implements a correlation-based, similarity-space classifier
 % following Zinszer, Bayet, Emberson, Raizada, & Aslin's (2018, Neurophotonics)
 % method for all-possible-pairwise-comparisons and Zinszer, Anderson, Kang,
@@ -10,10 +10,14 @@ function [accuracy comparisons] = rsa_classify(model_data, model_labels, test_da
 % Only 'exclusive' mode is available.
 %
 % If opts.tiebreak is set to true (default), the correlation coefficients
-% are adjusted by <1% of the smallest observed difference to prevent exact
-% matches and thus prevent ties in the classification. If opts.tiebreak is
-% set to false, the classifier will prefer classes appearing earlier in the
-% training set.
+% are randomly adjusted by <1% of the smallest observed difference to
+% prevent exact matches and thus prevent ties in the classification. If 
+% opts.tiebreak is set to false, the classifier will prefer classes 
+% appearing earlier in the training set.
+%
+% If opts.verbose is set to true (default is false), Fisher-adjusted
+% (hyperbolic arctangent) correlation matrices are displayed for all
+% subjects, sessions, etc.
 %
 % All-possible-pairwise comparison (opts.pairwise) is under development.
 
@@ -24,9 +28,10 @@ if ~exist('opts','var') || isempty(opts)
     opts.exclusive = true;
     opts.pairwise = false;
     opts.tiebreak = true;
-    opts.verbose = false;
+    opts.verbose = 0;
 end
 
+% Pull a list of all the unique classes / conditions, preserving order
 model_classes = unique(model_labels(:),'stable');
 
 %% Build similarity structures
@@ -36,6 +41,7 @@ model_classes = unique(model_labels(:),'stable');
 
 % First reshape the model data to concatenate all additional dimensions
 % besides the first two (presumed to be cond-x-chan)
+old_model_dims = size(model_data);
 model_data = reshape(...
     model_data,...
     size(model_data,1),...
@@ -47,18 +53,9 @@ model_data = reshape(...
 % correlation matrices
 model_correl = nan(size(model_data,1),size(model_data,1),size(model_data,3));
 for layer_idx = 1:size(model_data,3)
-    model_correl(:,:,layer_idx) = atanh(corr(model_data(:,:,layer_idx)','rows','pairwise','type','spearman'));
+    model_correl(:,:,layer_idx) = atanh(corr(model_data(:,:,layer_idx)','rows','pairwise','type',opts.corr_stat));
 end
 training_matrix = nanmean(model_correl,3);
-
-% figure;
-% imagesc(training_matrix)
-% xticklabels(model_labels)
-% yticklabels(model_labels)
-% caxis([-0.5,0.5])
-% colorbar('hot')
-% [i, j, ~] = find(~isnan(training_matrix));
-% text(i-.3,j,num2str(round(training_matrix(~isnan(training_matrix)),2)));
 
 % Transform the test_data into similiarty structures for each session by
 % correlating between conditions and then average the similarity structures
@@ -66,6 +63,7 @@ training_matrix = nanmean(model_correl,3);
 
 % First reshape the test data to stack up all additional dimensions
 % besides the first two (presumed to be cond-x-chan)
+old_test_dims = size(test_data);
 test_data = reshape(...
     test_data,...
     size(test_data,1),...
@@ -81,12 +79,48 @@ for layer_idx = 1:size(test_data,3)
 end
 test_matrix = nanmean(test_correl,3);
 
-if opts.verbose
+%% Visualize the matrices
+if opts.verbose > 1
+    % Training data
     figure;
+    if length(old_model_dims) > 4
+        panel_dims = [ceil(sqrt(size(model_correl,3))),ceil(sqrt(size(model_correl,3)))];
+    else
+        panel_dims = [old_model_dims(3:end),1];
+    end
+    
+    layer_order = reshape(1:size(model_correl,3),panel_dims(1),panel_dims(2))';
+    for panel_idx = 1:numel(layer_order)
+        %disp(['Plotting layer ' num2str(layer_order(panel_idx))]);
+        subplot(panel_dims(1),panel_dims(2),panel_idx);
+        imagesc(model_correl(:,:,layer_order(panel_idx)))
+        title(['Layer ' num2str(layer_order(panel_idx))])
+        xticklabels([])
+        yticklabels([])
+        caxis([-.5,.5])
+        colorbar('hot')
+    end
+end
+if opts.verbose
+    figure();
+    % Training data
+    subplot(1,2,1)
+    imagesc(training_matrix)
+    title('Training Data')
+    xticklabels(model_labels)
+    yticklabels(model_labels)
+    caxis([min(min(tril(training_matrix,-1))),max(max(tril(training_matrix,-1)))])
+    colorbar('hot')
+    [i, j, ~] = find(~isnan(training_matrix));
+    text(i-.3,j,num2str(round(training_matrix(~isnan(training_matrix)),2)));
+    
+    % Test data
+    subplot(1,2,2)
     imagesc(test_matrix)
+    title('Test Data')
     xticklabels(test_labels)
     yticklabels(test_labels)
-    caxis([-0.5,0.5])
+    caxis([min(min(tril(test_matrix,-1))),max(max(tril(test_matrix,-1)))])
     colorbar('hot')
     [i, j, ~] = find(~isnan(test_matrix));
     text(i-.3,j,num2str(round(test_matrix(~isnan(test_matrix)),2)));
@@ -99,7 +133,6 @@ end
 
 %% Save out the classification results based on greatest correlation coefficient for each test pattern
 % Initialize empty cell matrix for classifications
-classification = cell(size(test_data,1),1);
 
 if ~isfield(opts,'pairwise') || ~opts.pairwise
     
@@ -128,11 +161,13 @@ if ~isfield(opts,'pairwise') || ~opts.pairwise
     [rating, best_perm] = max(results_of_comparisons);
     classification = model_classes(list_of_comparisons(best_perm,:));
     
-    accuracy = strcmp(classification,test_labels);
+    %accuracy = strcmp(classification,test_labels);
     comparisons = test_labels;
     
 else
     [accuracy, comparisons] = pairwise_rsa_test(test_matrix,training_matrix);
-    
-    %to-do: figure out how to create output-able data here.
+    classification = comparisons;
+    classification(~accuracy,:) = classification(~accuracy,end:-1:1);
+    classification = model_classes(classification);
+    comparisons = model_classes(comparisons);
 end
