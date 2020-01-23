@@ -276,16 +276,21 @@ for s_idx = 1:length(mcpa_summ.incl_subjects)
         subj_data = mcpa_summ.patterns(:,:,:,s_idx);
         subj_labels = mcpa_summ.event_types;
         
-        [test_labels comparisons] = p.Results.test_handle(...
+        [test_labels, comparisons] = p.Results.test_handle(...
             group_data,...
             group_labels,...
             subj_data,...
             subj_labels,...
             p.Results.opts_struct);
-        subj_acc = strcmp(test_labels(:,1),comparisons(:,1));
         
         % Record the results into the results struct
-        if iscell(comparisons), comparisons = cellfun(@(x) find(strcmp(x,mcpa_summ.event_types)),comparisons); end
+        if iscell(comparisons)
+            subj_acc = strcmp(test_labels(:,1),comparisons(:,1));
+            comparisons = cellfun(@(x) find(strcmp(x,mcpa_summ.event_types)),comparisons); 
+        else
+            subj_acc = test_labels(:,1)==comparisons(:,1);
+        end
+
         for comp = 1:size(comparisons,1)
             if size(comparisons,2)==1
                 allsubj_results.accuracy_matrix(comparisons(comp,1),:,s_idx) = subj_acc(comp);
