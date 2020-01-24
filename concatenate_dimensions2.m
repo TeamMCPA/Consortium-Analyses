@@ -13,10 +13,10 @@ old_pattern_size = size(patterns);
 % of the concatenated dimensions
 new_dimension_size = prod(old_pattern_size(concat_dims));
 
-% Keep dimensions are the dimensions preserved from the original pattern
+% Keep dimensions that are dimensions preserved from the original pattern
 % matrix and not concatenated.
 keep_dims = 1:ndims(patterns);
-% Remove the dimensions that will be concatenated
+% Remove the dimensions that will be concatenated from keep_dims list
 [~, drop_dims, ~] = intersect(keep_dims,concat_dims);
 keep_dims(drop_dims) = [];
 
@@ -25,4 +25,9 @@ patterns = permute(patterns,[keep_dims, concat_dims]);
 
 % Reshape the patterns matrix to stack up the concatenated dimensions
 new_patterns = reshape(patterns,[old_pattern_size(keep_dims),new_dimension_size]);
-new_dimensions = [keep_dims, concat_dims];
+
+
+%% Below here is basically nonsense
+new_dimensions = [num2cell(keep_dims), {num2str(concat_dims)}];
+% also might want to repermute the order of dimensions again somehow if
+% there's a prescribed order that we're expecting on the output side?
