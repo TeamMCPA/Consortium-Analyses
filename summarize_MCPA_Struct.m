@@ -2,10 +2,28 @@ function summarized_MCPA_struct = summarize_MCPA_Struct(summary_function,MCPA_st
 %SUMMARIZE_MCPA_STRUCT Convert an MCPA struct of windowed data to
 %multivariate patterns using any summarizing function, such as nanmean.
 
+
+%% Convert the inputs to correct format
+% Convert summary function into a function handle
 if ischar(summary_function)
     summary_function = str2func(summary_function);
 elseif iscell(summary_function)
     summary_function = str2func(summary_function{:});
+end
+
+% Convert summarize_dimensions into cell array
+if ischar(summarize_dimensions)
+    warning('Please provided cell array of dimensions to summarize. Automatically converting...')
+    summarize_dimensions = {summarize_dimensions};
+elseif isnumeric(summarize_dimensions)
+    warning('Please provided cell array of dimensions to summarize. Looking up dimension names in MCPA''s dimensions field...')
+    if ~isfield(MCPA_struct,'dimensions')
+        warning('No ''dimension'' field found in MCPA struct, so no dimension labels available. Assigning numeric labels.')
+        MCPA_struct.dimensions = cellfun(@(x) strcat('PatternDim',x), cellfun(@num2str, num2cell(1:ndims(MCPA_struct.patterns)),'UniformOutput',false),'UniformOutput',false);
+    end
+    summarize_dimensions = MCPA_struct.dimensions(summarize_dimensions);
+    dim_str = join(summarize_dimensions,', ');
+    fprintf('Converted numeric dimension indices to: %s', dim_str{:})
 end
 
 %% create copy of dimensions and of pattern matrix
