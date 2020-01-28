@@ -102,9 +102,13 @@ if ~isempty(p.Results.summarize_dimensions) || ~isfield(p.Results, 'summarize_di
 else
     isWithinSubjects = false;
     warning('summarize_dimensions not specified. Consulting recommend_summarize_dimensions.')
-    summarize_dimensions = recommend_summarize_dimensions(p.Results, isWithinSubjects);
+    
+    [summarize_dimensions, final_dimensions] = recommend_dimensions(p.Results, isWithinSubjects);
+    
     fprintf('Summarizing dimensions with %s:\n',func2str(p.Results.summary_handle))
     fprintf('%s ',summarize_dimensions{:})
+    fprintf('\n')
+    fprintf('The format the data will be in when it enters the classifier wrapper is: %s', final_dimensions{:});
     fprintf('\n')
 end
 
@@ -144,7 +148,9 @@ allsubj_results = create_results_struct(false,...
     n_chan,...
     n_cond);
 
-allsubj_results.test_type = 'between'; % set this flag for later use in permutation tests
+stack = dbstack;
+current_folding_function = stack.name;
+allsubj_results.test_type = current_folding_function;
 
 %% Begin the n-fold process: Select one test subj at a time from MCPA struct
 for s_idx = 1:length(mcpa_summ.incl_subjects)
@@ -153,16 +159,6 @@ for s_idx = 1:length(mcpa_summ.incl_subjects)
         fprintf('Running %g feature subsets for Subject %g / %g',n_sets,s_idx,n_subj);
     end
     tic;
-    
-    
-    %% Extract training and testing data
-    group_subvec = 1:length(mcpa_summ.incl_subjects);
-    group_subvec(s_idx) = [];
-    
-    % Set logical flags for indexing the conditions that will be compared.
-    % Loop through the whole list of conditions and create flags for each.
-    cond_flags = cell(n_cond,1); % These are, for the moment, empty
-    
     
     %% Run over channel subsets
     temp_set_results_cond = nan(n_cond,n_sets,n_chan);
@@ -177,114 +173,86 @@ for s_idx = 1:length(mcpa_summ.incl_subjects)
     % structures. This works for our previous MCPA studies, but might
     % not be appropriate for other classifiers (like SVM).
     
-    %% Two conditions
-    % This block should work with most classifiers, provided adequate
-    % data are available. We are making the assumption that
-    % subject-level averages are the granularity of data that will be
-    % both trained and tested.
     
-    if n_cond==2
-        [group_data, group_labels, subj_data, subj_labels] = split_data(s_idx,...
-            cond_flags,...
-            p.Results,...
-            n_cond,...
-            mcpa_summ.patterns,...
-            group_subvec,...
-            [],...
-            [],...
-            [],...
-            [],...
-            mcpa_summ.event_types);
+    [group_data, group_labels, subj_data, subj_labels] = split_test_and_train(s_idx,...
+        p.Results.conditions,...
+        mcpa_summ.patterns,...
+        mcpa_summ.event_types,...
+        final_dimensions,...
+        mcpa_summ.dimensions);
         
+      
+    %% Run classifier and compare output with correct labels
+    for set_idx = 1:min(n_sets,p.Results.max_sets)
+        %% Progress reporting bit (not important to function. just sanity)
+        % Report at every 5% progress
+        if p.Results.verbose
+            status_jump = floor(n_sets/20);
+            if ~mod(set_idx,status_jump)
+                fprintf(' .')
+            end
+        end
+        % Select the channels for this subset
+        set_chans = sets(set_idx,:);
+
+        %% classify
+        % call differently based on if we do RSA or not
         
-        %% Run classifier and compare output with correct labels
-        for set_idx = 1:min(n_sets,p.Results.max_sets)
-            %% Progress reporting bit (not important to function. just sanity)
-            % Report at every 5% progress
-            if p.Results.verbose
-                status_jump = floor(n_sets/20);
-                if ~mod(set_idx,status_jump)
-                    fprintf(' .')
+        % RSA
+        if strcmp(func2str(p.Results.test_handle),'pairwise_rsa_test')
+            [test_labels, comparisons] = p.Results.test_handle(...
+                group_data(:,set_chans,:), ...
+                group_labels,...
+                subj_data(:,set_chans,:),...
+                p.Results.opts_struct);
+
+        else
+            [test_labels, comparisons] = p.Results.test_handle(...
+                    group_data(:,set_chans), ...
+                    group_labels,...
+                    subj_data(:,set_chans),...
+                    p.Results.opts_struct);
+        end
+
+           
+       %% Record results 
+        if size(test_labels,2) > 1 % test labels will be a column vector if we don't do pairwise
+            if s_idx==1 && set_idx == 1, allsubj_results.accuracy_matrix = nan(n_cond,n_cond,min(n_sets,p.Results.max_sets),n_subj); end
+
+            if iscell(comparisons)
+                subj_acc = strcmp(test_labels(:,1),comparisons(:,1));
+                comparisons = cellfun(@(x) find(strcmp(x,mcpa_summ.event_types)),comparisons); 
+            else
+                subj_acc = test_labels(:,1)==comparisons(:,1);
+            end
+
+            for comp = 1:size(comparisons,1)
+                if size(comparisons,2)==1
+                    allsubj_results.accuracy_matrix(comparisons(comp,1),:,set_idx,s_idx) = subj_acc(comp);
+                else
+                    allsubj_results.accuracy_matrix(comparisons(comp,1),comparisons(comp,2),set_idx,s_idx) = subj_acc(comp);
                 end
             end
-            % Select the channels for this subset
-            set_chans = sets(set_idx,:);
-            
-            %% classify
-            
-            temp_test_labels = p.Results.test_handle(...
-                group_data(:,set_chans), ...
-                group_labels,...
-                subj_data(:,set_chans),...
-                p.Results.opts_struct);
-            
-            % Compare the labels output by the classifier to the known labels
-            temp_acc1 = cellfun(@strcmp,...
-                subj_labels(strcmp(strjoin(string(p.Results.conditions{1}),'+'),subj_labels)),... % known labels
-                temp_test_labels(strcmp(strjoin(string(p.Results.conditions{1}),'+'),subj_labels))...% classifier labels
+        else
+            for cond_idx = 1:n_cond
+                temp_acc = cellfun(@strcmp,...
+                subj_labels(strcmp(strjoin(string(p.Results.conditions{cond_idx}),'+'),subj_labels)),... % known labels
+                temp_test_labels(strcmp(strjoin(string(p.Results.conditions{cond_idx}),'+'),subj_labels))...% classifier labels
                 );
-            temp_acc2 = cellfun(@strcmp,...
-                subj_labels(strcmp(strjoin(string(p.Results.conditions{2}),'+'),subj_labels)),... % known labels
-                temp_test_labels(strcmp(strjoin(string(p.Results.conditions{2}),'+'),subj_labels))... % classifier labels
-                );
-            
-            % Temporary results from each set are stored in a n_sets x n_chan
-            % matrix, so that averaging can be done both across sets (to
-            % determine channel mean performance) and across channels (to
-            % determine set mean performance)
-            temp_set_results_cond(1,set_idx,set_chans) = nanmean(temp_acc1);
-            temp_set_results_cond(2,set_idx,set_chans) = nanmean(temp_acc2);
+
+                temp_set_results_cond(cond_idx,set_idx,set_chans) = nanmean(temp_acc);
+
+                allsubj_results.accuracy(cond_idx).subsetXsubj(:,s_idx) = nanmean(temp_set_results_cond(cond_idx,:,:),3);
+                allsubj_results.accuracy(cond_idx).subjXchan(s_idx,:) = nanmean(temp_set_results_cond(cond_idx,:,:),2);
+            end
         end
-        for cond_idx = 1:n_cond
-            allsubj_results.accuracy(cond_idx).subsetXsubj(:,s_idx) = nanmean(temp_set_results_cond(cond_idx,:,:),3);
-            allsubj_results.accuracy(cond_idx).subjXchan(s_idx,:) = nanmean(temp_set_results_cond(cond_idx,:,:),2);
+                  
+        %% Progress reporting
+        if p.Results.verbose
+            fprintf(' %0.1f mins\n',toc/60);
         end
-        
-        %% Multiple conditions
-        % A bit of complication for how this block should run. If we want
-        % an RSA-based classifier, we can either do the all-possible-2way
-        % comparisons approach OR we can try doing structural alignment of
-        % the whole test dataset (similarity structure) to the training
-        % dataset (another similarity structure), a la Zinszer et al.,
-        % 2016, Journal of Cognitive Neuroscience (fMRI-based translation).
-        %
-        % If we don't want to do RSA based (i.e., stay in channel or MNI
-        % space), then we need to ask whether we're doing all-possible-2way
-        % comparisons or some n-alternative-forced-choice test with chance
-        % performance at 1/n.
-        %
-        % No graceful way to handle these branching decisions yet.  We are
-        % also still making the assumption that subject-level averages are
-        % the granularity of data that will be both trained and tested.
-    else
-        % TO DO: Write the multiclass dispatcher here
-        %
-        % For now, just adapting the Neurophotonics script which has
-        % result-writing built into it. This is not a good long term
-        % solution because it breaks the modularity of the software
-        % (and does nothing to support n-fold for all the other
-        % possible classifiers we might want.
-        %allsubj_results = pairwise_rsa_leaveoneout(mcpa_summ.patterns);
-        
-        % On first fold, initialize the matrix for pairwise results
-        if s_idx==1, allsubj_results.accuracy_matrix = nan(n_cond,n_cond,n_subj); end
-        
-        % Perform the test for this fold (all possible pairs of conds)
-        [subj_acc, comparisons] = pairwise_rsa_test(mcpa_summ.patterns(:,:,s_idx),nanmean(mcpa_summ.patterns(:,:,group_subvec),3));
-        
-        % Record the results into the results struct
-        for comp = 1:size(comparisons,1)
-            allsubj_results.accuracy_matrix(comparisons(comp,1),comparisons(comp,2),s_idx) = subj_acc(comp);
-        end
-        
-    end
-    
-    
-    %% Progress reporting
-    if p.Results.verbose
-        fprintf(' %0.1f mins\n',toc/60);
-    end
-end
+    end % end set_idx loop
+end % end subject loop
 
 %% Visualization
 if p.Results.verbose
