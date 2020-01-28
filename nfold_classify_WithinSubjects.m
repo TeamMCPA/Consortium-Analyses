@@ -98,7 +98,7 @@ if ~isempty(p.Results.summarize_dimensions) || ~isfield(p.Results, 'summarize_di
     summarize_dimensions = p.Results.summarize_dimensions;
 else
     isWithinSubjects = true;
-    warning('summarize_dimensions not specified. Consulting recommend_summarize_dimensions.')
+    warning('summarize_dimensions not specified. Consulting recommend_dimensions.')
     
     [summarize_dimensions, final_dimensions] = recommend_dimensions(p.Results, isWithinSubjects);
     
