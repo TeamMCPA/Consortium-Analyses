@@ -103,11 +103,23 @@ else
     isWithinSubjects = false;
     warning('summarize_dimensions not specified. Consulting recommend_dimensions.')
     
-    [summarize_dimensions, final_dimensions] = recommend_dimensions(p.Results, isWithinSubjects);
+    [summarize_dimensions, ~] = recommend_dimensions(p.Results, isWithinSubjects);
     
     fprintf('Summarizing dimensions with %s:\n',func2str(p.Results.summary_handle))
     fprintf('%s ',summarize_dimensions{:})
     fprintf('\n')
+end
+
+% then see if the user specified the final dimensions the data should take
+% before going into classification
+if ~isempty(p.Results.final_dimensions) || ~isfield(p.Results, 'final_dimensions')
+    final_dimensions = p.Results.final_dimensions;
+else
+    isWithinSubjects = false;
+    warning('final_dimensions not specified. Consulting recommend_dimensions.')
+    
+    [~, final_dimensions] = recommend_dimensions(p.Results, isWithinSubjects);
+   
     fprintf('The format the data will be in when it enters the classifier wrapper is: %s', final_dimensions{:});
     fprintf('\n')
 end
