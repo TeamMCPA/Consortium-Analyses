@@ -25,6 +25,7 @@ addParameter(p,'norm_withinSessions', true, @islogical);
 addParameter(p, 'norm_function', @minMax_scale);
 addParameter(p, 'minMax', [0,1], @isnumeric);
 addParameter(p, 'summarize_dimensions', []);
+addParameter(p, 'final_dimensions', []);
 
 parse(p,varargin{:});
 
