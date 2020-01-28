@@ -37,14 +37,12 @@ if has_dims_to_concat
         train_data = concatenate_dimensions(pattern_data([cond_flags{:}],:,:,group_vec), to_concat);
     end
 else
-    fprintf('this happened')
+    
     if ndims(pattern_data) == 3
         train_data = pattern_data([cond_flags{:}],:,group_vec);
-                size(train_data)
 
     else
         train_data = pattern_data([cond_flags{:}],:,:,group_vec);
-        size(train_data)
     end
 end
 
