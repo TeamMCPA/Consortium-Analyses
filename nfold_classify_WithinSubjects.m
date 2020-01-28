@@ -97,7 +97,7 @@ mcpa_struct = MCP_to_MCPA(MCP_struct,...
 if ~isempty(p.Results.summarize_dimensions) || ~isfield(p.Results, 'summarize_dimensions')
     summarize_dimensions = p.Results.summarize_dimensions;
 else
-    isWithinSubjects = false;
+    isWithinSubjects = true;
     warning('summarize_dimensions not specified. Consulting recommend_dimensions.')
     
     [summarize_dimensions, ~] = recommend_dimensions(p.Results, isWithinSubjects);
@@ -112,7 +112,7 @@ end
 if ~isempty(p.Results.final_dimensions) || ~isfield(p.Results, 'final_dimensions')
     final_dimensions = p.Results.final_dimensions;
 else
-    isWithinSubjects = false;
+    isWithinSubjects = true;
     warning('final_dimensions not specified. Consulting recommend_dimensions.')
     
     [~, final_dimensions] = recommend_dimensions(p.Results, isWithinSubjects);
