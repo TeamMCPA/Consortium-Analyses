@@ -216,6 +216,7 @@ for s_idx = 1:length(mcpa_summ.incl_subjects)
                 group_data(:,set_chans,:), ...
                 group_labels,...
                 subj_data(:,set_chans,:),...
+                subj_labels,...
                 p.Results.opts_struct);
 
         else
@@ -223,6 +224,7 @@ for s_idx = 1:length(mcpa_summ.incl_subjects)
                     group_data(:,set_chans), ...
                     group_labels,...
                     subj_data(:,set_chans),...
+                    subj_labels,...
                     p.Results.opts_struct);
         end
 
@@ -232,10 +234,10 @@ for s_idx = 1:length(mcpa_summ.incl_subjects)
             if s_idx==1 && set_idx == 1, allsubj_results.accuracy_matrix = nan(n_cond,n_cond,min(n_sets,p.Results.max_sets),n_subj); end
 
             if iscell(comparisons)
-                subj_acc = strcmp(test_labels(:,1),comparisons(:,1));
+                subj_acc = nanmean(strcmp(test_labels(:,1,:), test_labels(:,2,:)));
                 comparisons = cellfun(@(x) find(strcmp(x,mcpa_summ.event_types)),comparisons); 
             else
-                subj_acc = test_labels(:,1)==comparisons(:,1);
+                subj_acc = nanmean(strcmp(test_labels(:,1,:), test_labels(:,2,:)));
             end
 
             for comp = 1:size(comparisons,1)
