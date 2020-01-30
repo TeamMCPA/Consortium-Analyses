@@ -68,8 +68,8 @@ p = parse_inputs(MCP_struct, varargin{:});
 % Determine how many sets will be generated. Can use this later for warning
 % messages or other branching. Sets variable turns into a huge memory hog.
 
-unmapped_sets = find_sets(p.Results);
-sets = map_values(p, unmapped_sets);
+unmapped_sets = find_feature_sets(p.Results);
+sets = map_features_to_sets(p, unmapped_sets);
 
 
 %% norm check - do we want to scale individual participant data?
