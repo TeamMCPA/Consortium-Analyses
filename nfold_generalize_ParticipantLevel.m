@@ -203,6 +203,7 @@ for s_idx = 1:length(mcpa_summ.incl_subjects)
     % using RSA methods. Then classifier is trained/tested on the RSA
     % structures. This works for our previous MCPA studies, but might
     % not be appropriate for other classifiers (like SVM).
+    
     [group_data, group_labels, subj_data, subj_labels] = split_test_and_train(s_idx,...
         p.Results.conditions,...
         mcpa_summ.patterns,...
@@ -211,7 +212,7 @@ for s_idx = 1:length(mcpa_summ.incl_subjects)
         mcpa_summ.dimensions,...
         mcpa_summ.test_events,...
         mcpa_summ.train_events);
-    
+
     for set_idx = 1:n_sets
             %% Progress reporting bit (not important to function. just sanity)
             % Report at every 5% progress
@@ -234,13 +235,15 @@ for s_idx = 1:length(mcpa_summ.incl_subjects)
             % output 'test_labels' will be a 1d cell array of predicted labels.
             % The output 'comparisons' will be a 1d array of the correct
             % labels.
-
+           
+            
             % RSA
             if strcmp(func2str(p.Results.test_handle),'pairwise_rsa_test')
                 [test_labels, comparisons] = p.Results.test_handle(...
                     group_data(:,set_features,:), ...
                     group_labels,...
                     subj_data(:,set_features,:),...
+                    subj_labels,...
                     p.Results.opts_struct);
 
             else
@@ -248,6 +251,7 @@ for s_idx = 1:length(mcpa_summ.incl_subjects)
                     group_data(:,set_features), ...
                     group_labels,...
                     subj_data(:,set_features),...
+                    subj_labels,...
                     p.Results.opts_struct);
             end
             
@@ -259,8 +263,8 @@ for s_idx = 1:length(mcpa_summ.incl_subjects)
                 if iscell(comparisons)
                     subj_acc = nanmean(strcmp(test_labels(:,1,:), test_labels(:,2,:)));
                     comparisons = cellfun(@(x) find(strcmp(x,unique(mcpa_summ.event_groups))),comparisons);
-                else  % FIX THE COMP THING DOWN HERE
-                    subj_acc(comp) = nanmean(strcmp(test_labels(:,1,:), test_labels(:,2,comp)));
+                else
+                    subj_acc = nanmean(strcmp(test_labels(:,1,:), test_labels(:,2,:)));
                 end
                 
                 for comp = 1:size(comparisons,1)
