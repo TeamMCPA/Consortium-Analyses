@@ -9,7 +9,9 @@ function p = parse_inputs(MCP_struct, varargin)
 % varargin: input to main function
 
 p = inputParser;
-addParameter(p,'incl_channels',[1:max(arrayfun(@(x) size(x.fNIRS_Data.Hb_data.Oxy,2),MCP_struct))],@isnumeric);
+
+% parameters used for all kinds of classifiers
+addParameter(p,'incl_features',[1:max(arrayfun(@(x) size(x.fNIRS_Data.Hb_data.Oxy,2),MCP_struct))],@isnumeric);
 addParameter(p,'incl_subjects',[1:length(MCP_struct)],@isnumeric);
 addParameter(p,'time_window',[2,6],@isnumeric);
 addParameter(p,'baseline_window',[-5 0],@isnumeric);
@@ -19,13 +21,20 @@ addParameter(p,'setsize',max(arrayfun(@(x) size(x.fNIRS_Data.Hb_data.Oxy,2),MCP_
 addParameter(p,'max_sets',1000000,@isnumeric);
 addParameter(p,'test_handle',@mcpa_classify);
 addParameter(p,'opts_struct',[],@isstruct);
-addParameter(p,'verbose',true,@islogical);
 addParameter(p,'norm_data', false, @islogical);
+addParameter(p,'verbose',true,@islogical);
+addParameter(p, 'summarize_dimensions', {});
+addParameter(p, 'final_dimensions', {});
+addParameter(p, 'pairwise', false, @islogical);
+
+% parameters used if norming the data
 addParameter(p,'norm_withinSessions', true, @islogical);
 addParameter(p, 'norm_function', @minMax_scale);
 addParameter(p, 'minMax', [0,1], @isnumeric);
-addParameter(p, 'summarize_dimensions', []);
-addParameter(p, 'final_dimensions', []);
+
+% parameters only used in nfold_generalize_ParticipantLevel
+addParameter(p,'cond_key',{});
+addParameter(p,'test_marks',{});
 
 parse(p,varargin{:});
 
