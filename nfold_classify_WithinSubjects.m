@@ -67,8 +67,8 @@ p = parse_inputs(MCP_struct, varargin{:});
 % Determine how many sets will be generated. Can use this later for warning
 % messages or other branching. Sets variable turns into a huge memory hog.
 
-unmapped_sets = find_feature_sets(p.Results);
-sets = map_features_to_sets(p, unmapped_sets);
+unmapped_sets = find_sets(p.Results);
+sets = map_values(p, unmapped_sets);
 
 
 %% norm check - do we want to scale individual participant data?
@@ -179,14 +179,39 @@ for s_idx = 1:length(MCP_struct)
         subject_patterns = mcpa_summ.patterns(:,:,:,s_idx);
     end
     
+    %% do we have more than one session to classify on?
+    % with current summarize dimensions, we can only proceed with
+    % classification for 1 session if we are using KNN, SVM, or logistic
+    % regression
     if n_sessions == 1
         %find something else for test train to be
-        n_reps = size(mcpa_summ.4);
+        fold_dim = ndims(subject_patterns);
+        num_data = size(subject_patterns,fold_dim);
+        
+        if ~isfield(p.Results, 'test_percent') || isempty(p.Results.test_percent)
+            test_percent = .2;
+        else
+            test_percent = p.Results.test_percent;
+        end
+        num_in_fold = num_data*test_percent;
+        num_folds = num_data/num_in_fold;
+        one_session = true;
+    else
+        num_folds = length(MCP_struct(s_idx).Experiment.Runs);
+        one_session = false;
     end
     
-    for folding_idx = 1:length(MCP_struct(s_idx).Experiment.Runs)
+    for folding_idx = 1:num_folds
         %% Run over feature subsets
         temp_set_results_cond = nan(n_cond,n_sets,n_feature);
+        
+        if one_session
+            fold_idx_end = folding_idx * num_in_fold;
+            fold_idx_start = fold_idx_end - num_in_fold + 1;
+            fold = fold_idx_start:fold_idx_end;
+        else
+            fold = folding_idx;
+        end
                 
          %% Folding & Dispatcher: Here's the important part
         % Right now, the data have to be treated differently for 2
@@ -198,7 +223,7 @@ for s_idx = 1:length(MCP_struct)
         % structures. This works for our previous MCPA studies, but might
         % not be appropriate for other classifiers (like SVM).
         
-        [group_data, group_labels, subj_data, subj_labels] = split_test_and_train(folding_idx,...
+        [group_data, group_labels, subj_data, subj_labels] = split_test_and_train(fold,...
             p.Results.conditions,...
             subject_patterns,...
             mcpa_summ.event_types,...
@@ -285,9 +310,6 @@ end % end subject loop
 
 
 end % end function
-            
-
-            
             
 
             
