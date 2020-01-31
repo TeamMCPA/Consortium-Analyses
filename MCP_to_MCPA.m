@@ -90,7 +90,7 @@ stopidx = arrayfun(@(x) arrayfun(@(s) max(s.Index), x.Experiment.Runs),mcp_multi
 num_events = nan(length(mcp_multiple), max_num_sessions);
 for subj = 1:length(mcp_multiple)
     for session = 1:length(mcp_multiple(subj).Experiment.Runs)
-       num_events(session,subj) = max(sum(mcp_multiple(subj).fNIRS_Data.Onsets_Matrix(startidx{subj}(session):stopidx{subj}(session),:))); 
+       num_events(subj,session) = max(sum(mcp_multiple(subj).fNIRS_Data.Onsets_Matrix(startidx{subj}(session):stopidx{subj}(session),:))); 
     end
 end
 num_repetitions = max(num_events,[],'all');
