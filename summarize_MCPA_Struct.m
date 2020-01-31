@@ -72,9 +72,18 @@ for curr_dim = 1:length(summarize_dimensions)
     end
 end
 dimension_labels = dimension_labels(~cellfun('isempty',dimension_labels));
-summarized_MCPA_struct_pattern = squeeze(pattern_matrix);
 
-
+if ~isempty(strcmp('session', dimension_labels))
+    session_idx = find(strcmp('session', dimension_labels));
+    s = size(pattern_matrix);
+    if s(session_idx) == 1 % we don't want to loose this dimension if it is 1
+        to_remove = s ~= 1;
+        to_remove(session_idx) = 1;
+        summarized_MCPA_struct_pattern = reshape(pattern_matrix,s(to_remove));
+    else
+        summarized_MCPA_struct_pattern = squeeze(pattern_matrix);
+    end
+end       
 
 %% Return the new struct
 try
