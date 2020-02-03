@@ -12,26 +12,26 @@ function [summarize_dimensions, final_dimensions] = recommend_dimensions(results
 if strcmp(func2str(results_struct.test_handle),'mcpa_classify')
     if isWithinSubjects
         summarize_dimensions = {'repetition', 'time'}; 
-        final_dimensions = {'conditionXsessionXsubject', 'channel'};
+        final_dimensions = {'conditionXsessionXsubject', 'feature'};
     else
         summarize_dimensions = {'repetitionXsession', 'repetition+session', 'time'};
-        final_dimensions = {'conditionXsubject', 'channel'};
+        final_dimensions = {'conditionXsubject', 'feature'};
     end    
 elseif strcmp(func2str(results_struct.test_handle),'rsa_classify')
     if isWithinSubjects
         summarize_dimensions = {'repetition', 'time'}; 
-        final_dimensions = {'condition', 'channel', 'session'};
+        final_dimensions = {'condition', 'feature', 'session'};
     else
         summarize_dimensions = {'repetition', 'time'}; 
-        final_dimensions = {'condition', 'channel', 'sessionXsubject'};
+        final_dimensions = {'condition', 'feature', 'sessionXsubject'};
     end
 else
     if isWithinSubjects
         summarize_dimensions = {'time'};
-        final_dimensions = {'conditionXrepetitionXsession', 'channel'};
+        final_dimensions = {'conditionXrepetitionXsession', 'feature'};
     else
         summarize_dimensions = {'repetitionXsession', 'time'};
-        final_dimensions = {'conditionXrepetition+sessionXsubject', 'channel'};
+        final_dimensions = {'conditionXrepetition+sessionXsubject', 'feature'};
     end     
 end
 end
