@@ -1,14 +1,14 @@
-function [event_matrix] = MCP_get_subject_events(mcp_struct, channels, time_window, event_types, base_window, session_index)
+function [event_matrix] = MCP_get_subject_events(mcp_struct, features, time_window, event_types, base_window, session_index)
 
 %MCP_GET_SUBJECT_EVENTS Returns a matrix that contains HbO data for target 
-%subject in each type, channel, time, and type repetition.
+%subject in each type, feature, time, and type repetition.
 %
 % First we construct the index matrix that contains specific index of event
 % onsets in the hemoglobin data. Then use the index matrix to find 
 % corresponding windows of hemoglobin data and copy them to the output.
 %
 % Output:
-% event_matrix: time x channel x rep x condition
+% event_matrix: time x feature x rep x condition
 %
 % Chengyu Deng & Benjamin Zinszer 5 may 2017
 % revised bdz 29 aug 2019
@@ -26,7 +26,7 @@ end
 if length(mcp_struct)>1
     event_matrix = cell(length(mcp_struct),1);
     for subj_num = 1:length(mcp_struct)
-        event_matrix{subj_num} = MCP_get_subject_events(mcp_struct(subj_num), channels, time_window, event_types);
+        event_matrix{subj_num} = MCP_get_subject_events(mcp_struct(subj_num), features, time_window, event_types);
     end
     return
 end
@@ -35,7 +35,7 @@ end
 % find the location of hemoglobin data for this session
 session_locs = mcp_struct.Experiment.Runs(session_index).Index';
 % Extract hemoglobin data and marks from the MCP struct
-hemo_timeser = mcp_struct.fNIRS_Data.Hb_data.Oxy(session_locs, channels);
+hemo_timeser = mcp_struct.fNIRS_Data.Hb_data.Oxy(session_locs, features);
 marks_vec = mcp_struct.fNIRS_Data.Onsets_Matrix(session_locs,:);
 
 % Handle different type of marks vector
@@ -83,9 +83,9 @@ Fs_val = mcp_struct.fNIRS_Data.Sampling_frequency;
 time_window_samp = round(time_window.*Fs_val); % converting time (s) to number of samples
 base_window_samp = round(base_window.*Fs_val); % converting time (s) to number of samples
 
-% The output matrix setup(time x channels x type repetition x types)
+% The output matrix setup(time x features x type repetition x types)
 num_samps = max(time_window_samp) - min(time_window_samp) + 1;
-event_matrix = nan(num_samps, length(channels), size(marks_mat, 1), length(event_types));
+event_matrix = nan(num_samps, length(features), size(marks_mat, 1), length(event_types));
 %%
 for type_i = 1 : length(event_types)
     
