@@ -27,6 +27,9 @@ addParameter(p, 'summarize_dimensions', {});
 addParameter(p, 'final_dimensions', {});
 addParameter(p, 'pairwise', false, @islogical);
 
+% for within subjects decoding with 1 session
+addParameter(p, 'test_percent', []);
+
 % parameters used if norming the data
 addParameter(p,'norm_withinSessions', true, @islogical);
 addParameter(p, 'norm_function', @minMax_scale);
