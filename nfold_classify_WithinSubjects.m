@@ -286,7 +286,7 @@ for s_idx = 1:n_subj
                     for cond_idx = 1:n_cond
                         temp_acc = cellfun(@strcmp,...
                         subj_labels(strcmp(strjoin(string(p.Results.conditions{cond_idx}),'+'),subj_labels)),... % known labels
-                        temp_test_labels(strcmp(strjoin(string(p.Results.conditions{cond_idx}),'+'),subj_labels))...% classifier labels
+                        test_labels(strcmp(strjoin(string(p.Results.conditions{cond_idx}),'+'),subj_labels))...% classifier labels
                         );
                     
                         temp_set_results_cond(cond_idx,set_idx,set_features) = nanmean(temp_acc);
