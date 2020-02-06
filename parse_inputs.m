@@ -29,7 +29,10 @@ addParameter(p, 'final_dimensions', {});
 % for within subjects decoding with 1 session
 addParameter(p, 'test_percent', []);
 
-
+% parameters for working in different feature spaces
+addParameter(p, 'feature_space', 'channel_space', @ischar);
+addParameter(p, 'incl_features', [1:max(arrayfun(@(x) size(x.fNIRS_Data.Hb_data.Oxy,2),MCP_struct))],@isnumeric); 
+ 
 % parameters used if norming the data
 addParameter(p,'norm_withinSessions', true, @islogical);
 addParameter(p, 'norm_function', @minMax_scale);
