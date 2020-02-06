@@ -1,4 +1,6 @@
-function summarized_MCPA_struct = summarize_MCPA_Struct(summary_function,MCPA_struct, summarize_dimensions)
+function 
+
+d_MCPA_struct = summarize_MCPA_Struct(summary_function,MCPA_struct, summarize_dimensions)
 %SUMMARIZE_MCPA_STRUCT Convert an MCPA struct of windowed data to
 %multivariate patterns using any summarizing function, such as nanmean.
 
@@ -92,6 +94,7 @@ try
     summarized_MCPA_struct.summarizing_function = summary_function;
     summarized_MCPA_struct.patterns = summarized_MCPA_struct_pattern;
     summarized_MCPA_struct.dimensions = dimension_labels;
+    summarized_MCPA_struct.summarize_dimensions = summarize_dimensions;
     fprintf(' Done.\n');
     
 catch
