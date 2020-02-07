@@ -39,17 +39,8 @@ model_classes = unique(model_labels(:),'stable');
 % correlating between conditions and then average the similarity structures
 % together into a single model.
 
-% First reshape the model data to concatenate all additional dimensions
-% besides the first two (presumed to be cond-x-chan)
-%old_model_dims = size(model_data);
-%model_data = reshape(...
-%    model_data,...
-%    size(model_data,1),...
-%    size(model_data,2),...
-%    numel(model_data)/(size(model_data,1)*size(model_data,2))...
-%    );
 
-% Next iterate through all the layers (3rd dimension) and create
+%  iterate through all the layers (3rd dimension) and create
 % correlation matrices
 model_correl = nan(size(model_data,1),size(model_data,1),size(model_data,3));
 for layer_idx = 1:size(model_data,3)
@@ -57,25 +48,14 @@ for layer_idx = 1:size(model_data,3)
 end
 training_matrix = nanmean(model_correl,3);
 
-% Transform the test_data into similiarty structures for each session by
-% correlating between conditions and then average the similarity structures
-% together into a single structure.
 
-% First reshape the test data to stack up all additional dimensions
-% besides the first two (presumed to be cond-x-chan)
-%old_test_dims = size(test_data);
-%test_data = reshape(...
-%    test_data,...
-%    size(test_data,1),...
-%    size(test_data,2),...
-%    numel(test_data)/(size(test_data,1)*size(test_data,2))...
-%    );
 
-% Next iterate through all the layers (3rd dimension) and create
+%  iterate through all the layers (3rd dimension) and create
 % correlation matrices
+
 test_correl = nan(size(test_data,1),size(test_data,1),size(test_data,3));
 for layer_idx = 1:size(test_data,3)
-    test_correl(:,:,layer_idx) = atanh(corr(test_data(:,:,layer_idx)','rows','pairwise','type','spearman'));
+    test_correl(:,:,layer_idx) = atanh(corr(test_data(:,:,layer_idx)','rows','pairwise','type',opts.corr_stat));
 end
 test_matrix = nanmean(test_correl,3);
 
@@ -162,7 +142,7 @@ if ~isfield(opts,'pairwise') || ~opts.pairwise
     classification = model_classes(list_of_comparisons(best_perm,:));
     
     %accuracy = strcmp(classification,test_labels);
-    comparisons = test_labels;
+    comparisons = test_labels';
     
 else
     [accuracy, comparisons] = pairwise_rsa_test(test_matrix,training_matrix);
@@ -170,4 +150,14 @@ else
     classification(~accuracy,:) = classification(~accuracy,end:-1:1);
     classification = model_classes(classification);
     comparisons = model_classes(comparisons);
+    
+    results_of_comparisons = cell(size(classification,2), 2, size(classification,1));
+    for comp = 1:size(classification,1)
+        results_of_comparisons(:,1,comp) = classification(comp,:)';
+        results_of_comparisons(:,2,comp) = comparisons(comp,:)';
+    end
+    
+    % classification will be a 3d cell array with dimensions: predicted labels x true labels x comparison index
+    classification = results_of_comparisons;
+    
 end
