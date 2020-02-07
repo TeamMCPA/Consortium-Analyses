@@ -111,22 +111,22 @@ for type_i = 1 : length(event_types)
         % available, extract the event_data (within the time_window) and
         % rebaseline_data (within the base_window). rebaseline_data are
         % then averaged, and the average is removed from the event_data
-        if marks_mat(event_j,type_i) + earliest_samp > 0 && ...
-            marks_mat(event_j,type_i) + latest_samp <= length(hemo_timeser)
+        if marks_mat(event_j,event_marks) + earliest_samp > 0 && ...
+            marks_mat(event_j,event_marks) + latest_samp <= length(hemo_timeser)
             
             % Grab the trial data (for this event) directly from the hemo
             % timeseries. It will be re-baselined momentarily.
             event_data = hemo_timeser(...
-                (marks_mat(event_j,type_i)+min(time_window_samp)) : ... % beginning of window
-                (marks_mat(event_j,type_i)+max(time_window_samp)) ...   % end of window
+                (marks_mat(event_j,event_marks)+min(time_window_samp)) : ... % beginning of window
+                (marks_mat(event_j,event_marks)+max(time_window_samp)) ...   % end of window
                 ,:);
             
             % Get the hemo data from one scan prior to stimulus onset and
             % use that as the baselining value.
             if ~isnan(base_window)
                 rebaseline_data = hemo_timeser(...
-                    (marks_mat(event_j,type_i)+min(base_window_samp)) : ...	% beginning of window
-                    (marks_mat(event_j,type_i)+max(base_window_samp)) ...   % end of window
+                    (marks_mat(event_j,event_marks)+min(base_window_samp)) : ...	% beginning of window
+                    (marks_mat(event_j,event_marks)+max(base_window_samp)) ...   % end of window
                     ,:);
             else
                 rebaseline_data = 0;
