@@ -12,7 +12,7 @@ function [summarize_dimensions, final_dimensions] = recommend_dimensions(results
 if strcmp(func2str(results_struct.test_handle),'mcpa_classify')
     if isWithinSubjects
         summarize_dimensions = {'repetition', 'time'}; 
-        final_dimensions = {'conditionXsessionXsubject', 'feature'};
+        final_dimensions = {'conditionXsession', 'feature'};
     else
         summarize_dimensions = {'repetitionXsession', 'repetition+session', 'time'};
         final_dimensions = {'conditionXsubject', 'feature'};
