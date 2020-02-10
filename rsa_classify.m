@@ -39,47 +39,66 @@ model_classes = unique(model_labels(:),'stable');
 % correlating between conditions and then average the similarity structures
 % together into a single model.
 
-
 %  iterate through all the layers (3rd dimension) and create
 % correlation matrices
-model_correl = nan(size(model_data,1),size(model_data,1),size(model_data,3));
-for layer_idx = 1:size(model_data,3)
-    model_correl(:,:,layer_idx) = atanh(corr(model_data(:,:,layer_idx)','rows','pairwise','type',opts.corr_stat));
+
+model_correl = nan(size(model_data,1),size(model_data,1),size(model_data,3),size(model_data,4));
+for subject_idx = 1:size(model_data,4)
+    for session_idx = 1:size(model_data,3)
+        model_correl(:,:,session_idx, subject_idx) = atanh(corr(model_data(:,:,session_idx,subject_idx)','rows','pairwise','type',opts.corr_stat));
+    end
 end
 training_matrix = nanmean(model_correl,3);
+training_matrix = nanmean(training_matrix,4);
 
 
 
 %  iterate through all the layers (3rd dimension) and create
 % correlation matrices
 
-test_correl = nan(size(test_data,1),size(test_data,1),size(test_data,3));
-for layer_idx = 1:size(test_data,3)
-    test_correl(:,:,layer_idx) = atanh(corr(test_data(:,:,layer_idx)','rows','pairwise','type',opts.corr_stat));
+test_correl = nan(size(test_data,1),size(test_data,1),size(test_data,3),size(test_data,4));
+for subject_idx = 1:size(test_data,4)
+    for session_idx = 1:size(test_data,3)
+        test_correl(:,:,session_idx, subject_idx) = atanh(corr(test_data(:,:,session_idx, subject_idx)','rows','pairwise','type',opts.corr_stat));
+    end
 end
 test_matrix = nanmean(test_correl,3);
+test_matrix = nanmean(test_matrix,4);
 
 %% Visualize the matrices
+
 if opts.verbose > 1
-    % Training data
-    figure;
-    if length(old_model_dims) > 4
-        panel_dims = [ceil(sqrt(size(model_correl,3))),ceil(sqrt(size(model_correl,3)))];
-    else
-        panel_dims = [old_model_dims(3:end),1];
+
+    plot_idx = 1;
+    figure
+    for subject_idx = 1:size(model_data,4)
+        for session_idx = 1:size(model_data,3)
+            subplot(size(model_data,3),size(model_data,4),plot_idx);
+            imagesc(model_correl(:,:,session_idx, subject_idx))
+            title(['Subject ' num2str(subject_idx) ' Session ' num2str(session_idx)])
+            xticklabels([])
+            yticklabels([])
+            caxis([-.5,.5])
+            colorbar('hot')
+            plot_idx = plot_idx + 1;
+        end
     end
     
-    layer_order = reshape(1:size(model_correl,3),panel_dims(1),panel_dims(2))';
-    for panel_idx = 1:numel(layer_order)
-        %disp(['Plotting layer ' num2str(layer_order(panel_idx))]);
-        subplot(panel_dims(1),panel_dims(2),panel_idx);
-        imagesc(model_correl(:,:,layer_order(panel_idx)))
-        title(['Layer ' num2str(layer_order(panel_idx))])
-        xticklabels([])
-        yticklabels([])
-        caxis([-.5,.5])
-        colorbar('hot')
+    plot_idx = 1;
+    figure
+    for subject_idx = 1:size(test_data,4)
+        for session_idx = 1:size(test_data,3)
+            subplot(2,2,plot_idx);
+            imagesc(model_correl(:,:,session_idx, subject_idx))
+            title(['Subject ' num2str(subject_idx) ' Session ' num2str(session_idx)])
+            xticklabels([])
+            yticklabels([])
+            caxis([-.5,.5])
+            colorbar('hot')
+            plot_idx = plot_idx + 1;
+        end
     end
+    
 end
 if opts.verbose
     figure();
@@ -157,7 +176,6 @@ else
         results_of_comparisons(:,2,comp) = comparisons(comp,:)';
     end
     
-    % classification will be a 3d cell array with dimensions: predicted labels x true labels x comparison index
     classification = results_of_comparisons;
     
 end
