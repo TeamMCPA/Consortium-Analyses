@@ -149,7 +149,8 @@ allsubj_results = create_results_struct(false,...
     n_subj,...
     n_sets,...
     n_feature,...
-    n_cond);
+    n_group,...
+    final_dimensions);
 
 stack = dbstack;
 current_folding_function = stack.name;
@@ -157,13 +158,15 @@ allsubj_results.test_type = current_folding_function;
 
 allsubj_results.groups = groups;
 allsubj_results.summary_handle = p.Results.summary_handle;
-allsubj_results.setsize = p.Results.setsize;
+allsubj_results.cond_key = p.Results.cond_key;
+allsubj_results.test_marks = p.Results.test_marks;
 
 
+% This renames the conditions for the accuracy field - currently create_results_struct operates as
+% though we're using all the conditions so it labels the accuracy fields as
+% baby 1, baby 2, etc. when we really want baby, bottle, etc. 
 for group_id = 1:n_group
     allsubj_results.accuracy(group_id).condition = allsubj_results.groups(group_id);
-    allsubj_results.accuracy(group_id).subjXfeature = nan(n_subj,n_feature);
-    allsubj_results.accuracy(group_id).subsetXsubj = nan(n_sets,n_subj);
 end
 
 
@@ -234,7 +237,6 @@ for s_idx = 1:n_subj
             % output 'test_labels' will be a 1d cell array of predicted labels.
             % The output 'comparisons' will be a 1d array of the correct
             % labels.
-           
             
             % RSA
             if strcmp(func2str(p.Results.test_handle),'rsa_classify')
@@ -281,7 +283,7 @@ for s_idx = 1:n_subj
                         test_labels(strcmp(string(groups{group_idx}),subj_labels))...% classifier labels
                         );
 
-                    temp_set_results_cond(cond_idx,set_idx,set_features) = nanmean(temp_acc);
+                    temp_set_results_cond(group_idx,set_idx,set_features) = nanmean(temp_acc);
                 end
                 for group_idx = 1:n_group
                     allsubj_results.accuracy(group_idx).subsetXsubj(:,s_idx) = nanmean(temp_set_results_cond(group_idx,:,:),3);
