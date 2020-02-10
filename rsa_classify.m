@@ -31,6 +31,11 @@ if ~exist('opts','var') || isempty(opts)
     opts.verbose = 0;
 end
 
+if ~isfield(opts, 'corr_stat')
+    opts.corr_stat = 'spearman';
+end
+    
+
 % Pull a list of all the unique classes / conditions, preserving order
 model_classes = unique(model_labels(:),'stable');
 
