@@ -31,11 +31,6 @@ if ~exist('opts','var') || isempty(opts)
     opts.verbose = 0;
 end
 
-if ~isfield(opts, 'corr_stat')
-    opts.corr_stat = 'spearman';
-end
-    
-
 % Pull a list of all the unique classes / conditions, preserving order
 model_classes = unique(model_labels(:),'stable');
 
@@ -47,25 +42,22 @@ model_classes = unique(model_labels(:),'stable');
 %  iterate through all the layers (3rd dimension) and create
 % correlation matrices
 
+
+
 model_correl = nan(size(model_data,1),size(model_data,1),size(model_data,3),size(model_data,4));
-for subject_idx = 1:size(model_data,4)
-    for session_idx = 1:size(model_data,3)
-        model_correl(:,:,session_idx, subject_idx) = atanh(corr(model_data(:,:,session_idx,subject_idx)','rows','pairwise','type',opts.corr_stat));
-    end
+
+for i = 1: (size(model_data,3)*size(model_data,4))
+  model_correl(:,:,i) = corr(model_data(:,:,i)');
 end
 training_matrix = nanmean(model_correl,3);
 training_matrix = nanmean(training_matrix,4);
-
-
 
 %  iterate through all the layers (3rd dimension) and create
 % correlation matrices
 
 test_correl = nan(size(test_data,1),size(test_data,1),size(test_data,3),size(test_data,4));
-for subject_idx = 1:size(test_data,4)
-    for session_idx = 1:size(test_data,3)
-        test_correl(:,:,session_idx, subject_idx) = atanh(corr(test_data(:,:,session_idx, subject_idx)','rows','pairwise','type',opts.corr_stat));
-    end
+for i = 1: (size(test_data,3)*size(test_data,4))
+  test_correl(:,:,i) = corr(test_data(:,:,i)');
 end
 test_matrix = nanmean(test_correl,3);
 test_matrix = nanmean(test_matrix,4);
