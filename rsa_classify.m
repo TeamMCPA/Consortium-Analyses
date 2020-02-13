@@ -11,8 +11,8 @@ function [classification, comparisons] = rsa_classify(model_data, model_labels, 
 %
 % If opts.tiebreak is set to true (default), the correlation coefficients
 % are randomly adjusted by <1% of the smallest observed difference to
-% prevent exact matches and thus prevent ties in the classification. If 
-% opts.tiebreak is set to false, the classifier will prefer classes 
+% prevent exact matches and thus prevent ties in the classification. If
+% opts.tiebreak is set to false, the classifier will prefer classes
 % appearing earlier in the training set.
 %
 % If opts.verbose is set to true (default is false), Fisher-adjusted
@@ -47,7 +47,7 @@ model_classes = unique(model_labels(:),'stable');
 model_correl = nan(size(model_data,1),size(model_data,1),size(model_data,3),size(model_data,4));
 
 for i = 1: (size(model_data,3)*size(model_data,4))
-  model_correl(:,:,i) = corr(model_data(:,:,i)');
+    model_correl(:,:,i) = corr(model_data(:,:,i)');
 end
 training_matrix = nanmean(model_correl,3);
 training_matrix = nanmean(training_matrix,4);
@@ -57,7 +57,7 @@ training_matrix = nanmean(training_matrix,4);
 
 test_correl = nan(size(test_data,1),size(test_data,1),size(test_data,3),size(test_data,4));
 for i = 1: (size(test_data,3)*size(test_data,4))
-  test_correl(:,:,i) = corr(test_data(:,:,i)');
+    test_correl(:,:,i) = corr(test_data(:,:,i)');
 end
 test_matrix = nanmean(test_correl,3);
 test_matrix = nanmean(test_matrix,4);
@@ -65,7 +65,7 @@ test_matrix = nanmean(test_matrix,4);
 %% Visualize the matrices
 
 if opts.verbose > 1
-
+    
     plot_idx = 1;
     figure
     for session_idx = 1:size(model_data,3)
@@ -86,7 +86,7 @@ if opts.verbose > 1
     for session_idx = 1:size(test_data,3)
         for subject_idx = 1:size(test_data,4)
             subplot(size(test_data,3),size(test_data,4),plot_idx);
-            imagesc(model_correl(:,:,session_idx, subject_idx))
+            imagesc(test_correl(:,:,session_idx, subject_idx))
             title(['Subject ' num2str(subject_idx) ' Session ' num2str(session_idx)])
             xticklabels([])
             yticklabels([])
@@ -105,7 +105,9 @@ if opts.verbose
     title('Training Data')
     xticklabels(model_labels)
     yticklabels(model_labels)
-    caxis([min(min(tril(training_matrix,-1))),max(max(tril(training_matrix,-1)))])
+    %caxis([min(min(tril(training_matrix,-1))),max(max(tril(training_matrix,-1)))])
+    caxis([-.5,.5])
+    
     colorbar('hot')
     [i, j, ~] = find(~isnan(training_matrix));
     text(i-.3,j,num2str(round(training_matrix(~isnan(training_matrix)),2)));
@@ -116,7 +118,8 @@ if opts.verbose
     title('Test Data')
     xticklabels(test_labels)
     yticklabels(test_labels)
-    caxis([min(min(tril(test_matrix,-1))),max(max(tril(test_matrix,-1)))])
+    %caxis([min(min(tril(test_matrix,-1))),max(max(tril(test_matrix,-1)))])
+    caxis([-.5,.5])
     colorbar('hot')
     [i, j, ~] = find(~isnan(test_matrix));
     text(i-.3,j,num2str(round(test_matrix(~isnan(test_matrix)),2)));
@@ -152,7 +155,7 @@ if ~isfield(opts,'pairwise') || ~opts.pairwise
         tmp_test_vec = tmp_test_matrix(logical(tril(ones(size(tmp_test_matrix)),-1)));
         results_of_comparisons(perm_idx) = corr(atanh(train_vec),atanh(tmp_test_vec),'rows','pairwise');
     end
-
+    
     % Choose the best of all the permutations of labels
     [rating, best_perm] = max(results_of_comparisons);
     classification = model_classes(list_of_comparisons(best_perm,:));
