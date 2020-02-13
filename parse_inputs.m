@@ -13,6 +13,7 @@ p = inputParser;
 % parameters used for all kinds of classifiers
 addParameter(p,'incl_channels',[1:max(arrayfun(@(x) size(x.fNIRS_Data.Hb_data.Oxy,2),MCP_struct))],@isnumeric);
 addParameter(p,'incl_subjects',[1:length(MCP_struct)],@isnumeric);
+addParameter(p,'incl_sessions',[1:max(arrayfun(@(x) length(x.Experiment.Runs),MCP_struct))],@isnumeric);
 addParameter(p,'time_window',[2,6],@isnumeric);
 addParameter(p,'baseline_window',[-5 0],@isnumeric);
 addParameter(p,'conditions',unique(cellstr(char(cellfun(@(x) char(x{:}), arrayfun(@(x) unique({x.Experiment.Conditions.Name},'stable'),MCP_struct, 'UniformOutput',false),'UniformOutput',false))),'stable'),@iscell);
