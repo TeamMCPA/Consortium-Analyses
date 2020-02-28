@@ -198,8 +198,5 @@ else
     
 end
 
-% put the labels back in the order they were put in as
-[~,reorder_test] = sort(test_order);
-classification = classification(reorder_test);
 
 end
