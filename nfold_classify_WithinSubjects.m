@@ -82,7 +82,12 @@ mcpa_struct = MCP_to_MCPA(MCP_struct,...
                          p.Results.incl_features,...
                          p.Results.time_window,...
                          p.Results.baseline_window);
-                     
+
+% Subset patterns by session
+inds = repmat({':'},1,ndims(mcpa_struct.patterns)); % Create index structure with all-elements in all-dimensions
+inds{strcmp(mcpa_struct.dimensions,'session')} = p.Results.incl_sessions; % In whichever dimension matches 'session', substitute the incl_sessions vector
+mcpa_struct.patterns = mcpa_struct.patterns(inds{:}); % Replace patterns matrix with the subsetted sessions data
+
 %% summarize MCPA struct
 % Step 2: Apply the desired function (e.g., @nanmean) for summarizing time
 % window data. You can write custom functions to deal with time- and
