@@ -47,7 +47,7 @@ model_classes = unique(model_labels(:),'stable');
 model_correl = nan(size(model_data,1),size(model_data,1),size(model_data,3),size(model_data,4));
 
 for i = 1: (size(model_data,3)*size(model_data,4))
-    model_correl(:,:,i) = corr(model_data(:,:,i)');
+    model_correl(:,:,i) = corr(model_data(:,:,i)', 'Type', opts.corr_stat);
 end
 training_matrix = nanmean(model_correl,3);
 training_matrix = nanmean(training_matrix,4);
@@ -57,7 +57,7 @@ training_matrix = nanmean(training_matrix,4);
 
 test_correl = nan(size(test_data,1),size(test_data,1),size(test_data,3),size(test_data,4));
 for i = 1: (size(test_data,3)*size(test_data,4))
-    test_correl(:,:,i) = corr(test_data(:,:,i)');
+    test_correl(:,:,i) = corr(test_data(:,:,i)', 'Type', opts.corr_stat);
 end
 test_matrix = nanmean(test_correl,3);
 test_matrix = nanmean(test_matrix,4);
@@ -164,7 +164,7 @@ if ~isfield(opts,'pairwise') || ~opts.pairwise
     comparisons = test_labels';
     
 else
-    [accuracy, comparisons] = pairwise_rsa_test(test_matrix,training_matrix);
+    [accuracy, comparisons] = pairwise_rsa_test(atanh(test_matrix),atanh(training_matrix));
     classification = comparisons;
     classification(~accuracy,:) = classification(~accuracy,end:-1:1);
     classification = model_classes(classification);
