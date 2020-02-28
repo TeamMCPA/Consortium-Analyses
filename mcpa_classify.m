@@ -61,7 +61,7 @@ end
 % 2. Run correlation over all of them, and get a the matrix of corr coeffs.
 % 3. First column is Model A vs. all others, Second column is Model B vs.
 %	all others, nth column is Model N vs. all others.
-corr_matrix2 = atanh(corr([model_patterns,test_data'],'type',opts.corr_stat,'rows','pairwise'));
+corr_matrix = atanh(corr([model_patterns,test_dat'],'type',opts.corr_stat,'rows','pairwise'));
 
 % Isolate the columns representing the model_patterns, and the rows
 % representing the test_data to get the correlations for each item
