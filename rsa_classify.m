@@ -34,6 +34,20 @@ end
 % Pull a list of all the unique classes / conditions, preserving order
 model_classes = unique(model_labels(:),'stable');
 
+%% check to see the orders of test and train data - this is to see if they match
+% get number of categories
+
+[~,train_order] = sort(model_labels);
+[~,test_order] = sort(test_labels);
+
+%% sort test data based on the re-ordered data
+test_labs = test_labels(test_order);
+test_dat = test_data(test_order, :,:,:);
+
+model_labs = model_labels(train_order);
+model_dat = model_data(train_order, :,:,:);
+
+
 %% Build similarity structures
 % Transform the model_data into similiarty structures for each session by
 % correlating between conditions and then average the similarity structures
@@ -42,12 +56,10 @@ model_classes = unique(model_labels(:),'stable');
 %  iterate through all the layers (3rd dimension) and create
 % correlation matrices
 
+model_correl = nan(size(model_dat,1),size(model_dat,1),size(model_data,3),size(model_dat,4));
 
-
-model_correl = nan(size(model_data,1),size(model_data,1),size(model_data,3),size(model_data,4));
-
-for i = 1: (size(model_data,3)*size(model_data,4))
-    model_correl(:,:,i) = corr(model_data(:,:,i)', 'Type', opts.corr_stat);
+for i = 1: (size(model_dat,3)*size(model_dat,4))
+    model_correl(:,:,i) = corr(model_dat(:,:,i)', 'type', opts.corr_stat);
 end
 training_matrix = nanmean(model_correl,3);
 training_matrix = nanmean(training_matrix,4);
@@ -55,9 +67,9 @@ training_matrix = nanmean(training_matrix,4);
 %  iterate through all the layers (3rd dimension) and create
 % correlation matrices
 
-test_correl = nan(size(test_data,1),size(test_data,1),size(test_data,3),size(test_data,4));
-for i = 1: (size(test_data,3)*size(test_data,4))
-    test_correl(:,:,i) = corr(test_data(:,:,i)', 'Type', opts.corr_stat);
+test_correl = nan(size(test_dat,1),size(test_dat,1),size(test_dat,3),size(test_dat,4));
+for i = 1: (size(test_dat,3)*size(test_dat,4))
+    test_correl(:,:,i) = corr(test_dat(:,:,i)', 'type', opts.corr_stat);
 end
 test_matrix = nanmean(test_correl,3);
 test_matrix = nanmean(test_matrix,4);
@@ -163,6 +175,12 @@ if ~isfield(opts,'pairwise') || ~opts.pairwise
     %accuracy = strcmp(classification,test_labels);
     comparisons = test_labels';
     
+    % put the labels back in the order they were put in as
+    [~,reorder_test] = sort(test_order);
+    classification = classification(reorder_test);
+    comparisons = comparisons(reorder_test);
+    
+    
 else
     [accuracy, comparisons] = pairwise_rsa_test(atanh(test_matrix),atanh(training_matrix));
     classification = comparisons;
@@ -178,4 +196,10 @@ else
     
     classification = results_of_comparisons;
     
+end
+
+% put the labels back in the order they were put in as
+[~,reorder_test] = sort(test_order);
+classification = classification(reorder_test);
+
 end
