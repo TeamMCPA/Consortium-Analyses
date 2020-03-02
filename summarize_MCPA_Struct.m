@@ -47,9 +47,12 @@ for curr_dim = 1:length(summarize_dimensions)
         try
             first_dim_to_concat = find(strcmp(dimension_labels,concat{1}));
             second_dim_to_concat = find(strcmp(dimension_labels,concat{2}));
-            [pattern_matrix, new_pattern_matrix_dimensions] = concatenate_dimensions(first_dim_to_concat,second_dim_to_concat,pattern_matrix);
-            dimension_labels = new_pattern_matrix_dimensions;
-            %summarize_dimensions{curr_dim} = strjoin(concat,'+');
+            pattern_matrix = concatenate_dimensions(pattern_matrix, [first_dim_to_concat,second_dim_to_concat]);
+            
+            % get the new dimensions
+            dimension_labels{first_dim_to_concat} = [dimension_labels{first_dim_to_concat}, '+', dimension_labels{second_dim_to_concat}];
+            dimension_labels{second_dim_to_concat} = [];
+            
         catch concat_error
             warning(concat_error.message)
             error('Failed to concatenate dimensions: %s', summarize_dimensions{curr_dim})
@@ -68,51 +71,20 @@ for curr_dim = 1:length(summarize_dimensions)
         end
     end
 end
+
+if ~isempty(strcmp('session', dimension_labels))
+    session_idx = find(strcmp('session', dimension_labels));
+    s = size(pattern_matrix);
+    if s(session_idx) == 1 % we don't want to loose this dimension if it is 1
+        to_remove = s ~= 1;
+        to_remove(session_idx) = 1;
+        summarized_MCPA_struct_pattern = reshape(pattern_matrix,s(to_remove));
+    else
+        summarized_MCPA_struct_pattern = squeeze(pattern_matrix);
+    end
+end    
+
 dimension_labels = dimension_labels(~cellfun('isempty',dimension_labels));
-summarized_MCPA_struct_pattern = squeeze(pattern_matrix);
-
-%% old approach
-% try
-%     for dim = 1:length(summarize_dimensions)
-%         concat = strsplit(summarize_dimensions{dim}, 'X');
-%         if length(concat) == 2
-%             first_dim_to_concat = find(strcmp(dimension_labels,concat{1}));
-%             second_dim_to_concat = find(strcmp(dimension_labels,concat{2}));
-%             [pattern_matrix, new_pattern_matrix_dimensions] = concatenate_dimensions(first_dim_to_concat,second_dim_to_concat,pattern_matrix);
-%             dimension_labels = new_pattern_matrix_dimensions;
-%         end
-%     end
-% catch dimension_error
-%     warning(dimension_error.message);
-%     error('Failed to concatenate these dimensions.');
-% end
-%
-% % Then average over the left over dimensions
-% try
-%     for dim = 1:length(summarize_dimensions)
-%         % skip over the concatenate arguments
-%         if length(strsplit(summarize_dimensions{dim}, 'X')) == 2
-%             continue;
-%         end
-%
-%         % average over the specified dimension
-%         dim_to_average = find(strcmp(dimension_labels, summarize_dimensions{dim}));
-%         pattern_matrix = summary_function(pattern_matrix,dim_to_average);
-%
-%         % Then keep track of remaining dimensions in list
-%         dimension_labels{dim_to_average} = [];
-%     end
-%
-%     % clean up dimension cell array
-%     dimension_labels = dimension_labels(~cellfun('isempty',dimension_labels));
-% catch averaging_error
-%     warning(averaging_error.message);
-%     error('Failed to successfully summarize MCPA_struct to a desired form. Cannot average over these dimensions');
-% end
-%
-% % Then get rid of all dimensions of length 1
-% summarized_MCPA_struct_pattern = squeeze(pattern_matrix);
-
 
 %% Return the new struct
 try
@@ -121,6 +93,7 @@ try
     summarized_MCPA_struct.summarizing_function = summary_function;
     summarized_MCPA_struct.patterns = summarized_MCPA_struct_pattern;
     summarized_MCPA_struct.dimensions = dimension_labels;
+    summarized_MCPA_struct.summarize_dimensions = summarize_dimensions;
     fprintf(' Done.\n');
     
 catch
@@ -130,4 +103,3 @@ end
 
 
 end
-

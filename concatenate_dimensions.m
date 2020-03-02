@@ -1,123 +1,48 @@
 
-function [new_patterns, new_dimensions] = concatenate_dimensions(first_concat_dim, second_concat_dim, patterns)
-%% This function creates a new folding dimension that is instances * subjects
-% For when we want to do between subjects decoding but also want to
-% maintain individual events
-% Input: 
-%   first_concat_dim = the first dimension we want in this concatenation.
-%   second_concat_dim = the second dimension we want in this concatenation.
-%   patterns = MCPA pattern matrix in the form time x condition x channel x
-%   repetition x session x subject
+function new_patterns = concatenate_dimensions(patterns, concat_dims, varargin)
 
-% Output: 
-%   new_patterns = the new pattern matrix with the concatenated
-%   dimensions. The new dimension will be in the place of the
-%   first_concat_dim and will be the size of
-%   first_concat_dim*second_concat_dim
-%   new_dimensions = a cell array of the new dimensions. The concatenated
-%   dimension is represented as 'first_concat_dim+second_concat_dim'.
-
-try
-    if first_concat_dim == 2 && second_concat_dim == 4
-        %% combine dimensions 2 and 4
-        new_patterns = nan(size(patterns,1),...
-                        (size(patterns,2)*size(patterns,4)),...
-                        size(patterns,3),...
-                        size(patterns,5),...
-                        size(patterns,6));
-
-        to_add = size(patterns,2);
-
-        for dim = 1:size(patterns,4)
-            start_idx = (to_add*dim) - to_add + 1;
-            stop_idx = to_add * dim;
-            new_patterns(:,start_idx:stop_idx,:,:,:) = squeeze(patterns(:,:,:,dim,:,:)); 
-        end
-        new_dimensions = {'time', 'condition+repetition','channel', 'session', 'subject'};
-
-    elseif first_concat_dim == 2 && second_concat_dim == 5
-        %% combine dimensions 2 and 5
-        new_patterns = nan(size(patterns,1),...
-                        (size(patterns,2)*size(patterns,5)),...
-                        size(patterns,3),...
-                        size(patterns,4),...
-                        size(patterns,6));
-
-        to_add = size(patterns,2);
-
-        for dim = 1:size(patterns,5)
-            start_idx = (to_add*dim) - to_add + 1;
-            stop_idx = to_add * dim;
-            new_patterns(:,start_idx:stop_idx,:,:,:) = squeeze(patterns(:,:,:,:,dim,:)); 
-        end
-        new_dimensions = {'time', 'condition+session', 'channel', 'repetition', 'subject'};
-
-    elseif first_concat_dim == 4 && second_concat_dim == 5
-        %% combine dimensions 4 and 5
-        new_patterns = nan(size(patterns,1),...
-                        size(patterns,2),...
-                        size(patterns,3),...
-                        (size(patterns,4)*size(patterns,5)),...
-                        size(patterns,6));
-
-        to_add = size(patterns,4);
-
-        for dim = 1:size(patterns,5)
-            start_idx = (to_add*dim) - to_add + 1;
-            stop_idx = to_add * dim;
-            new_patterns(:,:,:,start_idx:stop_idx,:) = squeeze(patterns(:,:,:,:,dim,:)); 
-        end
-        new_dimensions = {'time', 'condition', 'channel', 'repetition+session', 'subject'};
-    elseif first_concat_dim == 4 && second_concat_dim == 6
-        %% combine dimensions 4 and 6
-        new_patterns = nan(size(patterns,1),...
-                        size(patterns,2),...
-                        size(patterns,3),...
-                        (size(patterns,4)*size(patterns,6)),...
-                        size(patterns,5));
-
-        to_add = size(patterns,4);
-
-        for dim = 1:size(patterns,6)
-            start_idx = (to_add*dim) - to_add + 1;
-            stop_idx = to_add * dim;
-            new_patterns(:,:,:,start_idx:stop_idx,:) = squeeze(patterns(:,:,:,:,:,dim)); 
-        end
-        new_dimensions = {'time', 'condition', 'channel', 'repetition+subject', 'session'};
-    elseif first_concat_dim == 5 && second_concat_dim == 6
-        %% combine dimensions 5 and 6 
-        new_patterns = nan(size(patterns,1),...
-                        size(patterns,2),...
-                        size(patterns,3),...
-                        size(patterns,4),...
-                        (size(patterns,5)*size(patterns,6)));
-
-        to_add = size(patterns,5);            
-
-        for dim = 1:size(patterns,6)
-            start_idx = (to_add*dim) - to_add + 1;
-            stop_idx = to_add * dim;
-            new_patterns(:,:,:,:,start_idx:stop_idx) = squeeze(patterns(:,:,:,:,:,dim)); 
-        end
-        new_dimensions = {'time', 'condition', 'channel', 'repetition', 'session+subject'};
-    else
-        fprintf('Those dimensions cannot be concatenated.');
-    end
-catch
-    error('Cannot support this form of concatenation. Be sure pattern dimensions are in form of time x condition x channel x repetition x session x subject.')
+% In case somebody enters the dims as a list of arguments instead of a
+% single vector
+if nargin>2
+    concat_dims = [concat_dims, cell2mat(varargin)];
 end
+
+% Determine the current dimensions (used in reshape later)
+old_pattern_size = size(patterns);
+
+% Size of the new dimension will be the product of the sizes of all
+% of the concatenated dimensions
+new_dimension_size = prod(old_pattern_size(concat_dims));
+
+% Keep dimensions that are dimensions preserved from the original pattern
+% matrix and not concatenated.
+keep_dims = 1:ndims(patterns);
+% Remove the dimensions that will be concatenated from keep_dims list
+[~, drop_dims, ~] = intersect(keep_dims,concat_dims);
+keep_dims(drop_dims) = [];
+
+% Permute the patterns matrix to put the concatenated dimensions at the end
+patterns = permute(patterns,[keep_dims, concat_dims]);
+
+% Reshape the patterns matrix to stack up the concatenated dimensions
+new_patterns = reshape(patterns,[old_pattern_size(keep_dims),new_dimension_size]);
+
+% put back in proper order
+rearranged_dims = [keep_dims, concat_dims]; % this is what the dimensions currently look like - all concatenated dims are at the end
+
+amount_removed_dims = length(old_pattern_size) - ndims(new_patterns); % find how many dimensions we removed by looking at difference between the dimensions
+
+rearranged_dims((end-amount_removed_dims+1):end) = []; % rearranged_dims still has whatever dimensions we removed, so we remove those from our record keeping 
+
+if max(rearranged_dims) > length(rearranged_dims)
+    [~, idx] = max(rearranged_dims); % the maximum dimension is no longer the true max. meaning if we had 6 dimensions and went down to 5, we're still counting that 6th dimension as 6 and not 5
+    rearranged_dims(idx) = rearranged_dims(idx) - amount_removed_dims; % so we subtract
+end
+
+mapping = [rearranged_dims; 1:length(rearranged_dims)]; % this creates a map between what we think of as the rearranged dimensions and how matlab sees the rearranged dimensions (i.e. we see it as 1 2 3 5 4, matlab sees 1 2 3 4 5)
+[temp, order] = sort(mapping(1,:)); % sort out the rearranged dims so they are in increasing order
+sorted_dims = mapping(:,order); % use this rearrangement to tell matlab how to reshape our dimensions     
+
+new_patterns = permute(new_patterns, sorted_dims(2,:)); % reshape
     
 end
-
-
-
-
-
-
-
-
-
-
-
-
-

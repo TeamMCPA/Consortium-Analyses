@@ -1,11 +1,10 @@
-function sets = find_sets(results)
+function sets = find_feature_sets(results)
 %% check memory capacity and create all possible subsets
 % Arguments:
 % results: the results struct from parse_inputs - contains all parameters
     % for classification. Must be passed through as p.Results
     
-    
-n_all_sets = nchoosek(length(results.incl_channels), results.setsize);
+n_all_sets = nchoosek(length(results.incl_features), results.setsize);
 size_of_sets_inmem = n_all_sets*results.setsize*8+100;
 %% make sure we don
 try
@@ -26,10 +25,10 @@ if size_of_sets_inmem > 0.50*available_mem
         warning('Too many feature sets will cause memory problems. Randomly generating a subset.');
         sets = nan(results.max_sets,results.setsize);
         for i = 1:results.max_sets
-            sets(i,:) = randsample(results.incl_channels,results.setsize);
+            sets(i,:) = randsample(results.incl_features,results.setsize);
         end
     catch
-        error('Too many feature sets will cause memory problems. Reduce setsize or length of incl_channels.');
+        error('Too many feature sets will cause memory problems. Reduce setsize or length of incl_features.');
     end
     
 else
@@ -38,7 +37,7 @@ else
     end
     % Start by generating list of all sets
     tic;
-    sets = nchoosek(results.incl_channels,results.setsize);
+    sets = nchoosek(results.incl_features,results.setsize);
     if results.verbose
         fprintf('Done\n');
         toc
