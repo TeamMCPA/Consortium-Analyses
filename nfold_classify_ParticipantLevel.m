@@ -52,7 +52,7 @@ end
 
 
 %% Parse out the input data
-p = parse_inputs(MCP_struct, varargin{:});
+p = parse_inputs(MCP_struct, varargin{:});   
 
 %% Setting up the combinations of feature subsets
 % Create all possible subsets. If setsize is equal to the total number of
@@ -124,7 +124,7 @@ else
     warning('final_dimensions not specified. Consulting recommend_dimensions.')
     
     [~, final_dimensions] = recommend_dimensions(p.Results, isWithinSubjects);
-    
+
     fprintf('The format the data will be in when it enters the classifier wrapper is: %s', final_dimensions{:});
     fprintf('\n')
 end
@@ -189,14 +189,14 @@ for s_idx = 1:n_subj
     % using RSA methods. Then classifier is trained/tested on the RSA
     % structures. This works for our previous MCPA studies, but might
     % not be appropriate for other classifiers (like SVM).
-    
+
     [group_data, group_labels, subj_data, subj_labels] = split_test_and_train(s_idx,...
         p.Results.conditions,...
         mcpa_summ.patterns,...
         mcpa_summ.event_types,...
         final_dimensions,...
         mcpa_summ.dimensions, [], []);
-    
+
     
     %% Run classifier and compare output with correct labels
     for set_idx = 1:min(n_sets,p.Results.max_sets)
@@ -211,6 +211,7 @@ for s_idx = 1:n_subj
         % Select the features for this subset
         set_features = sets(set_idx,:);
         
+
         %% classify
         % call differently based on if we do RSA or not
         % if we do pairwise comparison, the result test_labels will be a 3d
@@ -242,8 +243,7 @@ for s_idx = 1:n_subj
                 subj_labels,...
                 p.Results.opts_struct);
         end
-        
-        %% Record results .
+%% Record results .
         if size(test_labels,2) > 1 % test labels will be a column vector if we don't do pairwise
             if s_idx==1 && set_idx == 1, allsubj_results.accuracy_matrix = nan(n_cond,n_cond,min(n_sets,p.Results.max_sets),n_subj); end
             
@@ -306,8 +306,5 @@ if p.Results.verbose
         
     end
 end
-
-
-
 
 end
