@@ -1,4 +1,4 @@
-function MCPA_struct = MCP_to_MCPA(mcp_multiple, incl_subjects, incl_features, time_window, baseline_window)
+function MCPA_struct = MCP_to_MCPA(mcp_multiple, incl_subjects, incl_features, incl_channels, time_window, baseline_window, feature_space)
 %MCP_TO_MCPA Convert MCP format data to MCPA_struct for analysis
 % The function is called with the following arguments:
 % MCP_to_MCPA(mcp_struct, incl_subjects, incl_features, time_window)
@@ -90,7 +90,7 @@ stopidx = arrayfun(@(x) arrayfun(@(s) max(s.Index), x.Experiment.Runs),mcp_multi
 num_events = nan(length(mcp_multiple), max_num_sessions);
 for subj = 1:length(mcp_multiple)
     for session = 1:length(mcp_multiple(subj).Experiment.Runs)
-       num_events(subj,session) = max(sum(mcp_multiple(subj).fNIRS_Data.Onsets_Matrix(startidx{subj}(session):stopidx{subj}(session),:))); 
+       num_events(session,subj) = max(sum(mcp_multiple(subj).fNIRS_Data.Onsets_Matrix(startidx{subj}(session):stopidx{subj}(session),:))); 
     end
 end
 num_repetitions = max(num_events,[],'all');
@@ -118,12 +118,20 @@ for subj_idx = 1 : length(incl_subjects)
         if no_mcp_file
         MCPA_struct.data_file{subj_idx} = [mcp_multiple(incl_subjects(subj_idx)).Experiment.Runs.Source_files]';
         end
+        
+        % will we be converting to brodmans areas?
+        if strcmp(feature_space, 'brodmanns_areas')
+            transformation_matrix = mapChanneltoROI(length(incl_channels), length(incl_features), subj_idx, session_idx);
+        else
+            transformation_matrix = eye(length(incl_channels));
+        end
 
         % Event_matrix format:
         % (time x features x repetition x types)
-        event_matrix = MCP_get_subject_events(mcp_multiple(incl_subjects(subj_idx)), incl_features, time_window, event_types, baseline_window, session_idx);
+        event_matrix = MCP_get_subject_events(mcp_multiple(incl_subjects(subj_idx)), incl_features, incl_channels, time_window, event_types, baseline_window, session_idx, transformation_matrix);
         event_matrix = permute(event_matrix, [1 4 2 3]);
 
+       
         subj_time_samps = size(event_matrix,1);
         if subj_time_samps == num_time_samps
             repetitions_in_session = size(event_matrix,4);
@@ -133,8 +141,9 @@ for subj_idx = 1 : length(incl_subjects)
             time_mask = round(linspace(1,num_time_samps,subj_time_samps));
             % Output format: subj_mat(time_window x event_types x features x repetition x subjects)
             subj_mat(time_mask, :, :,1:repetitions_in_session, session_idx, subj_idx) = event_matrix;
-
         end
+
+        
     end
     
 end
