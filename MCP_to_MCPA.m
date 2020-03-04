@@ -120,7 +120,7 @@ for subj_idx = 1 : length(incl_subjects)
         end
         
         % will we be converting to brodmans areas?
-        if strcmp(feature_space, 'brodmanns_areas')
+        if strcmp(feature_space, 'ROI_space')
             transformation_matrix = mapChanneltoROI(length(incl_channels), length(incl_features), subj_idx, session_idx);
         else
             transformation_matrix = eye(length(incl_channels));
