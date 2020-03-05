@@ -24,6 +24,7 @@ function [classification, comparisons] = rsa_classify(model_data, model_labels, 
 %% If the options struct is not provided, set default parameters
 if ~exist('opts','var') || isempty(opts)
     opts = struct;
+    opts.similarity_space = 'corr';
     opts.corr_stat = 'spearman';
     opts.exclusive = true;
     opts.pairwise = false;
@@ -56,23 +57,36 @@ model_dat = model_data(train_order, :,:,:);
 %  iterate through all the layers (3rd dimension) and create
 % correlation matrices
 
-model_correl = nan(size(model_dat,1),size(model_dat,1),size(model_data,3),size(model_dat,4));
-
-for i = 1: (size(model_dat,3)*size(model_dat,4))
-    model_correl(:,:,i) = corr(model_dat(:,:,i)', 'type', opts.corr_stat);
+if ~isfield(opts, 'similarity_space') || strcmp(opts.similarity_space, 'corr')
+    model_mat = nan(size(model_dat,1),size(model_dat,1),size(model_data,3),size(model_dat,4));
+    for i = 1: (size(model_dat,3)*size(model_dat,4))
+        model_mat(:,:,i) = corr(model_dat(:,:,i)', 'type', opts.corr_stat);
+    end
+    training_matrix = nanmean(model_mat,3);
+    training_matrix = nanmean(training_matrix,4);
+    
+    test_mat = nan(size(test_dat,1),size(test_dat,1),size(test_dat,3),size(test_dat,4));
+    for i = 1: (size(test_dat,3)*size(test_dat,4))
+        test_mat(:,:,i) = corr(test_dat(:,:,i)', 'type', opts.corr_stat);
+    end
+    test_matrix = nanmean(test_mat,3);
+    test_matrix = nanmean(test_matrix,4);
+else
+    model_mat = nan(size(model_dat,1),size(model_dat,1),size(model_data,3),size(model_dat,4));
+    for i = 1: (size(model_dat,3)*size(model_dat,4))
+        model_mat(:,:,i) = squareform(pdist(model_dat(:,:,i), opts.distance_metric));
+    end
+    training_matrix = nanmean(model_mat,3);
+    training_matrix = nanmean(training_matrix,4);
+    
+    test_mat = nan(size(test_dat,1),size(test_dat,1),size(test_dat,3),size(test_dat,4));
+    for i = 1: (size(test_dat,3)*size(test_dat,4))
+        test_mat(:,:,i) = squareform(pdist(test_dat(:,:,i), opts.distance_metric));
+    end
+    test_matrix = nanmean(test_mat,3);
+    test_matrix = nanmean(test_matrix,4);
 end
-training_matrix = nanmean(model_correl,3);
-training_matrix = nanmean(training_matrix,4);
 
-%  iterate through all the layers (3rd dimension) and create
-% correlation matrices
-
-test_correl = nan(size(test_dat,1),size(test_dat,1),size(test_dat,3),size(test_dat,4));
-for i = 1: (size(test_dat,3)*size(test_dat,4))
-    test_correl(:,:,i) = corr(test_dat(:,:,i)', 'type', opts.corr_stat);
-end
-test_matrix = nanmean(test_correl,3);
-test_matrix = nanmean(test_matrix,4);
 
 %% Visualize the matrices
 
@@ -83,7 +97,7 @@ if opts.verbose > 1
     for session_idx = 1:size(model_data,3)
         for subject_idx = 1:size(model_data,4)
             subplot(size(model_data,3),size(model_data,4),plot_idx);
-            imagesc(model_correl(:,:,session_idx, subject_idx))
+            imagesc(model_mat(:,:,session_idx, subject_idx))
             title(['Subj ' num2str(subject_idx) ' Sess ' num2str(session_idx)])
             xticklabels([])
             yticklabels([])
@@ -98,7 +112,7 @@ if opts.verbose > 1
     for session_idx = 1:size(test_data,3)
         for subject_idx = 1:size(test_data,4)
             subplot(size(test_data,3),size(test_data,4),plot_idx);
-            imagesc(test_correl(:,:,session_idx, subject_idx))
+            imagesc(test_mat(:,:,session_idx, subject_idx))
             title(['Subject ' num2str(subject_idx) ' Session ' num2str(session_idx)])
             xticklabels([])
             yticklabels([])
@@ -138,9 +152,9 @@ if opts.verbose
 end
 
 %% Sanity Check
-if sum(isnan(test_matrix(:)))==numel(test_matrix) || sum(isnan(training_matrix(:)))==numel(training_matrix)
-    error('One or both input matrices contains all NaN values. I quit!');
-end
+% if sum(isnan(test_matrix(:)))==numel(test_matrix) || sum(isnan(training_matrix(:)))==numel(training_matrix)
+%     error('One or both input matrices contains all NaN values. I quit!');
+% end
 
 %% Save out the classification results based on greatest correlation coefficient for each test pattern
 % Initialize empty cell matrix for classifications
@@ -182,7 +196,7 @@ if ~isfield(opts,'pairwise') || ~opts.pairwise
     
     
 else
-    [accuracy, comparisons] = pairwise_rsa_test(atanh(test_matrix),atanh(training_matrix));
+    [accuracy, comparisons] = pairwise_rsa_test(test_matrix,training_matrix);
     classification = comparisons;
     classification(~accuracy,:) = classification(~accuracy,end:-1:1);
     classification = model_classes(classification);
