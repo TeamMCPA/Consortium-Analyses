@@ -33,8 +33,8 @@ function MCPA_struct = MCP_to_MCPA(mcp_multiple, incl_subjects, incl_features, i
 % The function will return a new struct containing some metadata and the
 % multifeature patterns for each participant and condition.
 %
-% Chengyu Deng & Benjamin Zinszer 5 may 2017
-% revised bdz 26 oct 2018
+% Chengyu Deng & Benjamin Zinszer 5 May 2017
+% revised by Anna Herbolzheimer, 5 March 2020
 
 %% Check whether importing an MCP file or just converting from workspace
 % Pulling from a file will be much faster for individual event
@@ -64,6 +64,9 @@ if ~exist('time_window','var') || isempty(time_window)
 end
 if ~exist('baseline_window','var')
     baseline_window = [-5,0];
+end
+if ~exist('feature_space','var')
+    feature_space = 'channel_space';
 end
 %% Convert time window from seconds to scans
 % rounds off sampling frequencies to 8 places to accomodate floating point
