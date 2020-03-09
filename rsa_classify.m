@@ -71,6 +71,9 @@ if ~isfield(opts, 'similarity_space') || strcmp(opts.similarity_space, 'corr')
     end
     test_matrix = nanmean(test_mat,3);
     test_matrix = nanmean(test_matrix,4);
+    
+    training_matrix = atanh(training_matrix);
+    test_matrix = atanh(test_matrix);
 else
     model_mat = nan(size(model_dat,1),size(model_dat,1),size(model_data,3),size(model_dat,4));
     for i = 1: (size(model_dat,3)*size(model_dat,4))
@@ -179,7 +182,7 @@ if ~isfield(opts,'pairwise') || ~opts.pairwise
     for perm_idx = 1:number_of_comparisons
         tmp_test_matrix = test_matrix(list_of_comparisons(perm_idx,:),list_of_comparisons(perm_idx,:));
         tmp_test_vec = tmp_test_matrix(logical(tril(ones(size(tmp_test_matrix)),-1)));
-        results_of_comparisons(perm_idx) = corr(atanh(train_vec),atanh(tmp_test_vec),'rows','pairwise');
+        results_of_comparisons(perm_idx) = corr(train_vec,tmp_test_vec,'rows','pairwise');
     end
     
     % Choose the best of all the permutations of labels
