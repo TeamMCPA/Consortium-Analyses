@@ -1,4 +1,4 @@
-function [event_matrix] = MCP_get_subject_events(mcp_struct, features, channels, time_window, event_types, base_window, session_index, transformation_mat)
+function [event_matrix] = MCP_get_subject_events(mcp_struct, features, channels, time_window, event_types, base_window, session_index)
 
 %MCP_GET_SUBJECT_EVENTS Returns a matrix that contains HbO data for target 
 %subject in each type, feature, time, and type repetition.
@@ -28,7 +28,7 @@ end
 if length(mcp_struct)>1
     event_matrix = cell(length(mcp_struct),1);
     for subj_num = 1:length(mcp_struct)
-        event_matrix{subj_num} = MCP_get_subject_events_withCoreg(mcp_struct(subj_num), features, channels, time_window, event_types, base_window, session_index, transformation_mat);
+        event_matrix{subj_num} = MCP_get_subject_events(mcp_struct(subj_num), features, channels, time_window, event_types, base_window, session_index);
     end
     return
 end
@@ -38,6 +38,19 @@ end
 session_locs = mcp_struct.Experiment.Runs(session_index).Index';
 % Extract hemoglobin data and marks from the MCP struct
 hemo_timeser = mcp_struct.fNIRS_Data.Hb_data.Oxy(session_locs, channels);
+
+% Extract the transformation matrix and if its converting to ROI space,
+% weight it
+if size(mcp_struct.Experiment.Runs(session_index).Transformation_Matrix,1) == size(mcp_struct.Experiment.Runs(session_index).Transformation_Matrix,2)
+    transformation_mat = mcp_struct.Experiment.Runs(session_index).Transformation_Matrix(channels, channels);
+else
+    transformation_mat = mcp_struct.Experiment.Runs(session_index).Transformation_Matrix(channels,features);
+    weight = sum(transformation_mat,1);
+    transformation_mat = transformation_mat ./ weight;
+    transformation_mat(isnan(trans_mat))=0;
+end
+
+% transform the hemodynamic timeseries
 hemo_timeser = hemo_timeser * transformation_mat;
 
 marks_vec = mcp_struct.fNIRS_Data.Onsets_Matrix(session_locs,:);
