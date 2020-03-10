@@ -47,7 +47,7 @@ else
     transformation_mat = mcp_struct.Experiment.Runs(session_index).Transformation_Matrix(channels,features);
     weight = sum(transformation_mat,1);
     transformation_mat = transformation_mat ./ weight;
-    transformation_mat(isnan(trans_mat))=0;
+    transformation_mat(isnan(transformation_mat))=0;
 end
 
 % transform the hemodynamic timeseries
