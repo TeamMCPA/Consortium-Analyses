@@ -1,4 +1,4 @@
-function MCPA_struct = MCP_to_MCPA(mcp_multiple, incl_subjects, incl_features, incl_channels, time_window, baseline_window, feature_space)
+function MCPA_struct = MCP_to_MCPA(mcp_multiple, incl_subjects, incl_features, incl_channels, time_window, baseline_window)
 %MCP_TO_MCPA Convert MCP format data to MCPA_struct for analysis
 % The function is called with the following arguments:
 % MCP_to_MCPA(mcp_struct, incl_subjects, incl_features, time_window)
@@ -33,8 +33,8 @@ function MCPA_struct = MCP_to_MCPA(mcp_multiple, incl_subjects, incl_features, i
 % The function will return a new struct containing some metadata and the
 % multifeature patterns for each participant and condition.
 %
-% Chengyu Deng & Benjamin Zinszer 5 May 2017
-% revised by Anna Herbolzheimer, 5 March 2020
+% Chengyu Deng & Benjamin Zinszer 5 may 2017
+% revised bdz 26 oct 2018
 
 %% Check whether importing an MCP file or just converting from workspace
 % Pulling from a file will be much faster for individual event
@@ -64,9 +64,6 @@ if ~exist('time_window','var') || isempty(time_window)
 end
 if ~exist('baseline_window','var')
     baseline_window = [-5,0];
-end
-if ~exist('feature_space','var')
-    feature_space = 'channel_space';
 end
 %% Convert time window from seconds to scans
 % rounds off sampling frequencies to 8 places to accomodate floating point
@@ -113,7 +110,6 @@ unique_names = cellfun(@(x) char(x{:}),all_names,'UniformOutput',false);
 % Initiate the subj_mat matrix that will be output later(begin with NaN)
 % Output matrix for MCPA_struct is in dimension: time_window x types x features x repetition x subjects
 subj_mat = nan(num_time_samps, length(event_types), length(incl_features), num_repetitions, max_num_sessions, length(incl_subjects));
-
 % Extract data from each subject
 for subj_idx = 1 : length(incl_subjects)
     
@@ -121,17 +117,10 @@ for subj_idx = 1 : length(incl_subjects)
         if no_mcp_file
         MCPA_struct.data_file{subj_idx} = [mcp_multiple(incl_subjects(subj_idx)).Experiment.Runs.Source_files]';
         end
-        
-        % will we be converting to brodmans areas?
-        if strcmp(feature_space, 'ROI_space')
-            transformation_matrix = mapChanneltoROI(length(incl_channels), length(incl_features), subj_idx, session_idx);
-        else
-            transformation_matrix = eye(length(incl_channels));
-        end
 
         % Event_matrix format:
         % (time x features x repetition x types)
-        event_matrix = MCP_get_subject_events(mcp_multiple(incl_subjects(subj_idx)), incl_features, incl_channels, time_window, event_types, baseline_window, session_idx, transformation_matrix);
+        event_matrix = MCP_get_subject_events(mcp_multiple(incl_subjects(subj_idx)), incl_features, incl_channels, time_window, event_types, baseline_window, session_idx);
         event_matrix = permute(event_matrix, [1 4 2 3]);
 
        
