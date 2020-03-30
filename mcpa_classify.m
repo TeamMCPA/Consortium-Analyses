@@ -25,13 +25,23 @@ function [classification, rating] = mcpa_classify(model_data, model_labels, test
 % All-possible-pairwise comparison (opts.pairwise) is under development.
 
 %% If the options struct is not provided, set default parameters
-if ~exist('opts','var') || isempty(opts)
+if ~exist('opts','var') || isempty(opts) 
     opts = struct;
+end
+
+if ~isfield(opts, 'corr_stat')
     opts.corr_stat = 'spearman';
+end
+if ~isfield(opts, 'exclusive')
     opts.exclusive = false;
+end
+if ~isfield(opts, 'pairwise')
     opts.pairwise = false;
+end
+if ~isfield(opts, 'tiebreak')
     opts.tiebreak = true;
 end
+
 
 model_classes = unique(model_labels,'stable');
 
