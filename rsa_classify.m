@@ -309,20 +309,40 @@ else
     
     
     [accuracy, comparisons] = pairwise_rsa_test(test_matrix,training_matrix);
-    classification = comparisons;
-    classification(~accuracy,:) = classification(~accuracy,end:-1:1);
-    classification = model_classes(classification);
     
-    % output indicating indices of conditions being compared
-    comparisons = model_classes(comparisons);
+    if all(isnan(accuracy))
+        classification = cell(length(accuracy),2); 
+        classification = cellfun(@(a) {NaN}, classification);
+        % output indicating names of conditions being compared
+        comparisons = model_classes(comparisons);
 
-    % output results in 3d cell array with following dimensions:
-    % predicted_labels X true_labels X comparison number 
-    results_of_comparisons = cell(size(classification,2), 2, size(classification,1));
-    for comp = 1:size(classification,1)
-        results_of_comparisons(:,1,comp) = classification(comp,:)';
-        results_of_comparisons(:,2,comp) = comparisons(comp,:)';
+        % output results in 3d cell array with following dimensions:
+        % predicted_labels X true_labels X comparison number 
+        results_of_comparisons = cell(size(classification,2), 2, size(classification,1));
+        for comp = 1:size(classification,1)
+            results_of_comparisons(:,1,comp) = classification(comp,:)';
+            results_of_comparisons(:,2,comp) = comparisons(comp,:)';
+        end
+    % TODO: check that this works if not all output is nan
+    % also TODO: reduce branching logic
+    else
+        % this section is to conver the accuracy to the category names
+        classification = comparisons;
+        classification(~accuracy,:) = classification(~accuracy,end:-1:1);
+        classification = model_classes(classification);
+        % output indicating names of conditions being compared
+        comparisons = model_classes(comparisons);
+
+        % output results in 3d cell array with following dimensions:
+        % predicted_labels X true_labels X comparison number 
+        results_of_comparisons = cell(size(classification,2), 2, size(classification,1));
+        for comp = 1:size(classification,1)
+            results_of_comparisons(:,1,comp) = classification(comp,:)';
+            results_of_comparisons(:,2,comp) = comparisons(comp,:)';
+        end
     end
+    
+    
 
     classification = results_of_comparisons;
     
