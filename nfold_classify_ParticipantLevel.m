@@ -85,7 +85,8 @@ mcpa_struct = MCP_to_MCPA(MCP_struct,...
     p.Results.incl_features,...
     p.Results.incl_channels,...
     p.Results.time_window,...
-    p.Results.baseline_window);
+    p.Results.baseline_window,...
+    p.Results.oxy_or_deoxy);
 
 % Subset patterns by session
 inds = repmat({':'},1,ndims(mcpa_struct.patterns)); % Create index structure with all-elements in all-dimensions
@@ -248,11 +249,20 @@ for s_idx = 1:n_subj
         if size(test_labels,2) > 1 % test labels will be a column vector if we don't do pairwise
             if s_idx==1 && set_idx == 1, allsubj_results.accuracy_matrix = nan(n_cond,n_cond,min(n_sets,p.Results.max_sets),n_subj); end
             
-            if iscell(comparisons)
-                subj_acc = nanmean(strcmp(test_labels(:,1,:), test_labels(:,2,:)));
-                comparisons = cellfun(@(x) find(strcmp(x,mcpa_summ.event_types)),comparisons);
+            if ~iscell(test_labels) && sum(isnan(test_labels(:)))==numel(test_labels)
+                if iscell(comparisons) 
+                    subj_acc = nan(length(test_labels),1);
+                    comparisons = cellfun(@(x) find(strcmp(x,mcpa_summ.event_types)),comparisons);
+                else
+                    subj_acc = nan(length(test_labels),1);
+                end
             else
-                subj_acc = nanmean(strcmp(test_labels(:,1,:), test_labels(:,2,:)));
+                if iscell(comparisons) 
+                    subj_acc = nanmean(strcmp(test_labels(:,1,:), test_labels(:,2,:)));
+                    comparisons = cellfun(@(x) find(strcmp(x,mcpa_summ.event_types)),comparisons);
+                else
+                    subj_acc = nanmean(strcmp(test_labels(:,1,:), test_labels(:,2,:)));
+                end
             end
             
             for comp = 1:size(comparisons,1)
