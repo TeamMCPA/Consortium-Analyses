@@ -42,12 +42,15 @@ hemo_timeser = mcp_struct.fNIRS_Data.Hb_data.Oxy(session_locs, channels);
 % Extract the transformation matrix and if its converting to ROI space,
 % weight it
 if size(mcp_struct.Experiment.Runs(session_index).Transformation_Matrix,1) == size(mcp_struct.Experiment.Runs(session_index).Transformation_Matrix,2)
+    % if we're using the identity matix, then we can just take the original transformation matrix
     transformation_mat = mcp_struct.Experiment.Runs(session_index).Transformation_Matrix(channels, channels);
 else
+    % if its converting into Brodmann's areas, then we first need to
+    % extract the transformation matrix
     transformation_mat = mcp_struct.Experiment.Runs(session_index).Transformation_Matrix(channels,features);
+    % then we need to weight it so that each area sums to 1
     weight = sum(transformation_mat,1);
-    transformation_mat = transformation_mat ./ weight;
-    transformation_mat(isnan(transformation_mat))=0;
+    transformation_mat = transformation_mat ./ weight; 
 end
 
 % transform the hemodynamic timeseries
