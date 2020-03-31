@@ -11,7 +11,7 @@ function p = parse_inputs(MCP_struct, varargin)
 p = inputParser;
 
 % parameters used for all kinds of classifiers
-addParameter(p,'incl_channels',[1:max(arrayfun(@(x) size(x.fNIRS_Data.Hb_data.Oxy,2),MCP_struct))],@isnumeric);
+addParameter(p,'incl_channels',[1:max(arrayfun(@(x) size(x.Experiment.Runs(1).Transformation_Matrix,1),MCP_struct))],@isnumeric);
 addParameter(p,'incl_subjects',[1:length(MCP_struct)],@isnumeric);
 addParameter(p,'incl_sessions',[1:max(arrayfun(@(x) length(x.Experiment.Runs),MCP_struct))],@isnumeric);
 addParameter(p,'time_window',[2,6],@isnumeric);
@@ -26,6 +26,7 @@ addParameter(p,'norm_data', false, @islogical);
 addParameter(p,'verbose',true,@islogical);
 addParameter(p, 'summarize_dimensions', {});
 addParameter(p, 'final_dimensions', {});
+addParameter(p, 'oxy_or_deoxy', 'Oxy', @ischar);
 
 % for within subjects decoding with 1 session
 addParameter(p, 'test_percent', []);
