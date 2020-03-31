@@ -1,4 +1,4 @@
-function MCPA_struct = MCP_to_MCPA(mcp_multiple, incl_subjects, incl_features, incl_channels, time_window, baseline_window)
+function MCPA_struct = MCP_to_MCPA(mcp_multiple, incl_subjects, incl_features, incl_channels, time_window, baseline_window, oxy_or_deoxy)
 %MCP_TO_MCPA Convert MCP format data to MCPA_struct for analysis
 % The function is called with the following arguments:
 % MCP_to_MCPA(mcp_struct, incl_subjects, incl_features, time_window)
@@ -57,7 +57,7 @@ if ~exist('incl_subjects','var') || isempty(incl_subjects)
     incl_subjects = 1:length(mcp_multiple);
 end
 if ~exist('incl_features','var') || isempty(incl_features)
-    incl_features = [1:max(arrayfun(@(x) size(x.fNIRS_Data.Hb_data.Oxy,2),mcp_multiple))];
+    incl_features = [1:max(arrayfun(@(x) size(x.fNIRS_Data.Hb_data.(oxy_or_deoxy),2),mcp_multiple))];
 end
 if ~exist('time_window','var') || isempty(time_window)
     time_window = [0,20];
@@ -120,7 +120,7 @@ for subj_idx = 1 : length(incl_subjects)
 
         % Event_matrix format:
         % (time x features x repetition x types)
-        event_matrix = MCP_get_subject_events(mcp_multiple(incl_subjects(subj_idx)), incl_features, incl_channels, time_window, event_types, baseline_window, session_idx);
+        event_matrix = MCP_get_subject_events(mcp_multiple(incl_subjects(subj_idx)), incl_features, incl_channels, time_window, event_types, baseline_window, oxy_or_deoxy, session_idx);
         event_matrix = permute(event_matrix, [1 4 2 3]);
 
        
