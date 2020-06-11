@@ -31,6 +31,9 @@ function MCPA_struct = MCP_to_MCPA(mcp_multiple, incl_subjects, incl_features, i
 % is provided, baselining will be skipped. Default (no value provided) 
 % baseline is range [-5, 0] sec from stimulus marker.
 %
+% oxy_or_deoxy: a char-type input, either 'Oxy', 'Deoxy', or 'Total'
+% indicating what species of Hemoglobin to use. Default is 'Oxy'
+%
 % The function will return a new struct containing some metadata and the
 % multifeature patterns for each participant and condition.
 %
@@ -55,6 +58,9 @@ else
 end
 
 %% Double-check for missing data
+if ~exist('oxy_or_deoxy','var')
+    oxy_or_deoxy = 'Oxy';
+end
 if ~exist('incl_subjects','var') || isempty(incl_subjects)
     incl_subjects = 1:length(mcp_multiple);
 end
@@ -67,6 +73,7 @@ end
 if ~exist('baseline_window','var')
     baseline_window = [-5,0];
 end
+
 
 %% Convert time window from seconds to scans
 % rounds off sampling frequencies to 8 places to accomodate floating point
@@ -119,6 +126,13 @@ for subj_idx = 1 : length(incl_subjects)
     for session_idx = 1:length(mcp_multiple(subj_idx).Experiment.Runs)
         if no_mcp_file
         MCPA_struct.data_file{subj_idx} = [mcp_multiple(incl_subjects(subj_idx)).Experiment.Runs.Source_files]';
+        end
+        
+        % Some MCP files will not already have a transformation matrix
+        % stored for translating channels into features. If that field is
+        % missing, create an identity matrix 
+        if ~isfield(mcp_multiple(incl_subjects(subj_idx)).Experiment.Runs(session_idx),'Transformation_Matrix')
+            mcp_multiple(incl_subjects(subj_idx)).Experiment.Runs(session_idx).Transformation_Matrix = eye(length(mcp_multiple(incl_subjects(subj_idx)).Experiment.Probe_arrays.Channels));
         end
 
         % Event_matrix format:
