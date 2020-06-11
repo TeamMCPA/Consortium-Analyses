@@ -1,6 +1,17 @@
 function summarized_MCPA_struct = summarize_MCPA_Struct(summary_function,MCPA_struct, summarize_dimensions)
 %SUMMARIZE_MCPA_STRUCT Convert an MCPA struct of windowed data to
 %multivariate patterns using any summarizing function, such as nanmean.
+%
+% summarize_MCPA_Struct(summary_function,MCPA_struct, summarize_dimensions)
+%
+% summary_function: can be any function handle that takes an array and
+% reduces it by one dimension (e.g., @mean or @nanmean)
+%
+% MCPA_struct: an MCPA struct generated using MCP_to_MCPA
+%
+% summarize_dimensions: which dimensions should be reduced using the
+% summary_function named above. The names of the possible dimensions can be
+% found in the MCPA_struct.dimensions field.
 
 
 %% Convert the inputs to correct format
