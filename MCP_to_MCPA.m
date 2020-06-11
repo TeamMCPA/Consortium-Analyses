@@ -67,6 +67,9 @@ end
 if ~exist('incl_features','var') || isempty(incl_features)
     incl_features = [1:max(arrayfun(@(x) size(x.fNIRS_Data.Hb_data.(oxy_or_deoxy),2),mcp_multiple))];
 end
+if ~exist('incl_channels','var') || isempty(incl_channels)
+    incl_channels = [1:max(arrayfun(@(x) size(x.fNIRS_Data.Hb_data.(oxy_or_deoxy),2),mcp_multiple))];
+end
 if ~exist('time_window','var') || isempty(time_window)
     time_window = [0,20];
 end
@@ -131,7 +134,9 @@ for subj_idx = 1 : length(incl_subjects)
         % Some MCP files will not already have a transformation matrix
         % stored for translating channels into features. If that field is
         % missing, create an identity matrix 
-        if ~isfield(mcp_multiple(incl_subjects(subj_idx)).Experiment.Runs(session_idx),'Transformation_Matrix')
+        if ~isfield(mcp_multiple(incl_subjects(subj_idx)).Experiment.Runs(session_idx),'Transformation_Matrix') || ...
+            isempty(mcp_multiple(incl_subjects(subj_idx)).Experiment.Runs(session_idx).Transformation_Matrix)
+            
             mcp_multiple(incl_subjects(subj_idx)).Experiment.Runs(session_idx).Transformation_Matrix = eye(length(mcp_multiple(incl_subjects(subj_idx)).Experiment.Probe_arrays.Channels));
         end
 
