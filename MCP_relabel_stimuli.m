@@ -24,19 +24,32 @@ if isstruct(mcp_file)
     old_mcp_struct = mcp_file;
 else
     [mcpdir, mcpfile, ~] = fileparts(mcp_file);
+    %fprintf('Loading file: %s\n\n',mcpfile);
     old_mcp_struct = load([mcpdir mcpfile '.mcp'],'-mat');
 end
 
 %% Recursion for multiple subjects (length MCP > 1)
 % If there are multiple subjects, recurse the function for each one without
 % saving and then save (if flagged) at the end
+
+% Quickly create char version of old label for convenient screen display
+if ~ischar(old_label_name)
+    old_label_char = num2str(old_label_name);
+else
+    old_label_char = old_label_name; 
+end
+
 if length(old_mcp_struct) > 1
     for subj = 1:length(old_mcp_struct)
-        new_mcp_file(subj) = MCP_relabel_stimuli(old_mcp_struct(subj),old_label_name,new_labels,0);
+        disp(['Updating labels "' old_label_char '" for: ' old_mcp_struct(subj).Subject.Subject_ID] );
+        new_mcp_file(subj) = MCP_relabel_stimuli(old_mcp_struct(subj),old_label_char,new_labels,0);
     end
     if save_flag
+        disp(['Saving new file under name: ' mcpfile '_r.mcp']);
+        disp([]);
         save([mcpdir mcpfile '_r.mcp'],'-struct','new_mcp_file')
     end
+    disp([]);
     return
 end
 
