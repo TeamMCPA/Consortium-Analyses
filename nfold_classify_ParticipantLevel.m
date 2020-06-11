@@ -83,8 +83,10 @@ end
 mcpa_struct = MCP_to_MCPA(MCP_struct,...
     p.Results.incl_subjects,...
     p.Results.incl_features,...
+    p.Results.incl_channels,...
     p.Results.time_window,...
-    p.Results.baseline_window);
+    p.Results.baseline_window,...
+    p.Results.oxy_or_deoxy);
 
 % Subset patterns by session
 inds = repmat({':'},1,ndims(mcpa_struct.patterns)); % Create index structure with all-elements in all-dimensions
@@ -243,17 +245,42 @@ for s_idx = 1:n_subj
                 subj_labels,...
                 p.Results.opts_struct);
         end
-%% Record results .
+        %% Record results .
         if size(test_labels,2) > 1 % test labels will be a column vector if we don't do pairwise
             if s_idx==1 && set_idx == 1, allsubj_results.accuracy_matrix = nan(n_cond,n_cond,min(n_sets,p.Results.max_sets),n_subj); end
-            
-            if iscell(comparisons)
-                subj_acc = nanmean(strcmp(test_labels(:,1,:), test_labels(:,2,:)));
-                comparisons = cellfun(@(x) find(strcmp(x,mcpa_summ.event_types)),comparisons);
+
+            % Then see if the classification results are empty
+            if ~iscell(test_labels(:,1,:)) && sum(isnan(test_labels(:,1,:)))==numel(test_labels(:,1,:))
+                % if nans, then we'll need to save the subj_acc as nans
+                if iscell(comparisons) 
+                    % if comparisons is cell array, we'll need to find the values in that array correspond to the condition location in event_types
+                    subj_acc = nan(length(test_labels(:,1,:)),1);
+                    comparisons = cellfun(@(x) find(strcmp(x,mcpa_summ.event_types)),comparisons);
+                else
+                    subj_acc = nan(length(test_labels(:,1,:)),1);
+                end
+            elseif iscell(test_labels(:,1,:)) && sum(sum(cellfun(@(a) ~ischar(a), test_labels(:,1,:)))) == numel(test_labels(:,1,:))
+                % if nans, then we'll need to save the subj_acc as nans
+                if iscell(comparisons) 
+                    % if comparisons is cell array, we'll need to find the values in that array correspond to the condition location in event_types
+                    subj_acc = nan(length(test_labels(:,1,:)),1);
+                    comparisons = cellfun(@(x) find(strcmp(x,mcpa_summ.event_types)),comparisons);
+                else
+                    subj_acc = nan(length(test_labels(:,1,:)),1);
+                end
             else
-                subj_acc = nanmean(strcmp(test_labels(:,1,:), test_labels(:,2,:)));
+                % if not nans, see how comparisons is saved. 
+                % If its a cell array, then we need to find where the values in that array correspond to the condition location in event_types
+                % Then find the subject accuracy
+                if iscell(comparisons) 
+                    subj_acc = nanmean(strcmp(test_labels(:,1,:), test_labels(:,2,:)));
+                    comparisons = cellfun(@(x) find(strcmp(x,mcpa_summ.event_types)),comparisons);
+                else
+                    subj_acc = nanmean(strcmp(test_labels(:,1,:), test_labels(:,2,:)));
+                end
             end
-            
+
+            % Then loop through comparisons and save accuracy to the results struct
             for comp = 1:size(comparisons,1)
                 if size(comparisons,2)==1
                     allsubj_results.accuracy_matrix(comparisons(comp,1),:,set_idx,s_idx) = subj_acc(comp);
@@ -306,5 +333,8 @@ if p.Results.verbose
         
     end
 end
+
+end
+
 
 end

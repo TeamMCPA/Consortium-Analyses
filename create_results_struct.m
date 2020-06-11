@@ -17,6 +17,7 @@ allsubj_results.final_dimensions = final_dimensions;
 allsubj_results.event_types = summed_mcpa.event_types;
 allsubj_results.dimensions = summed_mcpa.dimensions;
 allsubj_results.opts_struct = parsed_input.Results.opts_struct;
+allsubj_results.oxy_or_deoxy = parsed_input.Results.oxy_or_deoxy; 
 
 %% get max sessions completed for later accuracy struct
 num_dims = ndims(summed_mcpa.patterns);

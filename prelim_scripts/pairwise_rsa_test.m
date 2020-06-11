@@ -53,7 +53,9 @@ for this_comp = 1:number_of_comparisons
     
     % Test the accuracy, whether correct label correlations were greater
     % than the incorrect label correlations
-    if correct_labels == incorrect_labels
+    if isnan(correct_labels) || isnan(incorrect_labels)
+        results_of_comparisons(this_comp) = nan;
+    elseif correct_labels == incorrect_labels
         % When the results are equal, choose one at random.
         % This condition should almost never be met unless trying to
         % analyze a 4x4 (all corrs will be 1 or -1), but it is necessary to
