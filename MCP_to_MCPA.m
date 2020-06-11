@@ -1,12 +1,13 @@
 function MCPA_struct = MCP_to_MCPA(mcp_multiple, incl_subjects, incl_features, incl_channels, time_window, baseline_window, oxy_or_deoxy)
 %MCP_TO_MCPA Convert MCP format data to MCPA_struct for analysis
 % The function is called with the following arguments:
-% MCP_to_MCPA(mcp_struct, incl_subjects, incl_features, time_window)
+% MCP_to_MCPA(mcp_multiple, incl_subjects, incl_features, incl_channels, time_window, baseline_window, oxy_or_deoxy)
 %
-% mcp: An customized MCP struct that contains all data for the analysis.
-% Using MCP struct to store data can unify the way that data stored in the
-% struct. Directly grabbing data from homer file might cause problems such
-% as failure to find specific data.
+% mcp_multiple: An customized MCP struct that contains all data for the 
+% analysis. Using MCP struct to store data can unify the way that data are 
+% stored in the struct. Enter either a struct in the current workspace or
+% a path+filename of an *.mcp file. (Multiple MCP files can be entered as a
+% cell array containing path+filename in each cell.)
 %
 % incl_subjects: a vector of indices for subjects to include in the
 % analysis. Importantly the subject numbers correspond to the index in the
@@ -14,7 +15,7 @@ function MCPA_struct = MCP_to_MCPA(mcp_multiple, incl_subjects, incl_features, i
 % assignment. Use [] to just get all subjects.
 %
 % incl_features: a vector of indices for features to include in the
-% analysis. Again, only the feature's position in the HomER struct matters,
+% analysis. Again, only the feature's position in the MCP struct matters,
 % not any other feature number assignment. Use [] to get all features.
 %
 % time_window: defined in number of seconds. If two subjects have different
@@ -27,14 +28,15 @@ function MCPA_struct = MCP_to_MCPA(mcp_multiple, incl_subjects, incl_features, i
 % provided, data will be baselined on that point (e.g., at t=0 s). If two
 % baseline values are provided, data will be baselined on the mean in that
 % window (e.g., [-5 0] -> average level in time window -5 to 0 s). If NaN
-% is provided, baselining will be skipped. Default (no baseline info
-% provided) baseline is range [-5, 0] sec from stimulus marker.
+% is provided, baselining will be skipped. Default (no value provided) 
+% baseline is range [-5, 0] sec from stimulus marker.
 %
 % The function will return a new struct containing some metadata and the
 % multifeature patterns for each participant and condition.
 %
 % Chengyu Deng & Benjamin Zinszer 5 may 2017
 % revised bdz 26 oct 2018
+% revised by Anna Herbolzheimer 2019-2020
 
 %% Check whether importing an MCP file or just converting from workspace
 % Pulling from a file will be much faster for individual event
@@ -65,6 +67,7 @@ end
 if ~exist('baseline_window','var')
     baseline_window = [-5,0];
 end
+
 %% Convert time window from seconds to scans
 % rounds off sampling frequencies to 8 places to accomodate floating point
 % errors
@@ -151,8 +154,8 @@ try
     MCPA_struct.dimensions = {'time','condition', 'feature', 'repetition', 'session', 'subject'};
     
 catch
-    fprintf('Failed to create the new struct (MCP_to_MCPA).\n');
     MCPA_struct = struct;
+    error('Failed to create the new struct (MCP_to_MCPA).');
 end
 
 
