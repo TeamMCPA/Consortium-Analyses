@@ -1,5 +1,10 @@
 
 function new_patterns = concatenate_dimensions(patterns, concat_dims, varargin)
+% reshape a matrix (patterns) depending on concat_dims
+% concat_dims should be a numeric value indicating which dimensions to concatenate over
+% ex. if we had the had a matrix of 4 dimensiosn (1 2 3 4) [2 3] will concatenate dimensions 2 and 3 such that our 
+% matrix is now three dimensions (1 [2 3] 4) 
+
 
 % In case somebody enters the dims as a list of arguments instead of a
 % single vector
