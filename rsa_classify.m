@@ -87,6 +87,10 @@ model_labs = model_labels(train_order);
 model_dat = model_data(train_order, :,:,:);
 
 %% remove where we have all NaNs
+% pdist doesn't have built in ways to handle NaN's, so when we convert to
+% Brodmann's we need a way to handle areas that are entirely NaN. This
+% section finds NaN cells in the test and train matrix, then removes
+% columns where both test and train were entirely NaN
 
 empty_x_vals_model = [];
 empty_y_vals_model = [];
