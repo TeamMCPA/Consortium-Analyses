@@ -10,6 +10,18 @@ function p = parse_inputs(MCP_struct, varargin)
 
 p = inputParser;
 
+for s = 1:length(MCP_struct)
+    % Some MCP files will not already have a transformation matrix
+    % stored for translating channels into features. If that field is
+    % missing, create an identity matrix. This field will be lost after
+    % parsing the inputs, but the dimensions are needed to infer values for
+    % incl_channels, incl_features, and setsize. If the transformation
+    % matrix already exists, this default will not be used.
+    if ~isfield(MCP_struct(s).Experiment.Runs(1),'Transformation_Matrix') || isempty(MCP_struct(s).Experiment.Runs(1).Transformation_Matrix)
+        MCP_struct(s).Experiment.Runs(1).Transformation_Matrix = eye(length(MCP_struct(s).Experiment.Probe_arrays.Channels));
+    end
+end
+
 % parameters used for all kinds of classifiers
 addParameter(p,'incl_channels',[1:max(arrayfun(@(x) size(x.Experiment.Runs(1).Transformation_Matrix,1),MCP_struct))],@isnumeric);
 addParameter(p,'incl_subjects',[1:length(MCP_struct)],@isnumeric);
