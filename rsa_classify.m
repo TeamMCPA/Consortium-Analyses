@@ -87,62 +87,68 @@ model_labs = model_labels(train_order);
 model_dat = model_data(train_order, :,:,:);
 
 %% remove where we have all NaNs
-% pdist doesn't have built in ways to handle NaN's, so when we convert to
-% Brodmann's we need a way to handle areas that are entirely NaN. This
-% section finds NaN cells in the test and train matrix, then removes
-% columns where both test and train were entirely NaN
 
-empty_x_vals_model = [];
-empty_y_vals_model = [];
-for i = 1:size(model_data,4)
-    for j = 1:size(model_data,3)
-        [x,y] = find(isnan(model_dat(:,:,j,i)));
-        if length(unique(x)) == size(model_dat,1) && length(unique(y)) == size(model_dat,2)
-            continue;
-        else
-            empty_x_vals_model = [empty_x_vals_model; x];
-            empty_y_vals_model = [empty_y_vals_model; y];
-        end
-    end      
-end
-empty_x_vals_model = unique(empty_x_vals_model);
-empty_y_vals_model = unique(empty_y_vals_model);
-
-
-empty_x_vals_test = [];
-empty_y_vals_test = [];
-for i = 1:size(test_data,4)
-    for j = 1:size(test_data,3)
-        [x,y] = find(isnan(test_data(:,:,j,i)));
-        
-        
-        if length(unique(x)) == size(test_data,1) && length(unique(y)) == size(test_data,2)
-            continue;
-        else
-            empty_x_vals_test = [empty_x_vals_test; x];
-            empty_y_vals_test = [empty_y_vals_test; y];
-        end
-    end      
-end
-
-empty_x_vals_test = unique(empty_x_vals_test);
-empty_y_vals_test = unique(empty_y_vals_test);
-
-cols = 1:size(model_data,2);
-rows = 1:size(model_data,1);
-
-if length(empty_x_vals_model) == size(model_data,1) && length(empty_y_vals_model) ~= size(model_data,2)
-    % remove columns
-    remove_cols = union(empty_y_vals_model, empty_y_vals_test);
-    keep = ~ismember(cols, remove_cols);
-    model_dat = model_dat(:,keep', :,:);
-    test_dat = test_dat(:, keep', :,:);   
-elseif length(empty_x_vals_model) == size(model_data,1) && length(empty_y_vals_model) == size(model_data,2)
-    % this is an empty session
-    warning('There is no data in this session')
-end
-    
-
+% empty_x_vals_model = [];
+% empty_y_vals_model = [];
+% for i = 1:size(model_data,4)
+%     for j = 1:size(model_data,3)
+%         [x,y] = find(isnan(model_dat(:,:,j,i)));
+%         if length(unique(x)) == size(model_dat,1) && length(unique(y)) == size(model_dat,2)
+%             continue;
+%         else
+%             empty_x_vals_model = [empty_x_vals_model; x];
+%             empty_y_vals_model = [empty_y_vals_model; y];
+%         end
+%     end      
+% end
+% empty_x_vals_model = unique(empty_x_vals_model);
+% empty_y_vals_model = unique(empty_y_vals_model);
+% 
+% 
+% empty_x_vals_test = [];
+% empty_y_vals_test = [];
+% for i = 1:size(test_data,4)
+%     for j = 1:size(test_data,3)
+%         [x,y] = find(isnan(test_data(:,:,j,i)));
+%         
+%         
+%         if length(unique(x)) == size(test_data,1) && length(unique(y)) == size(test_data,2)
+%             continue;
+%         else
+%             empty_x_vals_test = [empty_x_vals_test; x];
+%             empty_y_vals_test = [empty_y_vals_test; y];
+%         end
+%     end      
+% end
+% 
+% empty_x_vals_test = unique(empty_x_vals_test);
+% empty_y_vals_test = unique(empty_y_vals_test);
+% 
+% cols = 1:size(model_data,2);
+% rows = 1:size(model_data,1);
+% 
+% if size(model_data,2) > 8
+%     if length(empty_x_vals_model) == size(model_data,1) && length(empty_y_vals_model) ~= size(model_data,2)
+%         % remove columns
+%         remove_cols = union(empty_y_vals_model, empty_y_vals_test);
+%         keep = ~ismember(cols, remove_cols);
+%         model_dat = model_dat(:,keep', :,:);
+%         test_dat = test_dat(:, keep', :,:);   
+%     elseif length(empty_x_vals_model) == size(model_data,1) && length(empty_y_vals_model) == size(model_data,2)
+%         % this is an empty session
+%         warning('There is no data in this session')
+%     end
+% else
+%     if length(empty_x_vals_test) == size(model_data,1) && length(empty_y_vals_test) ~= size(test_data,2)
+%         test_cols = 1:size(test_dat,2);
+%         remove_cols = union(empty_y_vals_model, empty_y_vals_test);
+%         keep = ~ismember(test_cols, remove_cols);
+%         test_dat = test_dat(:, keep', :,:);
+%     end 
+% end
+%     
+%     
+% 
 
 %% Build similarity structures
 % Transform the model_data into similiarty or dissimilarity structures for each session by
@@ -152,16 +158,22 @@ end
 if opts.similarity_space % create similarity structures
     %  iterate through all the layers (3rd dimension) and create
     % correlation matrices 
-    model_mat = nan(size(model_dat,1),size(model_dat,1),size(model_data,3),size(model_dat,4));
-    for i = 1: (size(model_dat,3)*size(model_dat,4))
-        model_mat(:,:,i) = corr(model_dat(:,:,i)', 'type', opts.metric);
+    
+    if ndims(model_dat) > 2
+        model_mat = nan(size(model_dat,1),size(model_dat,1),size(model_dat,3),size(model_dat,4));
+        for i = 1: (size(model_dat,3)*size(model_dat,4))
+            model_mat(:,:,i) = corr(model_dat(:,:,i)', 'type', opts.metric);
+        end
+
+        % then average across each participants' sessions
+        training_matrix = nanmean(model_mat,3);
+        % then average across participants
+        training_matrix = nanmean(training_matrix,4);
+        training_matrix = atanh(training_matrix);
+    else
+        training_matrix = model_dat;
     end
-    
-    % then average across each participants' sessions
-    training_matrix = nanmean(model_mat,3);
-    % then average across participants
-    training_matrix = nanmean(training_matrix,4);
-    
+
     % then repeat to create test data
     test_mat = nan(size(test_dat,1),size(test_dat,1),size(test_dat,3),size(test_dat,4));
     for i = 1: (size(test_dat,3)*size(test_dat,4))
@@ -169,21 +181,25 @@ if opts.similarity_space % create similarity structures
     end
     test_matrix = nanmean(test_mat,3);
     test_matrix = nanmean(test_matrix,4);
-    
-    % for test and train, take the atanh 
+
     test_matrix = atanh(test_matrix);
-    training_matrix = atanh(training_matrix);
+
    
 else % create dissimilarity structures
-    % loop through each participants' sessions to find pairwise differences
-    model_mat = nan(size(model_dat,1),size(model_dat,1),size(model_data,3),size(model_dat,4));
-    for i = 1: (size(model_dat,3)*size(model_dat,4))
-        model_mat(:,:,i) = squareform(pdist(model_dat(:,:,i), opts.metric));
+    
+    if ndims(model_data) > 2
+        % loop through each participants' sessions to find pairwise differences
+        model_mat = nan(size(model_dat,1),size(model_dat,1),size(model_dat,3),size(model_dat,4));
+        for i = 1: (size(model_dat,3)*size(model_dat,4))
+            model_mat(:,:,i) = squareform(pdist(model_dat(:,:,i), opts.metric));
+        end
+        % then average across each participants' sessions
+        training_matrix = nanmean(model_mat,3);
+        % then average across participants
+        training_matrix = nanmean(training_matrix,4);
+    else
+        training_matrix = model_dat;
     end
-    % then average across each participants' sessions
-    training_matrix = nanmean(model_mat,3);
-    % then average across participants
-    training_matrix = nanmean(training_matrix,4);
     
     % then repeat to create test data
     test_mat = nan(size(test_dat,1),size(test_dat,1),size(test_dat,3),size(test_dat,4));
@@ -193,6 +209,7 @@ else % create dissimilarity structures
     test_matrix = nanmean(test_mat,3);
     test_matrix = nanmean(test_matrix,4);
 end
+
 
 %% Visualize the matrices
 
@@ -258,8 +275,8 @@ if opts.verbose
 end
 
 %% Sanity Check
-if sum(isnan(test_matrix(:)))==numel(test_matrix) || sum(isnan(training_matrix(:)))==numel(training_matrix)
-     warning('One or both input matrices contains all NaN values. I quit!');
+if sum(isnan(test_matrix(:)))==(numel(test_matrix)-8) || sum(isnan(test_matrix(:)))==numel(test_matrix) || sum(isnan(training_matrix(:)))==numel(training_matrix)
+     warning('One or both input matrices contains all NaN values. this one triggered');
 end
 
 %% Save out the classification results based on greatest correlation coefficient for each test pattern
@@ -302,51 +319,36 @@ if ~isfield(opts,'pairwise') || ~opts.pairwise
     
     
 else
-    if sum(isnan(test_matrix(:)))==numel(test_matrix) || sum(isnan(training_matrix(:)))==numel(training_matrix)
-        
-        number_classes = size(test_matrix,1);
-        comparisons = combnk([1:number_classes],2);
-        classification = nan(2, 2, length(comparisons));
-        
-       return
-    end
-    
     
     [accuracy, comparisons] = pairwise_rsa_test(test_matrix,training_matrix);
     
-    if all(isnan(accuracy))
-        classification = cell(length(accuracy),2); 
-        classification = cellfun(@(a) {NaN}, classification);
-        % output indicating names of conditions being compared
-        comparisons = model_classes(comparisons);
-
-        % output results in 3d cell array with following dimensions:
-        % predicted_labels X true_labels X comparison number 
-        results_of_comparisons = cell(size(classification,2), 2, size(classification,1));
-        for comp = 1:size(classification,1)
-            results_of_comparisons(:,1,comp) = classification(comp,:)';
-            results_of_comparisons(:,2,comp) = comparisons(comp,:)';
+    classification = comparisons;
+    
+    for acc = 1:length(accuracy)
+        if isnan(accuracy(acc))
+            classification(acc,:) = nan;
+        else
+            if ~accuracy(acc)
+                classification(acc,:) = classification(acc,end:-1:1);
+            end
         end
-    % TODO: check that this works if not all output is nan
-    % also TODO: reduce branching logic
-    else
-        % this section is to conver the accuracy to the category names
-        classification = comparisons;
-        classification(~accuracy,:) = classification(~accuracy,end:-1:1);
-        classification = model_classes(classification);
-        % output indicating names of conditions being compared
-        comparisons = model_classes(comparisons);
-
-        % output results in 3d cell array with following dimensions:
-        % predicted_labels X true_labels X comparison number 
-        results_of_comparisons = cell(size(classification,2), 2, size(classification,1));
-        for comp = 1:size(classification,1)
-            results_of_comparisons(:,1,comp) = classification(comp,:)';
-            results_of_comparisons(:,2,comp) = comparisons(comp,:)';
+    end
+   
+    classification = num2cell(classification);
+    for class = 1:size(classification,1)
+        if ~any(isnan([classification{class,:}]))
+            classification(class,:) = model_classes([classification{class,:}]);
         end
     end
     
+    comparisons = model_classes(comparisons);
     
+    results_of_comparisons = cell(size(classification,2), 2, size(classification,1));
+        for comp = 1:size(classification,1)
+            results_of_comparisons(:,1,comp) = classification(comp,:)';
+            results_of_comparisons(:,2,comp) = comparisons(comp,:)';
+        end
+        
 
     classification = results_of_comparisons;
     

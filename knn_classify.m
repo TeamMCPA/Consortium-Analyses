@@ -12,6 +12,10 @@ else
     opts = rmfield(opts,'pairwise');
 end
 
+if ~exists('pairwise','var')
+    pairwise = false;
+end
+
 %% parse out the classification parameters
 input = parse_opts(opts);
 

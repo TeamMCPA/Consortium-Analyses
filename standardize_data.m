@@ -7,6 +7,13 @@ function [group_dat, subject_dat] = standardize_data(group, subject)
 average = mean(group);
 sd = std(group);
 group_dat = (group-average) ./ sd;
-subject_dat = (subject - average) ./ sd;
+
+% only want to standardize the subject data if we're trying to do this within cross validation. 
+% If we're doing this in CV,we want to apply the group's sd and mean to the subject's data
+if ~isstruct(subject)
+    subject_dat = (subject - average) ./ sd;
+else
+    subject_dat = nan;
+end
 
 end

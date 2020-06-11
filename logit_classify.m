@@ -10,6 +10,22 @@ else
     opts = rmfield(opts,'pairwise');
 end
 
+%function [classification, comparisons] = logit_classify(train_data, train_labels, test_data, test_labels, opts)
+%% logistic regression wrapper
+% takes in training data, training labels, testing data, and testing labels
+% (unused) as well as opts struct with classification parameters
+%% determine if this will be pairwise 
+if ~exist('opts','var') || ~isfield(opts, 'pairwise') || isempty(opts)
+    pairwise = false;
+else
+    pairwise = opts.pairwise;
+    opts = rmfield(opts,'pairwise');
+end
+
+if ~exists('pairwise','var')
+    pairwise = false;
+end
+
 %% parse parameters
 input = parse_opts(opts);
 
