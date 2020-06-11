@@ -2,8 +2,8 @@ function allsubj_results = nfold_classify_ParticipantLevel(MCP_struct,varargin)
 %% nfold_classify_ParticipantLevel takes an MCP struct and performs
 % n-fold cross-validation for n subjects to classify individual
 % participants' average response patterns.
-
-
+%
+%
 % This wrapper allows the user to choose if
 % features will be averaged within-participants to produce a single
 % participant-level observation or if individual events will be preserved.
@@ -11,7 +11,7 @@ function allsubj_results = nfold_classify_ParticipantLevel(MCP_struct,varargin)
 % is constrained to the number of participants minus 1. Otherwise the
 % training set will be (participants - 1) * (number of instances of an
 % object).
-
+%
 % Several parameters can be changed,
 % including which functions are used to generate features and what
 % classifier is trained. See Arguments below:
