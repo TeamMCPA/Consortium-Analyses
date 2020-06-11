@@ -1,11 +1,26 @@
 function new_mcp_file = MCP_relabel_stimuli(mcp_file,old_label_name,new_labels,save_flag)
 %MCP_RELABEL_STIMULI change names of stimuli in an MCP struct
+% The function is called with the following arguments:
+% MCP_relabel_stimuli(mcp_file,old_label_name,new_labels,save_flag)
+%
 % This is useful after the default naming, where integer marks get turned
 % into names (e.g., 3 -> 'm3'). The function can be applied to rename
 % multiple conditions at once (e.g., 'm2' and 'm3' -> 'cats')
 %
-% mcp_file may be either a Matlab file (*.mcp extension) or an MCP struct
+% mcp_file: may be either a Matlab file (*.mcp extension) or an MCP struct
 % in the current workspace.
+% 
+% old_label_name: may be either numeric trigger number or a char-type
+% containing the previous name (e.g., 'm3' or 'cats')
+%
+% new_labels: may be either a char-type containing the new name (e.g.,
+% 'felines') or a cell array of replacement names (e.g.,
+% {'tabby','calico','tiger','garfield'}). However the cell array must have
+% the same length as the number of instances of the old_label_name found in
+% the mcp_file, or it will throw an error.
+%
+% save_flag: logical, set whether to write out a new *.mcp file. The file
+% with have the same name as the mcp_file input, but with _r suffix.
 %
 %
 % Chengyu Deng & Benjamin Zinszer 7 june 2017
@@ -33,7 +48,7 @@ end
 % saving and then save (if flagged) at the end
 
 % Quickly create char version of old label for convenient screen display
-if ~ischar(old_label_name)
+if isnumeric(old_label_name)
     old_label_char = num2str(old_label_name);
 else
     old_label_char = old_label_name; 
