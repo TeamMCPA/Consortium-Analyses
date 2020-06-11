@@ -57,7 +57,7 @@ end
 if length(old_mcp_struct) > 1
     for subj = 1:length(old_mcp_struct)
         disp(['Updating labels "' old_label_char '" for: ' old_mcp_struct(subj).Subject.Subject_ID] );
-        new_mcp_file(subj) = MCP_relabel_stimuli(old_mcp_struct(subj),old_label_char,new_labels,0);
+        new_mcp_file(subj) = MCP_relabel_stimuli(old_mcp_struct(subj),old_label_name,new_labels,0);
     end
     if save_flag
         disp(['Saving new file under name: ' mcpfile '_r.mcp']);
