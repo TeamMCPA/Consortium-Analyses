@@ -15,8 +15,19 @@ function MCPA_struct = MCP_to_MCPA(mcp_multiple, incl_subjects, incl_features, i
 % assignment. Use [] to just get all subjects.
 %
 % incl_features: a vector of indices for features to include in the
-% analysis. Again, only the feature's position in the MCP struct matters,
-% not any other feature number assignment. Use [] to get all features.
+% analysis. Only the feature's position in the MCP struct matters, that is,
+% the column it refers to in the Transformation_Matrix and not any other
+% feature number assignment. Use [] to get all features.
+%
+% incl_channels: a vector of indices for features to include in the
+% analysis. Again, only the channels's position in the MCP struct matters,
+% (the row number in Transformation_Matrix and--equivalently--the column
+% number in the Hb_data. If channels are features, this line is redundant,
+% but if you are using a different feature-space (e.g., Brodmann's areas)
+% and want to delete a single noisy channel from the calculation, you can
+% use incl_features to include all features/regions, and incl_channels to
+% exclude the noisy channels specifically from participating in the
+% computation of the features. Use [] to get all channels.
 %
 % time_window: defined in number of seconds. If two subjects have different
 % sampling frequencies, the same time window will be searched (except for
@@ -39,7 +50,7 @@ function MCPA_struct = MCP_to_MCPA(mcp_multiple, incl_subjects, incl_features, i
 %
 % Chengyu Deng & Benjamin Zinszer 5 may 2017
 % revised bdz 26 oct 2018
-% revised by Anna Herbolzheimer 2019-2020
+% expanded & revised by Anna Herbolzheimer 2019-2020
 
 %% Check whether importing an MCP file or just converting from workspace
 % Pulling from a file will be much faster for individual event
