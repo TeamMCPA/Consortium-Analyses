@@ -34,7 +34,7 @@ addParameter(p,'setsize',max(arrayfun(@(x) size(x.Experiment.Runs(1).Transformat
 addParameter(p,'max_sets',1000000,@isnumeric);
 addParameter(p,'test_handle',@mcpa_classify);
 addParameter(p,'opts_struct',[],@isstruct);
-addParameter(p,'norm_data', false, @islogical);
+addParameter(p,'scale_data', false, @islogical);
 addParameter(p,'verbose',true,@islogical);
 addParameter(p, 'summarize_dimensions', {});
 addParameter(p, 'final_dimensions', {});
@@ -48,8 +48,8 @@ addParameter(p, 'feature_space', 'channel_space', @ischar);
 addParameter(p, 'incl_features', [1:max(arrayfun(@(x) size(x.Experiment.Runs(1).Transformation_Matrix,2),MCP_struct))],@isnumeric); 
  
 % parameters used if norming the data
-addParameter(p,'norm_withinSessions', true, @islogical);
-addParameter(p, 'norm_function', @minMax_scale);
+addParameter(p,'scale_withinSessions', true, @islogical);
+addParameter(p, 'scale_function', @minMax_scale);
 addParameter(p, 'minMax', [0,1], @isnumeric);
 
 % parameters only used in nfold_generalize_ParticipantLevel
