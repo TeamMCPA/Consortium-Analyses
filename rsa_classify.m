@@ -2,22 +2,28 @@ function [classification, comparisons] = rsa_classify(model_data, model_labels, 
 %% rsa_classify implements a correlation-based, similarity-space classifier
 % following Zinszer, Bayet, Emberson, Raizada, & Aslin's (2018, Neurophotonics)
 % method for all-possible-pairwise-comparisons and Zinszer, Anderson, Kang,
-% Wheatley, & Raizada's (2016) approach for n-way comparison
+% Wheatley, & Raizada's (2016, JoCN) approach for n-way comparison
 %
-% User have the option to create similarity matrices or dissimilarity matrices.
-% If only the metric to create RSA matrices is given, it will default to similarity space
-% if the metric is pearson, spearman, or kendall. Note: pearson and spearman are also 
-% distance functions, so they could also be used to create dissimilarity matrices. 
-% If creating dissimilarity matrices with these distance functions, please be sure to set
-% opts.similarity_space to false. 
-% 
-% Users can choose what metric to create matrices with by changing the value of
-% opts.metric. Users can choose to create similarity matrices by setting 
-% opts.similarity_space to true.
-% 
-% If similarity matrices are created, they will be be adjusted with the hyperbolic arctangent.
+% opts: a struct that contains options for the classifier.
 %
-% Only 'exclusive' mode is available.
+% opts.similarity_space determines how the features will be abstracted:
+%    'similarity_space' if true, will use correlation-based similarity
+%    space (larger values more similar). opts.metric can be set to 
+%    'spearman', 'pearson', or 'kendall'.
+%    'similarity_space' if false, will use pdist-based dissimilarity matrix
+%    (larger values are less similar). Any of the distance metrics from the
+%    pdist function (e.g., 'cosine', 'euclidean', 'seuclidean') can be set
+%    for the opts.metric value.
+%    Default setting is opts.similiarty_space=true, opts.metric='spearman'
+% 
+%    If similarity space is used, values are adjusted with Fisher's r-to-z
+%    transform (the hyperbolic arctangent of the correlation coefficient).
+%
+% Only opts.exclusive=true mode is currently available.
+%
+% opts.pairwise if true will make all possible pairwise contrasts between
+% the classes. If false, it will test all n-way comparison of class labels
+% for permutation of labels with highest correlation to the training set.
 %
 % If opts.tiebreak is set to true (default), the correlation coefficients
 % are randomly adjusted by <1% of the smallest observed difference to
@@ -28,8 +34,6 @@ function [classification, comparisons] = rsa_classify(model_data, model_labels, 
 % If opts.verbose is set to true (default is false), Fisher-adjusted
 % (hyperbolic arctangent) correlation matrices are displayed for all
 % subjects, sessions, etc.
-%
-% All-possible-pairwise comparison (opts.pairwise) is under development.
 
 %% If the options struct is not provided, set default parameters
 if ~exist('opts','var') || isempty(opts) 
