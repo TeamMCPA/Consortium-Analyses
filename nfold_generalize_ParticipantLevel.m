@@ -64,7 +64,7 @@ unmapped_sets = find_feature_sets(p.Results);
 sets = map_features_to_sets(p, unmapped_sets);
 
 %% norm check - do we want to scale individual participant data?
-if p.Results.norm_data
+if p.Results.scale_data
     MCP_struct = scale_individuals(MCP_struct, p.Results);
 end
 

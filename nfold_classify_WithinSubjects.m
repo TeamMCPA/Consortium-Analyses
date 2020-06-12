@@ -30,12 +30,12 @@ function allsubj_results = nfold_classify_WithinSubjects(MCP_struct, varargin)
 % test_handle: function handle for classifier. Default: mcpa_classify
 % opts_struct: contains additional classifier options. Default: empty struct
 % verbose: logical flag to report status updates and results. Default: true
-% norm_data: option to perform some for of feature scaling. Defualt: false
-% norm_withinSessions: if we do norm data, this allows the user to choose
+% scale_data: option to perform some for of feature scaling. Defualt: false
+% scale_withinSessions: if we do norm data, this allows the user to choose
 % if we norm within individual sessions or across a participants session.
 % It is only valid to norm across sessions for
 % nfold_classify_ParticipantLevel. Default: true
-% norm_function: function handle for how to scale the data. Default:
+% scale_function: function handle for how to scale the data. Default:
 % minMax_scale
 % minMax: what min and max to set the data to. Default: [0,1]
 % summarize_dimensions: what dimensions and what order to summarize the
@@ -72,7 +72,7 @@ sets = map_features_to_sets(p, unmapped_sets);
 
 
 %% norm check - do we want to scale individual participant data?
-if p.Results.norm_data
+if p.Results.scale_data
     MCP_struct = scale_individuals(MCP_struct, p.Results);
 end
 
