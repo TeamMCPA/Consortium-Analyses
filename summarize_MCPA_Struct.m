@@ -1,25 +1,14 @@
 function summarized_MCPA_struct = summarize_MCPA_Struct(summary_function,MCPA_struct, summarize_dimensions)
 %SUMMARIZE_MCPA_STRUCT Convert an MCPA struct of windowed data to
 %multivariate patterns using any summarizing function, such as nanmean.
-%
-% summarize_MCPA_Struct(summary_function,MCPA_struct, summarize_dimensions)
-%
-% summary_function: can be any function handle that takes an array and
-% reduces it by one dimension (e.g., @mean or @nanmean)
-%
-% MCPA_struct: an MCPA struct generated using MCP_to_MCPA
-%
-% summarize_dimensions: which dimensions should be reduced using the
-% summary_function named above. The names of the possible dimensions can be
-% found in the MCPA_struct.dimensions field.
 
 
 %% Convert the inputs to correct format
 % Convert summary function into a function handle
 if ischar(summary_function)
-    summary_function = str2func(summary_function);
-elseif iscell(summary_function)
-    summary_function = str2func(summary_function{:});
+    summary_function = {str2func(summary_function)};
+elseif isa(summary_function,'function_handle')
+    summary_function = {summary_function};
 elseif isempty(summary_function)
     warning('No summarizing function specified. Reshaping dimensions only.')
 end
@@ -49,8 +38,33 @@ pattern_matrix = MCPA_struct.patterns;
 % and rename the dimension(s). Otherwise, perform the summarizing function
 % on the dimension.
 
+summary_operations = cell(size(summarize_dimensions));
+
+if length(summary_function) ~= length(summarize_dimensions)
+    dim_to_pad = find(~isempty(strfind(summarize_dimensions, 'X')));
+
+    summ_function_idx = 1;
+    for i = 1:length(summarize_dimensions)
+        if i == dim_to_pad
+            summary_operations{i} = 'Nan';
+        else
+            summary_operations{i} = summary_function{summ_function_idx};
+            
+            if length(summary_function) > (i - summ_function_idx)
+                summ_function_idx = summ_function_idx+1;
+            end
+        end
+    end
+else
+    summary_operations = summary_function;
+end
+            
 %% new approach
+dims_summarized = [];
+
 for curr_dim = 1:length(summarize_dimensions)
+    
+    operation = summary_operations(curr_dim);
     
     % Perform concatenations
     concat = strsplit(summarize_dimensions{curr_dim}, 'X');
@@ -68,14 +82,32 @@ for curr_dim = 1:length(summarize_dimensions)
             warning(concat_error.message)
             error('Failed to concatenate dimensions: %s', summarize_dimensions{curr_dim})
         end
-    elseif ~isempty(summary_function)
+    elseif ~isempty(operation) 
         try
-            % Perform summary function over the specified dimension
             dim_to_summarize = find(strcmp(dimension_labels, summarize_dimensions{curr_dim}));
-            pattern_matrix = summary_function(pattern_matrix,dim_to_summarize);
             
+            dims_summarized = [dims_summarized dim_to_summarize];
+            % create temp pattern matrix to store new data
+            inds = size(pattern_matrix);
+            inds(dim_to_summarize) = length(operation{:});
+            temp_pattern_matrix = nan(inds);
+            
+            if length(operation{:}) > 1
+                operation = operation{:};
+            end
+            
+            for summerizer = 1:length(operation)
+                inds = repmat({':'},1,ndims(temp_pattern_matrix));
+                inds{dim_to_summarize} = summerizer;
+                
+                temp_pattern_matrix(inds{:}) = operation{summerizer}(pattern_matrix,dim_to_summarize);  
+            end
+            
+            pattern_matrix = temp_pattern_matrix;
+
             % Then keep track of remaining dimensions in list
             dimension_labels{dim_to_summarize} = [];
+
         catch averaging_error
             warning(averaging_error.message);
             error('Failed to successfully summarize dimension: %s', summarize_dimensions{curr_dim});
@@ -91,7 +123,8 @@ if ~isempty(strcmp('session', dimension_labels))
         to_remove(session_idx) = 1;
         summarized_MCPA_struct_pattern = reshape(pattern_matrix,s(to_remove));
     else
-        summarized_MCPA_struct_pattern = squeeze(pattern_matrix);
+        concat_to = find(strcmp(dimension_labels, 'feature'));
+        summarized_MCPA_struct_pattern = concatenate_dimensions(pattern_matrix, [concat_to,dims_summarized]);
     end
 end    
 
