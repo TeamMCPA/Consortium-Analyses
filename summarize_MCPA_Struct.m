@@ -50,7 +50,7 @@ if length(summary_function) ~= length(summarize_dimensions)
         else
             summary_operations{i} = summary_function{summ_function_idx};
             
-            if length(summary_function) > (i - summ_function_idx)
+            if length(summary_function) > 1
                 summ_function_idx = summ_function_idx+1;
             end
         end
