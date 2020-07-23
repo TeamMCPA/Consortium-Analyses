@@ -1,11 +1,9 @@
 function transformation_mat = mapChanneltoROI(n_chan, database, pos, areas)
+%% create a matrix of 0's and 1's indicating which anatomical region a channel corresponds to
 % n_chan = number of channels on nirs cap, not number included in analysis
-% n_areas = number of Brodmann's areas - eventually we could update this so
-% that we can also use other regions of interest, but for now this parameter
-% should always be 47
-% td_path = file path to find the TDdatabase
+% database = atlas containing MNI coordinates for Brodmann's areas
 % pos = POS file that contains where the probes sat for a single
-% participant's session
+% areas = the fieldnames in the database struct that correspond to the Brodmann's areas we want to co-register to
 
 
 %% initialize the transformation matrix
