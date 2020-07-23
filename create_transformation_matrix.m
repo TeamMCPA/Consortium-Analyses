@@ -4,11 +4,12 @@ function mcp_struct = create_transformation_matrix(mcp_struct, convert_to_brodma
 % mcp_struct - mcp data structure for one participant
 % convert_to_brodmanns - true or false of whether we want ROI space or
 % channel space
-% pathname - path to where that participant's session probe location data can be found
-%probe_loc_file - name of file where that session's probe locations are
-%stored (usually POS.mat)
-% path_to_tdDatabase - path to where the TD Database with MNI coordiantes
-% for Brodmann's areas can be found
+% split_hemispheres - true or false indicating whether the TDDatabase needs to be split into left and right hemispheres
+% pos_pathname - path to where that participant's session probe location data can be found
+% probe_loc_file - name of file where that session's probe locations are
+% stored (usually POS.mat)
+% tdDatabase - atlas with MNI coordinates for Brodmann's areas
+% session_idx - which session we are trying to co-register
 
 %% create transformation matrices
 
