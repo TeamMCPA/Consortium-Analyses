@@ -73,21 +73,29 @@ summary_operations = cell(size(summarize_dimensions));
 % summarize_dimensions and needs to be adjusted with placeholders.
 if length(summary_function) ~= length(summarize_dimensions)
     
-    % if we're concatenating instead of summarizing, we need to figure out what index in the order of operations to put a 'Nan'
-    dim_to_pad = find(~isempty(strfind(summarize_dimensions, 'X')));
-
-    summ_function_idx = 1;
-    for i = 1:length(summarize_dimensions) % here we're filling in summary_operations
-        if i == dim_to_pad
-            summary_operations{i} = 'Nan';
-        else
-            summary_operations{i} = summary_function{summ_function_idx};
-            
-            if length(summary_function) > 1
-                summ_function_idx = summ_function_idx+1;
-            end
-        end
+    % For any item in the summarize_dimensions array that contains the
+    % concatenation operator (X), pad the summary_operations with a NaN
+    % instead of a function handle.
+    concat_ops = contains(summarize_dimensions, 'X');
+    summary_operations(concat_ops) = {NaN};
+    
+    try
+        summary_operations(~concat_ops) = summary_function;
+    catch
+        error('%g summary functions provided for %g dimensions. These must match.',length(summary_function),sum(~concat_ops));
     end
+%     summ_function_idx = 1;
+%     for i = 1:length(summarize_dimensions) % here we're filling in summary_operations
+%         if i == dim_to_pad
+%             summary_operations{i} = 'Nan';
+%         else
+%             summary_operations{i} = summary_function{summ_function_idx};
+%             
+%             if length(summary_function) > 1
+%                 summ_function_idx = summ_function_idx+1;
+%             end
+%         end
+%     end
 else
     summary_operations = summary_function;
 end
