@@ -54,7 +54,7 @@ end
 dimension_labels = MCPA_struct.dimensions;
 pattern_matrix = MCPA_struct.patterns;
 
-%% Get summarized
+%% Create list of actions (summarizing functions)
 % Step through the dimensions listed from left to right. If a dimension
 % contains the concatenation operator (X), then reshape the pattern matrix
 % and rename the dimension(s). Otherwise, perform the summarizing function
@@ -79,38 +79,38 @@ if length(summary_function) ~= length(summarize_dimensions)
     concat_ops = contains(summarize_dimensions, 'X');
     summary_operations(concat_ops) = {NaN};
     
+    % For the rest of the elements in summarize_dimensions array, establish
+    % the list of operations (one-operation-per-dimension) that will be run
+    % on them.
     try
         summary_operations(~concat_ops) = summary_function;
     catch summary_error
         warning(summary_error.message);
         error('%g summary functions provided for %g dimensions. These must match.',length(summary_function),sum(~concat_ops));
     end
-%     summ_function_idx = 1;
-%     for i = 1:length(summarize_dimensions) % here we're filling in summary_operations
-%         if i == dim_to_pad
-%             summary_operations{i} = 'Nan';
-%         else
-%             summary_operations{i} = summary_function{summ_function_idx};
-%             
-%             if length(summary_function) > 1
-%                 summ_function_idx = summ_function_idx+1;
-%             end
-%         end
-%     end
+
 else
+    % If the list of dimensions and list of functions are alerady matched,
+    % skip the steps above and just follow the user input
     summary_operations = summary_function;
 end
             
-%% new approach
+%% Proceed through list of dimensions & actions, and perform them
+
+% Initialize this variable to keep a history of what summarizations are
+% performed as we go along
 dims_summarized = [];
 
+% Loop through the list of dimensions and perform the assigned operations
 for curr_dim = 1:length(summarize_dimensions)
     
+    % Find the operation
     operation = summary_operations(curr_dim);
     
-    % Perform concatenations
-    concat = strsplit(summarize_dimensions{curr_dim}, 'X');
-    if length(concat) == 2
+    % Check whether operation is a function handle or nested cells. If
+    % neither, just proceed with searching for concatenation.
+    if ~isa(operation{:}, 'function_handle') &&  ~isa(operation{:}, 'cell')
+        concat = strsplit(summarize_dimensions{curr_dim}, 'X');
         try
             first_dim_to_concat = find(strcmp(dimension_labels,concat{1}));
             second_dim_to_concat = find(strcmp(dimension_labels,concat{2}));
@@ -124,13 +124,19 @@ for curr_dim = 1:length(summarize_dimensions)
             warning(concat_error.message)
             error('Failed to concatenate dimensions: %s', summarize_dimensions{curr_dim})
         end
-    elseif ~isempty(operation) 
+    else
+        % If the operation was not a concatenation, assuming that we are
+        % going to perform some summarization on a dimension.
         try
+            % Find the name of the dimension in the dimension labels
+            % obtained from the input MCPA struct. Record the dimension
+            % number associated with that label.
             dim_to_summarize = find(strcmp(dimension_labels, summarize_dimensions{curr_dim}));
             
+            % Record that number into the history of summarizations
             dims_summarized = [dims_summarized dim_to_summarize];
             
-            % create temp pattern matrix to store new data
+            % Create temp pattern matrix to store new data
             inds = size(pattern_matrix);
             inds(dim_to_summarize) = length(operation{:});
             temp_pattern_matrix = nan(inds);
@@ -160,7 +166,8 @@ for curr_dim = 1:length(summarize_dimensions)
     end
 end
 
-if ~isempty(strcmp('session', dimension_labels))
+%if ~isempty(strcmp('session', dimension_labels))
+if sum(strcmp('session', dimension_labels))
     session_idx = find(strcmp('session', dimension_labels));
     s = size(pattern_matrix);
     if s(session_idx) == 1 % we don't want to loose this dimension if it is 1
