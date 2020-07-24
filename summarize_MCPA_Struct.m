@@ -1,11 +1,32 @@
 function summarized_MCPA_struct = summarize_MCPA_Struct(summary_function,MCPA_struct, summarize_dimensions)
-%SUMMARIZE_MCPA_STRUCT Convert an MCPA struct of windowed data to
-%multivariate patterns using any summarizing function, such as nanmean.
+% SUMMARIZE_MCPA_STRUCT Convert an MCPA struct of windowed data to
+% multivariate patterns using any summarizing function, such as nanmean.
+% 
+% summary_function: a function handle or cell array containing function
+% handles to be evaluated
+% MCPA_struct: the multivariate pattern data to summarize
+% summarize_dimensions: char or cell array containing chars to indicate
+% on which dimensions the summary_function should be applied.
+%
+% Multiple dimensions can be concatenated before applying summary function
+% by using the X operator, as in example below:
+%
+% summarize_MCPA_Struct(@nanmean, MCPA_struct, {'repetition','session'})
+% This version will average (using nanmean) over all repetitions within a
+% session, and then average again (using nanmean) over all sessions.
+%
+% summarize_MCPA_Struct(@nanmean, MCPA_struct, {'repetitionXsession'})
+% This version will concatenate all repetitions across sessions into a
+% single set and take the average (nanmean). 
+%
+% If the number of repetitions is equal in each session, there is no 
+% difference between these two uses, but if some sessions have more 
+% repetitions than others, these two cases weight the individual 
+% repetitions differently in the grand average.
 
 
 %% Convert the inputs to correct format
-% Convert summary function into a function handle
-
+% Convert summary function into a function handle or cell array
 if ischar(summary_function)
     summary_function = {str2func(summary_function)};
 elseif isa(summary_function,'function_handle')
@@ -39,12 +60,19 @@ pattern_matrix = MCPA_struct.patterns;
 % and rename the dimension(s). Otherwise, perform the summarizing function
 % on the dimension.
 
-% create a list of the operations happening on our data for later use in our summarizing loop
-% this will be a list of either 'Nan' or @function_handle. 'Nan' is only used when we're concatenating to preserve array dimensions
+% Create a list of the operations happening on our data for later use in 
+% our summarizing loop. Each element will contain either 'NaN' or 
+% @function_handle. 'NaN' is used as the placeholder function when we're 
+% concatenating dimensions instead of summarizing (to keep the elements of
+% summary_operations aligned with summarize_dimensions).
 summary_operations = cell(size(summarize_dimensions));
 
-% summary function will be a list of operators, it will not be equal to summarize_dimensions if the user entered a concatenation
+% summary_function will be a cell array of function handles. If the user
+% entered any concatenations, or if the user only entered one function
+% handle, then summary_function will have a different length than
+% summarize_dimensions and needs to be adjusted with placeholders.
 if length(summary_function) ~= length(summarize_dimensions)
+    
     % if we're concatenating instead of summarizing, we need to figure out what index in the order of operations to put a 'Nan'
     dim_to_pad = find(~isempty(strfind(summarize_dimensions, 'X')));
 
