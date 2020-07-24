@@ -5,6 +5,7 @@ function summarized_MCPA_struct = summarize_MCPA_Struct(summary_function,MCPA_st
 
 %% Convert the inputs to correct format
 % Convert summary function into a function handle
+
 if ischar(summary_function)
     summary_function = {str2func(summary_function)};
 elseif isa(summary_function,'function_handle')
@@ -38,13 +39,17 @@ pattern_matrix = MCPA_struct.patterns;
 % and rename the dimension(s). Otherwise, perform the summarizing function
 % on the dimension.
 
+% create a list of the operations happening on our data for later use in our summarizing loop
+% this will be a list of either 'Nan' or @function_handle. 'Nan' is only used when we're concatenating to preserve array dimensions
 summary_operations = cell(size(summarize_dimensions));
 
+% summary function will be a list of operators, it will not be equal to summarize_dimensions if the user entered a concatenation
 if length(summary_function) ~= length(summarize_dimensions)
+    % if we're concatenating instead of summarizing, we need to figure out what index in the order of operations to put a 'Nan'
     dim_to_pad = find(~isempty(strfind(summarize_dimensions, 'X')));
 
     summ_function_idx = 1;
-    for i = 1:length(summarize_dimensions)
+    for i = 1:length(summarize_dimensions) % here we're filling in summary_operations
         if i == dim_to_pad
             summary_operations{i} = 'Nan';
         else
@@ -87,19 +92,22 @@ for curr_dim = 1:length(summarize_dimensions)
             dim_to_summarize = find(strcmp(dimension_labels, summarize_dimensions{curr_dim}));
             
             dims_summarized = [dims_summarized dim_to_summarize];
+            
             % create temp pattern matrix to store new data
             inds = size(pattern_matrix);
             inds(dim_to_summarize) = length(operation{:});
             temp_pattern_matrix = nan(inds);
             
-            if length(operation{:}) > 1
-                operation = operation{:};
+            if length(operation{:}) > 1 % if we have 2 operations, that index in the cell array will be {1x2}, so we need this to get it to {@min, @max}
+                operation = operation{:}; 
             end
             
-            for summerizer = 1:length(operation)
+            for summerizer = 1:length(operation) % apply each summarizing function to the specified dimension
                 inds = repmat({':'},1,ndims(temp_pattern_matrix));
                 inds{dim_to_summarize} = summerizer;
                 
+                % if we applied 1 function, that dimension will now be size 1, if we applied 2 functions, it will be size 2
+                % for example, if we applied nanmean to time, we get 1 x 8 x139 x 15 x 4 x16 but if we applied min and max to time we get 2 x 8 x 138 x 15 x 4 x 16
                 temp_pattern_matrix(inds{:}) = operation{summerizer}(pattern_matrix,dim_to_summarize);  
             end
             
