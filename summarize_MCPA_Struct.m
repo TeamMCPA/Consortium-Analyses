@@ -81,7 +81,8 @@ if length(summary_function) ~= length(summarize_dimensions)
     
     try
         summary_operations(~concat_ops) = summary_function;
-    catch
+    catch summary_error
+        warning(summary_error.message);
         error('%g summary functions provided for %g dimensions. These must match.',length(summary_function),sum(~concat_ops));
     end
 %     summ_function_idx = 1;
