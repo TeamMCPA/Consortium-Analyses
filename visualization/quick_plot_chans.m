@@ -1,4 +1,12 @@
-function quick_plot_chans(MCP_data)
+function quick_plot_chans(MCP_data,show_grid)
+%% simple plotter for probe layouts in MCP data
+% Input one (singleton) MCP struct (e.g., one subject), and click on any
+% detector in the figure to view the Oxy fNIRS data for the channels
+% associated with that detector. Set show_grid to 0 to prevent channel
+% lines from being drawn. Lines will appear for each detector you click
+% instead.
+
+if ~exist('show_grid','var'), show_grid=1; end
 
 %% Set up the SD struct that you're going to work with
 if length(MCP_data)>1
@@ -28,23 +36,6 @@ xlabel('X axis');
 ylabel('Y axis');
 zlabel('Z axis');
 
-%% Plot probe positions
-% Plot the positions of the detectors in 3d space
-p(1) = plot3(chanplot,...
-    SD.DetPos(:,1),...
-    SD.DetPos(:,2),...
-    SD.DetPos(:,3),...
-    'bo','LineWidth',4,'MarkerSize',12);
-grid on;
-title('Click on Detectors to view time series data')
-
-% Plot the positions of the sources in 3d space
-p(2) = plot3(chanplot,...
-    SD.SrcPos(:,1),...
-    SD.SrcPos(:,2),...
-    SD.SrcPos(:,3),...
-    'r*','LineWidth',2,'MarkerSize',8);
-
 %% Plot channel positions
 % MeasList contains:
 % [ source_number, detector_number, placeholder, wavelength]
@@ -61,41 +52,75 @@ for chan = 1:size(chan_locs,1)
     % Second column is detector number
     det=chan_locs(chan,2);
     
-    % Each line is drawn from the source position to the detector position.
-    % Recall that plot3 requires three separate inputs for the three
-    % dimensions, so src-det pair are listed in x, then pair listed in y,
-    % and then pair listed in z. Draw black line.
-    p(3) = plot3(chanplot,...
-        [SD.SrcPos(src,1);SD.DetPos(det,1)],...
-        [SD.SrcPos(src,2);SD.DetPos(det,2)],...
-        [SD.SrcPos(src,3);SD.DetPos(det,3)],...
-        'k-','LineWidth',1);
+    % If the show_grid feature is active, preprint the channel lines
+    if show_grid
+        % Each line is drawn from the source position to the detector position.
+        % Recall that plot3 requires three separate inputs for the three
+        % dimensions, so src-det pair are listed in x, then pair listed in y,
+        % and then pair listed in z. Draw black line.
+        p(1) = plot3(chanplot,...
+            [SD.SrcPos(src,1);SD.DetPos(det,1)],...
+            [SD.SrcPos(src,2);SD.DetPos(det,2)],...
+            [SD.SrcPos(src,3);SD.DetPos(det,3)],...
+            'k--','LineWidth',1);
+    end
     
     % Add channel number labels. These are the simply the index of the
     % channel's position in the MeasList, which should also correspond to
     % the channel number in the Transformation Matrix. The text is printed
     % at the mean point between the source & detector.
-    p(4) = text(chanplot,...
+    p(2) = text(chanplot,...
         mean([SD.SrcPos(src,1);SD.DetPos(det,1)]),...
         mean([SD.SrcPos(src,2);SD.DetPos(det,2)]),...
         mean([SD.SrcPos(src,3);SD.DetPos(det,3)]),...
         num2str(chan));
 end
 
+%% Plot probe positions
+% Plot the positions of the sources in 3d space
+p(3) = plot3(chanplot,...
+    SD.SrcPos(:,1),...
+    SD.SrcPos(:,2),...
+    SD.SrcPos(:,3),...
+    'r*','LineWidth',2,'MarkerSize',8,'MarkerFaceColor','r');
+% Plot the positions of the detectors in 3d space
+p(4) = plot3(chanplot,...
+    SD.DetPos(:,1),...
+    SD.DetPos(:,2),...
+    SD.DetPos(:,3),...
+    'bo','LineWidth',2,'MarkerSize',8,'MarkerFaceColor','b');
+grid on;
+title('Click on Detectors to view time series data')
+
+
 % Hold aspect ratio
 daspect([1 1 1])
+
+% Initialize a global variable to store the detector number
 global clickDetectorID
 clickDetectorID = NaN;
-p(1).ButtonDownFcn = @showChanData;
-% set(p,'hittest','off')
-% hold(chanplot,'on');
-% set(chanplot,'ButtonDownFcn',@getCoord)
-% uiwait(gcf)
-w = waitforbuttonpress;
+
+% Create user interface for detectors
+p(4).PickableParts = 'all';
+p(4).ButtonDownFcn = @showChanData;
+
+% Monitor for feedback as long as the figure is open
 while ishghandle(chanfig)
     pause(.01)
     if ~isnan(clickDetectorID)
         chansToPlot = find(chan_locs(:,2)==clickDetectorID);
+        
+        % If the lines aren't already printed, show them now
+        if ~show_grid
+            for c = 1:size(chansToPlot,1)
+                p(1) = plot3(chanplot,...
+                    [SD.SrcPos(chan_locs(chansToPlot(c),1),1);SD.DetPos(clickDetectorID,1)],...
+                    [SD.SrcPos(chan_locs(chansToPlot(c),1),2);SD.DetPos(clickDetectorID,2)],...
+                    [SD.SrcPos(chan_locs(chansToPlot(c),1),3);SD.DetPos(clickDetectorID,3)],...
+                    'k-','LineWidth',1);
+            end
+        end
+        
         tsfig = figure;
         hold on;
         time_vec = cat(1,MCP_data.Experiment.Runs(:).Time);
@@ -112,6 +137,8 @@ while ishghandle(chanfig)
         clickDetectorID=NaN;
     end
 end
+
+% Clear the global variable before leaving
 clear clickDetectorID;
 
 
