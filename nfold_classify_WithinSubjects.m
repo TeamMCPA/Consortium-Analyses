@@ -51,7 +51,7 @@ if isstring(MCP_struct) || ischar(MCP_struct)
 end
 
 %% Parse out the input data
-p = parse_inputs(MCP_struct, varargin{:});
+p = parse_inputs(MCP_struct, varargin{:}); % parse_inputs would have a new variable indicating what value of k we have for later
 
 %% Setting up the combinations of feature subsets
 % Create all possible subsets. If setsize is equal to the total number of
@@ -172,6 +172,12 @@ allsubj_results.test_type = current_folding_function;
 %% now begin the fold
 
 for s_idx = 1:n_subj
+
+    % roadmap - leave one session out works (but could always use more validation)
+    % k-fold needs to be re-worked 
+        % first need to allow it for more than just the case of having 1 session
+        % we need some way randomize the trials for not GLM and not randomize trials for GLM
+    % we need to create a resampling approach
     
     if p.Results.verbose
         fprintf('Running %g feature subsets for Subject %g / %g \n',n_sets,s_idx,n_subj);
@@ -190,7 +196,11 @@ for s_idx = 1:n_subj
     % with current summarize dimensions, we can only proceed with
     % classification for 1 session if we are using KNN, SVM, or logistic
     % regression
-    if n_sessions == 1
+    if n_sessions == 1 % want this to happen for more than just the case of having 1 session
+        % if more than 1 session exist, need to concatenate all sessions together (concatenate_dimensions will do this)
+        
+        % around here is where the randomization needs to happen
+        
         %find something else for test train to be
         fold_dim = ndims(subject_patterns);
         num_data = size(subject_patterns,fold_dim);
@@ -200,7 +210,7 @@ for s_idx = 1:n_subj
         else
             test_percent = p.Results.test_percent;
         end
-        num_in_fold = num_data*test_percent;
+        num_in_fold = num_data*test_percent; % could say k-fold as an integer, mean k = 2, then make 2 splits or k = .2 meaning take 20% of the data
         num_folds = num_data/num_in_fold;
         one_session = true;
     else
@@ -208,11 +218,11 @@ for s_idx = 1:n_subj
         one_session = false;
     end
     
-    for folding_idx = 1:num_folds
+    for folding_idx = 1:num_folds % this where the real CV begins
         %% Run over feature subsets
         temp_set_results_cond = nan(n_cond,n_sets,n_feature);
         
-        if one_session
+        if one_session % fold_idx indicates indices in subject_patterns that are used as test data
             fold_idx_end = folding_idx * num_in_fold;
             fold_idx_start = fold_idx_end - num_in_fold + 1;
             fold = fold_idx_start:fold_idx_end;
@@ -229,6 +239,12 @@ for s_idx = 1:n_subj
         % using RSA methods. Then classifier is trained/tested on the RSA
         % structures. This works for our previous MCPA studies, but might
         % not be appropriate for other classifiers (like SVM).
+        
+        
+        % main thing to keep in mind: last dimension always contains indices of what needs to be left out
+        % dimensions: condition X channel X repetition X session -> 8 X 139 X 15 X 4
+        % if we are using leave one session out -> 8 X 139 X 15 X 1 for test and 8 X 139 X 15 X 3 for train
+        % otherwise for k-fold -> 8 X 139 X 15 X 4 -> 8 X 139 X (15*4) -> 8 X 139 X (.2*14*4) for test and 8 X 139 X (.8*14*4) for train 
         
         [group_data, group_labels, subj_data, subj_labels] = split_test_and_train(fold,...
             p.Results.conditions,...
@@ -283,6 +299,7 @@ for s_idx = 1:n_subj
                         subj_acc = nanmean(strcmp(test_labels(:,1,:), test_labels(:,2,:)));
                     end
 
+                        % folding_idx should be the same size as however many folds you do 
                     for comp = 1:size(comparisons,1)
                         if size(comparisons,2)==1
                             allsubj_results.accuracy_matrix(comparisons(comp,1),:,set_idx,folding_idx,s_idx) = subj_acc(comp);
@@ -317,6 +334,4 @@ end % end subject loop
 
 
 end % end function
-            
-
             
