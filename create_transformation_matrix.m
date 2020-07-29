@@ -29,6 +29,7 @@ else
 end
 
 mcp_struct.Experiment.Runs(session_idx).Transformation_Matrix = transformation_mat;
+mcp_struct.Experiment.Runs(session_idx).POS_filepath = [pos_pathname probe_loc_file];
 
 
 end
