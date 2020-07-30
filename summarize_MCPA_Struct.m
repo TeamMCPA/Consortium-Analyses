@@ -119,6 +119,7 @@ for curr_dim = 1:length(summarize_dimensions)
             % get the new dimensions
             dimension_labels{first_dim_to_concat} = [dimension_labels{first_dim_to_concat}, '+', dimension_labels{second_dim_to_concat}];
             dimension_labels{second_dim_to_concat} = [];
+            dimension_labels = dimension_labels(~cellfun('isempty',dimension_labels));
             
         catch concat_error
             warning(concat_error.message)
@@ -148,6 +149,7 @@ for curr_dim = 1:length(summarize_dimensions)
             for summerizer = 1:length(operation) % apply each summarizing function to the specified dimension
                 inds = repmat({':'},1,ndims(temp_pattern_matrix));
                 inds{dim_to_summarize} = summerizer;
+                inds(cellfun(@isempty, inds)) = {1};
                 
                 % if we applied 1 function, that dimension will now be size 1, if we applied 2 functions, it will be size 2
                 % for example, if we applied nanmean to time, we get 1 x 8 x139 x 15 x 4 x16 but if we applied min and max to time we get 2 x 8 x 138 x 15 x 4 x 16
@@ -166,7 +168,6 @@ for curr_dim = 1:length(summarize_dimensions)
     end
 end
 
-%if ~isempty(strcmp('session', dimension_labels))
 if sum(strcmp('session', dimension_labels))
     session_idx = find(strcmp('session', dimension_labels));
     s = size(pattern_matrix);
@@ -178,6 +179,8 @@ if sum(strcmp('session', dimension_labels))
         concat_to = find(strcmp(dimension_labels, 'feature'));
         summarized_MCPA_struct_pattern = concatenate_dimensions(pattern_matrix, [concat_to,dims_summarized]);
     end
+else
+    summarized_MCPA_struct_pattern = squeeze(pattern_matrix);
 end    
 
 dimension_labels = dimension_labels(~cellfun('isempty',dimension_labels));
