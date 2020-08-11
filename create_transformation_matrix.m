@@ -1,4 +1,4 @@
-function mcp_struct = create_transformation_matrix(mcp_struct, convert_to_ROI, pos_pathname, probe_loc_file, ROIdatabase, areas, session_idx)
+function mcp_struct = create_transformation_matrix(mcp_struct, convert_to_ROI, pos_pathname, probe_loc_file, ROIdatabase, areas, session_idx, use_proportional)
 %% create a transformation matrix for each subjects' sessions
 % input:
 % mcp_struct - mcp data structure for one participant
@@ -9,7 +9,7 @@ function mcp_struct = create_transformation_matrix(mcp_struct, convert_to_ROI, p
 % stored (usually POS.mat)
 % ROIdatabase - database with MNI coordiantes where ROIs can be found
 % areas - name of ROIs to co-register to as they appear in MNI database
-% session_idx - which session's data are we co-registering for that participant
+% use_proportional - use proportional assignment instead of assinging one channel to one ROI
 
 %% check that only one subject was entered at a time
 if length(mcp_struct) > 1
@@ -22,14 +22,13 @@ n_channels = length(mcp_struct.Experiment.Probe_arrays.Channels);
 if convert_to_ROI
     
     pos_mat = load([pos_pathname probe_loc_file]); % pos file
-    transformation_mat = mapChanneltoROI(n_channels, ROIdatabase, pos_mat, areas);
+    transformation_mat = mapChanneltoROI(n_channels, ROIdatabase, pos_mat, areas, use_proportional);
 
 else    
     transformation_mat = eye(n_channels);
 end
 
 mcp_struct.Experiment.Runs(session_idx).Transformation_Matrix = transformation_mat;
-mcp_struct.Experiment.Runs(session_idx).POS_filepath = [pos_pathname probe_loc_file];
 
 
 end
