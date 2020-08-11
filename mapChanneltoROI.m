@@ -22,7 +22,7 @@ if use_proportional
     for chan = 1:n_chan    
         for area = 1:length(areas)
             eval(['areaMNI = wholeMaskMNIAll.',areas{area},';']);
-            transformation_mat(chan, chan_area) = sum(sqrt(sum((areaMNI - channel_locations(chan,:)).^2,2)) <= rad);
+            transformation_mat(chan, area) = sum(sqrt(sum((areaMNI - channel_locations(chan,:)).^2,2)) <= rad);
         end
         transformation_mat(chan, :) = transformation_mat(chan, :)./sum(transformation_mat(chan, :));
     end
