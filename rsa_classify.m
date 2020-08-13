@@ -345,7 +345,7 @@ else
         end
     end
     
-    comparisons = model_classes(comparisons)';
+    comparisons = model_classes(comparisons);
     
     results_of_comparisons = cell(size(classification,2), 2, size(classification,1));
         for comp = 1:size(classification,1)
