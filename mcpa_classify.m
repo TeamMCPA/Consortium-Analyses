@@ -1,4 +1,4 @@
-function [classification, rating] = mcpa_classify(model_data, model_labels, test_data, test_labels, opts)
+function [classification, comparisons] = mcpa_classify(model_data, model_labels, test_data, test_labels, opts)
 %% mcpa_classify implements a correlation-based, channel-space classifier
 % following Emberson, Zinszer, Raizada & Aslin's (2017, PLoS One) method
 % and extending this approach to multiple conditions (>2). The MCPA
@@ -213,7 +213,7 @@ if opts.exclusive && length(model_classes)==size(test_dat,1) && ~opts.pairwise
         disp('Currently no method for exclusive labeling with >2 test cases');
     end
     
-    rating = [];
+    comparisons = test_labels;
 elseif opts.exclusive && length(model_classes)==size(test_dat,1) && opts.pairwise 
     number_classes = size(test_data,1);
 
@@ -273,7 +273,7 @@ elseif opts.exclusive && length(model_classes)==size(test_dat,1) && opts.pairwis
     end
 
 
-    rating = list_of_comparisons;
+    comparisons = list_of_comparisons;
     classification = results_of_comparisons;
 
     
@@ -290,7 +290,7 @@ else
         test_model_corrs = test_model_corrs + rand(size(test_model_corrs))*min_diff/100;
         
         % Classify based on the maximum correlation
-        [rating, test_class_idx] = max(test_model_corrs,[],2);
+        [comparisons, test_class_idx] = max(test_model_corrs,[],2);
         classification = model_classes(test_class_idx);
         
     end
@@ -298,3 +298,4 @@ else
     [~,reorder_test] = sort(test_order);
     classification = classification(reorder_test);
 end
+
