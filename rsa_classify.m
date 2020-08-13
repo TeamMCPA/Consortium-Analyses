@@ -319,7 +319,7 @@ if ~isfield(opts,'pairwise') || ~opts.pairwise
     % put the labels back in the order they were put in as
     [~,reorder_test] = sort(test_order);
     classification = classification(reorder_test);
-    comparisons = comparisons(reorder_test);
+    comparisons = comparisons(reorder_test)';
     
     
 else
@@ -345,7 +345,7 @@ else
         end
     end
     
-    comparisons = model_classes(comparisons);
+    comparisons = model_classes(comparisons)';
     
     results_of_comparisons = cell(size(classification,2), 2, size(classification,1));
         for comp = 1:size(classification,1)
