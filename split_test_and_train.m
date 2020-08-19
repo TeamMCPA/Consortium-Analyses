@@ -41,7 +41,7 @@ end
 
 %% separate out which participants or sessions go in the training data
 group_vec = [1:size(pattern_data,ndims(pattern_data))];
-group_vec = group_vec(group_vec~=fold_idx);
+group_vec = setdiff(group_vec,fold_idx);
 
 %% step 3: get the train data
 
@@ -85,8 +85,8 @@ end
 %% step 4: get the class labels for test and train data
 
 % first need to know how many times each label is represented in the data
-train_label_repetitions = size(train_data, 1)/length(conditions);
-test_label_repetitions = size(test_data, 1)/length(conditions);
+train_label_repetitions = size(train_data, 1)/(length(unique(event_types))*(length(event_types(train_cond_flags))/length(unique(event_types(train_cond_flags)))));
+test_label_repetitions = size(test_data, 1)/(length(unique(event_types))*(length(event_types(test_cond_flags))/length(unique(event_types(test_cond_flags)))));
 
 
 % then create vector of labels
