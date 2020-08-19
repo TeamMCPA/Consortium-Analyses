@@ -40,8 +40,11 @@ addParameter(p, 'summarize_dimensions', {});
 addParameter(p, 'final_dimensions', {});
 addParameter(p, 'oxy_or_deoxy', 'Oxy', @ischar);
 
-% for within subjects decoding with 1 session
-addParameter(p, 'test_percent', []);
+% for within subjects 
+addParameter(p, 'approach', 'loo', @ischar); 
+addParameter(p, 'randomized_or_notrand', 'notrand', @ischar); 
+addParameter(p, 'test_percent', []); % for kf 
+addParameter(p, 'randomsubset', []); % for kf 
 
 % parameters for working in different feature spaces
 addParameter(p, 'feature_space', 'channel_space', @ischar);
