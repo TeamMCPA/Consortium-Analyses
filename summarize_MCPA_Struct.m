@@ -118,8 +118,7 @@ for curr_dim = 1:length(summarize_dimensions)
             
             % get the new dimensions
             dimension_labels{first_dim_to_concat} = [dimension_labels{first_dim_to_concat}, '+', dimension_labels{second_dim_to_concat}];
-            dimension_labels{second_dim_to_concat} = [];
-            dimension_labels = dimension_labels(~cellfun('isempty',dimension_labels));
+            dimension_labels(second_dim_to_concat) = [];
             
         catch concat_error
             warning(concat_error.message)
