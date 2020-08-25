@@ -203,7 +203,11 @@ for s_idx = 1:n_subj
     
     if strcmp(p.Results.approach, 'kf')   
         allsubj_results.approach = 'k-fold (kf)';
-        subject_patterns = mcpa_summ.patterns(:,:,:,:,s_idx); % take only data from one subject 
+        if length(size(mcpa_summ.patterns)) == 5
+            subject_patterns = mcpa_summ.patterns(:,:,:,:,s_idx);
+        else
+            subject_patterns = mcpa_summ.patterns(:,:,:,s_idx);
+        end % take only data from one subject 
         
         % concatenate all sessions & repetitions for each subject's condition and channel
         if n_sessions > 1 
@@ -248,8 +252,11 @@ for s_idx = 1:n_subj
         % take only one subject
         allsubj_results.approach = 'leave-one-out (loo)';
         
-        % subject_patterns = mcpa_summ.patterns(:,:,1:length(MCP_struct(s_idx).Experiment.Runs),s_idx); 
-        subject_patterns = mcpa_summ.patterns(:,:,:,s_idx); 
+        if length(size(mcpa_summ.patterns)) == 5
+            subject_patterns = mcpa_summ.patterns(:,:,:,:,s_idx);
+        else
+            subject_patterns = mcpa_summ.patterns(:,:,:,s_idx);
+        end
         
         % randomize trials, if needed
         if strcmp(p.Results.randomized_or_notrand, 'randomized') 
@@ -431,3 +438,4 @@ end % end subject loop
 
 
 %end % end function
+
