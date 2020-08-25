@@ -46,7 +46,7 @@ function allsubj_results = nfold_classify_WithinSubjects(MCP_struct, varargin)
 % randomized_or_notrand: Select whether or not to randomize the sessions 
 %   (for loo) or trials (sessions x repetitions; for kf). Default: 'notrand'
 % test_percent: if kf, percentage of data used for testing. Default = 0.2
-% randomsubset: if randomly subset ths # of observations. Default = [], 
+% n_randomsubset: if randomly subset ths # of observations. Default = [], 
 %   which uses all data 
 
 
@@ -210,6 +210,9 @@ for s_idx = 1:n_subj
             subject_patterns = concatenate_dimensions(subject_patterns, [ndims(subject_patterns)-1,ndims(subject_patterns)]); % concatenate all sessions together
         end
         
+        allsubj_results.dimensions = {'condition', 'feature', 'repetitionXsession'};
+        mcpa_summ.dimensions = {'condition', 'feature', 'repetitionXsession'};
+        
         % Delete sessions that are all NaNs 
         cn_total =size(subject_patterns,3); 
         for cn = cn_total:-1:1 
@@ -259,7 +262,6 @@ for s_idx = 1:n_subj
     end
     
     %% Begin cross-validation
-    
     for folding_idx = 1:num_folds  
         
         %% Define fold_idx: indices in subject_patterns that will be test data
@@ -284,7 +286,7 @@ for s_idx = 1:n_subj
         % structures. This works for our previous MCPA studies, but might
         % not be appropriate for other classifiers (like SVM).
         
-        [train_data, train_labels, test_data, subj_labels] = split_test_and_train(fold,...
+        [train_data, train_labels, test_data, test_labels] = split_test_and_train(fold,...
             p.Results.conditions,...
             subject_patterns,... 
             mcpa_summ.event_types,...
@@ -306,33 +308,42 @@ for s_idx = 1:n_subj
         % datasets. If what you'er trying to sample is less than the
         % available dataset, this function will sample without replacement.
         
-        if strcmp(p.Results.approach, 'kf') && (~isfield(p.Results, 'randomsubset')||isempty(p.Results.randomsubset))
-            allsubj_results.kf_randomsubset = 'no: using the whole dataset';
+        if strcmp(p.Results.approach, 'kf') && (~isfield(p.Results, 'n_randomsubset')||isempty(p.Results.n_randomsubset))
+            allsubj_results.kf_n_randomsubset = 'no: using the whole dataset';
             allsubj_results.kf_sampling = 'no sampling';  
             
-        elseif strcmp(p.Results.approach, 'kf') && isfield(p.Results, 'randomsubset')
-            n_test = size(test_data,ndims(test_data));
-            n_train = size(train_data,ndims(train_data));
-            subset_test = floor(p.Results.randomsubset*test_percent);
-            subset_train = floor(p.Results.randomsubset*(1-test_percent));
-            allsubj_results.kf_randomsubset = sprintf('yes: %d out of %d test data and %d out of %d train data', subset_test, n_test, subset_train, n_train); 
+        elseif strcmp(p.Results.approach, 'kf') && isfield(p.Results, 'n_randomsubset')
+            n_test = size(test_data,1);
+            n_train = size(train_data,1);
+            
+            subset_test = floor(p.Results.n_randomsubset*test_percent);
+            subset_train = floor(p.Results.n_randomsubset*(1-test_percent));
+            allsubj_results.kf_n_randomsubset = sprintf('yes: %d out of %d test data and %d out of %d train data', subset_test, n_test, subset_train, n_train); 
 
             if subset_test <= n_test
-                test_data = test_data(:,:,randsample(1:n_test,subset_test));
-                train_data = train_data(:,:,randsample(1:n_train,subset_train));
+                sampled_test_data = randsample(1:n_test,subset_test,false);
+                sampled_train_data = randsample(1:n_train,subset_train,false);
+                
+                test_data = test_data(sampled_test_data,:);
+                test_labels = test_labels(sampled_test_data);
+                train_data = train_data(sampled_train_data,:);
+                train_labels = train_labels(sampled_train_data);
                 allsubj_results.kf_sampling = 'sample without replacement';  
                 
             elseif  subset_test > n_test 
-                test_data = test_data(:,:,randsample(1:n_test,subset_test,true));
-                train_data = train_data(:,:,randsample(1:n_train,subset_train,true));
+                sampled_test_data = randsample(1:n_test,subset_test,true);
+                sampled_train_data = randsample(1:n_train,subset_train,true);
+                
+                test_data = test_data(sampled_test_data,:);
+                test_labels = test_labels(sampled_test_data);
+                train_data = train_data(sampled_train_data,:);
+                train_labels = train_labels(sampled_train_data);
+                
                 allsubj_results.kf_sampling = 'sample with replacement';   
             end
             
         end
-        allsubj_results.test_data = test_data;
-        allsubj_results.train_data = train_data;
 
-        
         %% Run classifier and compare output with correct labels
         
         for set_idx = 1:min(n_sets,p.Results.max_sets)    
@@ -351,25 +362,25 @@ for s_idx = 1:n_subj
 
             % RSA
             if strcmp(func2str(p.Results.test_handle),'rsa_classify')
-                [test_labels, comparisons] = p.Results.test_handle(...
+                [predicted_labels, comparisons] = p.Results.test_handle(...
                     train_data(:,set_features,:), ...
                     train_labels,...
                     test_data(:,set_features,:),...
-                    subj_labels,...
+                    test_labels,...
                     p.Results.opts_struct);
 
             else
-                [test_labels, comparisons] = p.Results.test_handle(...
+                [predicted_labels, comparisons] = p.Results.test_handle(...
                     train_data(:,set_features), ...
                     train_labels,...
                     test_data(:,set_features),...
-                    subj_labels,...
+                    test_labels,...
                     p.Results.opts_struct);
             end
 
             %% Record results 
 
-            if size(test_labels,2) > 1 % test labels will be a column vector if we don't do pairwise
+            if size(predicted_labels,2) > 1 % test labels will be a column vector if we don't do pairwise
                 if s_idx==1 && set_idx == 1 && folding_idx == 1
                     if strcmp(p.Results.approach, 'kf')   
                         allsubj_results.accuracy_matrix = nan(n_cond,n_cond,min(n_sets,p.Results.max_sets),num_folds,n_subj);                             
@@ -379,10 +390,10 @@ for s_idx = 1:n_subj
                 end
 
                 if iscell(comparisons)
-                    subj_acc = nanmean(strcmp(test_labels(:,1,:), test_labels(:,2,:)));
+                    subj_acc = nanmean(strcmp(predicted_labels(:,1,:), predicted_labels(:,2,:)));
                     comparisons = cellfun(@(x) find(strcmp(x,mcpa_summ.event_types)),comparisons); 
                 else
-                    subj_acc = nanmean(strcmp(test_labels(:,1,:), test_labels(:,2,:)));
+                    subj_acc = nanmean(strcmp(predicted_labels(:,1,:), predicted_labels(:,2,:)));
                 end
 
                     % folding_idx should be the same size as however many folds you do 
@@ -396,8 +407,8 @@ for s_idx = 1:n_subj
             else
                 for cond_idx = 1:n_cond
                     temp_acc = cellfun(@strcmp,...
-                    subj_labels(strcmp(strjoin(string(p.Results.conditions{cond_idx}),'+'),subj_labels)),... % known labels
-                    test_labels(strcmp(strjoin(string(p.Results.conditions{cond_idx}),'+'),subj_labels))...% classifier labels
+                    test_labels(strcmp(strjoin(string(p.Results.conditions{cond_idx}),'+'),test_labels)),... % known labels
+                    predicted_labels(strcmp(strjoin(string(p.Results.conditions{cond_idx}),'+'),test_labels))...% classifier labels
                     );
 
                     temp_set_results_cond(cond_idx,set_idx,set_features) = nanmean(temp_acc);
