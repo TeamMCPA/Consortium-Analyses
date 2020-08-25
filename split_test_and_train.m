@@ -34,10 +34,12 @@ if any(has_dims_to_concat)
     concat_dims = split_dims{has_dims_to_concat};
     to_concat = [];
     for i = 1:length(concat_dims)
-        idx = find(strcmp(dimension_labels, concat_dims{i}));
+        idx = find(~cellfun(@isempty, strfind(dimension_labels, concat_dims{i})));
         to_concat = [to_concat, idx];
     end    
 end
+
+to_concat = unique(to_concat);
 
 %% separate out which participants or sessions go in the training data
 group_vec = [1:size(pattern_data,ndims(pattern_data))];
@@ -85,8 +87,9 @@ end
 %% step 4: get the class labels for test and train data
 
 % first need to know how many times each label is represented in the data
-train_label_repetitions = size(train_data, 1)/(length(unique(event_types))*(length(event_types(train_cond_flags))/length(unique(event_types(train_cond_flags)))));
-test_label_repetitions = size(test_data, 1)/(length(unique(event_types))*(length(event_types(test_cond_flags))/length(unique(event_types(test_cond_flags)))));
+% first need to know how many times each label is represented in the data
+train_label_repetitions = size(train_data, 1)/length(conditions);
+test_label_repetitions = size(test_data, 1)/length(conditions);
 
 
 % then create vector of labels
