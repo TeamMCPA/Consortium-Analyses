@@ -179,7 +179,8 @@ if sum(strcmp('session', dimension_labels))
         summarized_MCPA_struct_pattern = concatenate_dimensions(pattern_matrix, [concat_to,dims_summarized]);
     end
 else
-    summarized_MCPA_struct_pattern = squeeze(pattern_matrix);
+    concat_to = find(strcmp(dimension_labels, 'feature'));
+    summarized_MCPA_struct_pattern = concatenate_dimensions(pattern_matrix, [concat_to,dims_summarized]);
 end    
 
 dimension_labels = dimension_labels(~cellfun('isempty',dimension_labels));
