@@ -39,7 +39,9 @@ if any(has_dims_to_concat)
     end    
 end
 
-to_concat = unique(to_concat);
+if exist('to_concat','var')
+    to_concat = unique(to_concat);
+end
 
 %% separate out which participants or sessions go in the training data
 group_vec = [1:size(pattern_data,ndims(pattern_data))];
