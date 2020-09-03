@@ -50,6 +50,10 @@ function allsubj_results = nfold_classify_WithinSubjects(MCP_struct, varargin)
 %   which uses all data 
 
 
+% Created by: Anna Herbolzheimer and Ben Zinszer 2019
+% edited by: Sori Baek and Anna Herbolzheimer 2020
+
+
 %% Load MCP struct if necessary
 
 if isstring(MCP_struct) || ischar(MCP_struct)
@@ -98,8 +102,7 @@ mcpa_struct = MCP_to_MCPA(MCP_struct,...
      p.Results.oxy_or_deoxy);
 
 % Subset patterns by session
-inds = repmat({':'},1,ndims(mcpa_struct.patterns)); % Create index structure with all-elements in all-dimensions
-inds{strcmp(mcpa_struct.dimensions,'session')} = p.Results.incl_sessions; % In whichever dimension matches 'session', substitute the incl_sessions vector
+inds = pad_dimensions(mcpa_struct.dimensions, 'session', p.Results.incl_sessions);
 mcpa_struct.patterns = mcpa_struct.patterns(inds{:}); % Replace patterns matrix with the subsetted sessions data
 
 
@@ -117,11 +120,7 @@ mcpa_struct.patterns = mcpa_struct.patterns(inds{:}); % Replace patterns matrix 
 % recommend what dimensions to average over
 
 if ~isempty(p.Results.summarize_dimensions) || ~isfield(p.Results, 'summarize_dimensions')
-    summarize_dimensions = p.Results.summarize_dimensions;
-    
-elseif strcmp(p.Results.approach, 'kf')
-    summarize_dimensions = {'time'};
-    
+    summarize_dimensions = p.Results.summarize_dimensions;   
 else
     isWithinSubjects = true;
     warning('summarize_dimensions not specified. Consulting recommend_dimensions.')
@@ -189,6 +188,8 @@ allsubj_results = create_results_struct(false,...
 stack = dbstack;
 current_folding_function = stack.name;
 allsubj_results.test_type = current_folding_function;
+allsubj_results.approach = p.Results.approach;
+allsubj_results.randomized = p.Results.randomized_or_notrand;
 
 %% for one subject at a time...
 
@@ -199,24 +200,13 @@ for s_idx = 1:n_subj
     end
     tic;
     
+    inds = pad_dimensions(allsubj_results.dimensions, 'subject', s_idx);
+    subject_patterns = mcpa_summ.patterns(inds{:});
+    
     %% K-Fold (kf)
     
     if strcmp(p.Results.approach, 'kf')   
-        allsubj_results.approach = 'k-fold (kf)';
-        if length(size(mcpa_summ.patterns)) == 5
-            subject_patterns = mcpa_summ.patterns(:,:,:,:,s_idx);
-        else
-            subject_patterns = mcpa_summ.patterns(:,:,:,s_idx);
-        end % take only data from one subject 
-        
-        % concatenate all sessions & repetitions for each subject's condition and channel
-        if n_sessions > 1 
-            subject_patterns = concatenate_dimensions(subject_patterns, [ndims(subject_patterns)-1,ndims(subject_patterns)]); % concatenate all sessions together
-        end
-        
-        allsubj_results.dimensions = {'condition', 'feature', 'repetitionXsession'};
-        mcpa_summ.dimensions = {'condition', 'feature', 'repetitionXsession'};
-        
+
         % Delete sessions that are all NaNs 
         cn_total =size(subject_patterns,3); 
         for cn = cn_total:-1:1 
@@ -228,7 +218,6 @@ for s_idx = 1:n_subj
         % randomize trials, if needed
         if strcmp(p.Results.randomized_or_notrand, 'randomized') 
             subject_patterns = subject_patterns(:,:,randperm(size(subject_patterns,ndims(subject_patterns)))); %newly added
-            allsubj_results.randomized = 'randomized';
         end
         
         % define the percentage of data that will be used as testing data
@@ -240,24 +229,14 @@ for s_idx = 1:n_subj
            
         % define the folds
         fold_dim = ndims(subject_patterns);
+
         num_data = size(subject_patterns,fold_dim);
         num_in_fold = num_data*test_percent; 
         num_folds = floor(num_data/num_in_fold);
         num_in_fold = floor(num_in_fold); % round down 
 
     %% Leave-One-Out (loo)
-    
     elseif strcmp(p.Results.approach, 'loo')   
-        
-        % take only one subject
-        allsubj_results.approach = 'leave-one-out (loo)';
-        
-        if length(size(mcpa_summ.patterns)) == 5
-            subject_patterns = mcpa_summ.patterns(:,:,:,:,s_idx);
-        else
-            subject_patterns = mcpa_summ.patterns(:,:,:,s_idx);
-        end
-        
         % randomize trials, if needed
         if strcmp(p.Results.randomized_or_notrand, 'randomized') 
             new_index = randperm(size(subject_patterns,ndims(subject_patterns)));
@@ -269,8 +248,7 @@ for s_idx = 1:n_subj
     end
     
     %% Begin cross-validation
-    for folding_idx = 1:num_folds  
-        
+    for folding_idx = 1:num_folds         
         %% Define fold_idx: indices in subject_patterns that will be test data
         temp_set_results_cond = nan(n_cond,n_sets,n_feature);
         
@@ -366,24 +344,13 @@ for s_idx = 1:n_subj
             set_features = sets(set_idx,:);
 
             %% Classify
-
-            % RSA
-            if strcmp(func2str(p.Results.test_handle),'rsa_classify')
-                [predicted_labels, comparisons] = p.Results.test_handle(...
-                    train_data(:,set_features,:), ...
+            inds = pad_dimensions(final_dimensions, 'feature', set_features);
+            [predicted_labels, comparisons] = p.Results.test_handle(...
+                    train_data(inds{:}), ...
                     train_labels,...
-                    test_data(:,set_features,:),...
+                    test_data(inds{:}),...
                     test_labels,...
                     p.Results.opts_struct);
-
-            else
-                [predicted_labels, comparisons] = p.Results.test_handle(...
-                    train_data(:,set_features), ...
-                    train_labels,...
-                    test_data(:,set_features),...
-                    test_labels,...
-                    p.Results.opts_struct);
-            end
 
             %% Record results 
 
@@ -438,4 +405,3 @@ end % end subject loop
 
 
 %end % end function
-

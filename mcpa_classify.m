@@ -107,8 +107,6 @@ empty_y_vals_test = [];
 for i = 1:size(test_data,4)
     for j = 1:size(test_data,3)
         [x,y] = find(isnan(test_data(:,:,j,i)));
-        
-        
         if length(unique(x)) == size(test_data,1) && length(unique(y)) == size(test_data,2)
             continue;
         else
@@ -138,6 +136,29 @@ end
 
 
 %% Average across training data to get model features for each class
+
+if size(model_dat, 1) > length(model_classes)
+    % if doing kfold for within subjects CV, we first need to aggregate
+    % across repetitions for test and train data to get 1 representation
+    % for each category
+    temp_model_dat = nan(length(model_classes), size(model_dat,2));
+    temp_test_dat = nan(length(model_classes), size(test_dat,2));
+    for cl = 1:length(model_classes)
+        model_dat_for_this_class = model_dat(strcmp(model_labs, model_classes{cl}),:);
+        temp_model_dat(cl,:) = nanmean(model_dat_for_this_class,1);
+        
+        test_dat_for_this_class = model_dat(strcmp(test_labs, model_classes{cl}),:);
+        temp_test_dat(cl,:) = nanmean(test_dat_for_this_class,1);
+    end
+    
+    test_dat = temp_test_dat;
+    model_dat = temp_model_dat;
+    
+    model_labs = model_classes;
+    test_labs = model_classes;
+    
+end
+    
 model_patterns = nan(size(model_dat,2),length(model_classes));
 for class_idx = 1:length(model_classes)
     model_patterns(:,class_idx) = nanmean(model_dat(strcmp(model_classes{class_idx},model_labs),:),1)';
@@ -215,13 +236,14 @@ if opts.exclusive && length(model_classes)==size(test_dat,1) && ~opts.pairwise
     
     rating = [];
 elseif opts.exclusive && length(model_classes)==size(test_dat,1) && opts.pairwise 
-    number_classes = size(test_data,1);
+    number_classes = length(model_classes);
 
     % Generate a list of every pairwise comparison and the results array
     list_of_comparisons = combnk([1:number_classes],2);
     number_of_comparisons = size(list_of_comparisons,1);
     results_of_comparisons = cell(2, 2, number_of_comparisons);
 
+    try
     for this_comp = 1:number_of_comparisons
         test_classes = list_of_comparisons(this_comp,:);
 
@@ -270,6 +292,10 @@ elseif opts.exclusive && length(model_classes)==size(test_dat,1) && opts.pairwis
         results_of_comparisons(2,1,this_comp) = classification(2);
         results_of_comparisons(1,2,this_comp) = model_classes(test_classes(1));
         results_of_comparisons(2,2,this_comp) = model_classes(test_classes(2));
+    end
+    
+    catch
+        fprintf('failed')
     end
 
 
