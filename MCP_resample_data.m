@@ -140,6 +140,6 @@ if length(unique(new_mcp_file.fNIRS_Data.Sampling_frequency))==1
 end
 
 %% If the save_flag is true, write the data out.
-if save_flag, save([mcpdir mcpfilename '_resampled.mcp'],'-struct','new_mcp_file'); end
+if save_flag, save([mcpdir mcpfilename '_resampled.mcp'],'-mat','new_mcp_file'); end
 
 
