@@ -1,5 +1,18 @@
 
+
 function new_mcp_file = MCP_resample_data(mcp_file,new_sampling_rate,save_flag)
+%% Resample hemoglobin data as if the machine had a different sampling rate
+% This is useful when doing timeXfeatures classification, or if comparing
+% data with different sampling rates. 
+% All resampling is done within session.
+% Generates a new onsets, Oxy, Deoxy, and Total hemoglobin matrices.
+% Updates indices for time sampling and for which samples belong to which
+% session in the Runs field.
+
+% input: mcp_file - can be the name of an MCP file or the MCP file itself
+% new_sampling_rate - your desired sampling rate
+% save_flag - save the new data locally
+
 
 % Benjamin Zinszer & Anna Herbolzheimer 3 Sept 2020
 
@@ -7,10 +20,15 @@ function new_mcp_file = MCP_resample_data(mcp_file,new_sampling_rate,save_flag)
 % Open the old MCP struct or file
 if isstruct(mcp_file)
     old_mcp_struct = mcp_file;
+    if save_flag
+        mcpfilename = ['MCP_dataset_' date];
+        mcpdir = [pwd '/'];
+        warning('File name not provided. Will save new data to working directory.')
+    end
 else
-    [mcpdir, mcpfile, ~] = fileparts(mcp_file);
+    [mcpdir, mcpfilename, ~] = fileparts(mcp_file);
     %fprintf('Loading file: %s\n\n',mcpfile);
-    old_mcp_struct = load([mcpdir mcpfile '.mcp'],'-mat');
+    old_mcp_struct = load([mcpdir mcpfilename '.mcp'],'-mat');
 end
 
 if ~isnumeric(new_sampling_rate)
@@ -26,9 +44,9 @@ if length(old_mcp_struct) > 1
         new_mcp_file(subj) = MCP_resample_data(old_mcp_struct(subj),new_sampling_rate,0);
     end
     if save_flag
-        disp(['Saving new file under name: ' mcpfile '_r.mcp']);
+        disp(['Saving new file under name: ' mcpfilename '_resampled.mcp']);
         disp([]);
-        save([mcpdir mcpfile '_resampled.mcp'],'-struct','new_mcp_file')
+        save([mcpdir mcpfilename '_resampled.mcp'],'-mat','new_mcp_file')
     end
     disp([]);
     return
@@ -122,5 +140,6 @@ if length(unique(new_mcp_file.fNIRS_Data.Sampling_frequency))==1
 end
 
 %% If the save_flag is true, write the data out.
-if save_flag, save([mcpdir mcpfile '_resampled.mcp'],'-struct','new_mcp_file'); end
+if save_flag, save([mcpdir mcpfilename '_resampled.mcp'],'-struct','new_mcp_file'); end
+
 
