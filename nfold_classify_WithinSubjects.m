@@ -217,8 +217,7 @@ for s_idx = 1:n_subj
                
         % randomize trials, if needed
         if strcmp(p.Results.randomized_or_notrand, 'randomized')
-            x=randperm(size(subject_patterns,ndims(subject_patterns)))
-            subject_patterns = subject_patterns(:,:,x); %newly added
+            subject_patterns = subject_patterns(:,:,randperm(size(subject_patterns,ndims(subject_patterns)))); %newly added
         end
         
         % define the percentage of data that will be used as testing data
