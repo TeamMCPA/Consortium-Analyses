@@ -147,7 +147,7 @@ if size(model_dat, 1) > length(model_classes)
         model_dat_for_this_class = model_dat(strcmp(model_labs, model_classes{cl}),:);
         temp_model_dat(cl,:) = nanmean(model_dat_for_this_class,1);
         
-        test_dat_for_this_class = model_dat(strcmp(test_labs, model_classes{cl}),:);
+        test_dat_for_this_class = test_dat(strcmp(test_labs, model_classes{cl}),:);
         temp_test_dat(cl,:) = nanmean(test_dat_for_this_class,1);
     end
     
