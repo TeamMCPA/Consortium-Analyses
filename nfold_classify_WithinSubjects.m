@@ -216,8 +216,9 @@ for s_idx = 1:n_subj
         end 
                
         % randomize trials, if needed
-        if strcmp(p.Results.randomized_or_notrand, 'randomized') 
-            subject_patterns = subject_patterns(:,:,randperm(size(subject_patterns,ndims(subject_patterns)))); %newly added
+        if strcmp(p.Results.randomized_or_notrand, 'randomized')
+            x=randperm(size(subject_patterns,ndims(subject_patterns)))
+            subject_patterns = subject_patterns(:,:,x); %newly added
         end
         
         % define the percentage of data that will be used as testing data
@@ -231,9 +232,13 @@ for s_idx = 1:n_subj
         fold_dim = ndims(subject_patterns);
 
         num_data = size(subject_patterns,fold_dim);
-        num_in_fold = num_data*test_percent; 
+        num_in_fold = floor(num_data*test_percent);
         num_folds = floor(num_data/num_in_fold);
-        num_in_fold = floor(num_in_fold); % round down 
+        fold_end_idx_array = [num_in_fold: num_in_fold: num_in_fold*num_folds];
+        fold_end_idx_array(end) = num_data;
+        
+        fold_start_idx_array = [1:num_in_fold: num_in_fold*num_folds];
+        
 
     %% Leave-One-Out (loo)
     elseif strcmp(p.Results.approach, 'loo')   
@@ -253,8 +258,8 @@ for s_idx = 1:n_subj
         temp_set_results_cond = nan(n_cond,n_sets,n_feature);
         
         if strcmp(p.Results.approach, 'kf')
-            fold_idx_end = folding_idx * num_in_fold;
-            fold_idx_start = fold_idx_end - num_in_fold + 1;
+            fold_idx_end = fold_end_idx_array(folding_idx);
+            fold_idx_start = fold_start_idx_array(folding_idx);
             fold = fold_idx_start:fold_idx_end;
         else
             fold = folding_idx;
