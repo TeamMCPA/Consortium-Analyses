@@ -194,7 +194,7 @@ if opts.similarity_space % create similarity structures
             model_dat_for_this_class = model_dat(strcmp(model_labs, model_classes{cl}),:);
             temp_model_dat(cl,:) = nanmean(model_dat_for_this_class,1);
 
-            test_dat_for_this_class = model_dat(strcmp(test_labs, model_classes{cl}),:);
+            test_dat_for_this_class = test_dat(strcmp(test_labs, model_classes{cl}),:);
             temp_test_dat(cl,:) = nanmean(test_dat_for_this_class,1);
         end
 
@@ -220,10 +220,6 @@ if opts.similarity_space % create similarity structures
         test_matrix = atanh(test_matrix);
         
     end
-
-
-
-   
 else % create dissimilarity structures
     
     if ndims(model_data) > 2
@@ -254,7 +250,7 @@ else % create dissimilarity structures
             model_dat_for_this_class = model_dat(strcmp(model_labs, model_classes{cl}),:);
             temp_model_dat(cl,:) = nanmean(model_dat_for_this_class,1);
 
-            test_dat_for_this_class = model_dat(strcmp(test_labs, model_classes{cl}),:);
+            test_dat_for_this_class = test_dat(strcmp(test_labs, model_classes{cl}),:);
             temp_test_dat(cl,:) = nanmean(test_dat_for_this_class,1);
         end
 
