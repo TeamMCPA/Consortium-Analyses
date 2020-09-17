@@ -46,7 +46,7 @@ function allsubj_results = nfold_classify_WithinSubjects(MCP_struct, varargin)
 % randomized_or_notrand: Select whether or not to randomize the sessions 
 %   (for loo) or trials (sessions x repetitions; for kf). Default: 'notrand'
 % test_percent: if kf, percentage of data used for testing. Default = 0.2
-% n_randomsubset: if randomly subset ths # of observations. Default = [], 
+% randomsubset: if randomly subset ths # of observations. Default = [], 
 %   which uses all data 
 
 
@@ -206,38 +206,43 @@ for s_idx = 1:n_subj
     %% K-Fold (kf)
     
     if strcmp(p.Results.approach, 'kf')   
+        subject_labels = repmat(p.Results.conditions', (size(subject_patterns,1)/8),1);
 
-        % Delete sessions that are all NaNs 
-        cn_total =size(subject_patterns,3); 
-        for cn = cn_total:-1:1 
-            if nansum(nansum(subject_patterns(:,:,cn))) == 0
-                subject_patterns(:,:,cn) = [];
+        % remove empty rows
+        remove = [];
+        for r = 1:size(subject_patterns,1)
+            if sum(isnan(subject_patterns(r,:))) > 0
+               remove = [remove; r];
             end
-        end 
-               
-        % randomize trials, if needed
-        if strcmp(p.Results.randomized_or_notrand, 'randomized')
-            subject_patterns = subject_patterns(:,:,randperm(size(subject_patterns,ndims(subject_patterns)))); %newly added
         end
-        
-        % define the percentage of data that will be used as testing data
-        if ~isfield(p.Results, 'test_percent') || isempty(p.Results.test_percent)
-            test_percent = .2;
-        else
-            test_percent = p.Results.test_percent;
-        end
-           
-        % define the folds
-        fold_dim = ndims(subject_patterns);
 
-        num_data = size(subject_patterns,fold_dim);
-        num_in_fold = floor(num_data*test_percent);
+        subject_patterns(remove,:) = [];
+        subject_labels(remove) = [];
+
+        % find balanced classes
+        num_data = size(subject_patterns,1);
+        num_in_fold = floor(num_data*p.Results.test_percent);
         num_folds = floor(num_data/num_in_fold);
         fold_end_idx_array = [num_in_fold: num_in_fold: num_in_fold*num_folds];
         fold_end_idx_array(end) = num_data;
-        
         fold_start_idx_array = [1:num_in_fold: num_in_fold*num_folds];
-        
+
+        % should we randomize the rows?
+        if strcmp(p.Results.randomized_or_notrand, 'randomized')
+            rng('default')
+            rand_inds = randperm(size(subject_patterns,1));
+            subject_patterns(rand_inds, :);
+            subject_labels(rand_inds);
+        end
+
+        % should we balance the classes?
+        if p.Results.balance_classes
+            new_kfold_mat = validate_balanced_classes(fold_start_idx_array,...
+                fold_end_idx_array,...
+                p.Results,...
+                num_folds,...
+                subject_labels);
+        end
 
     %% Leave-One-Out (loo)
     elseif strcmp(p.Results.approach, 'loo')   
@@ -257,9 +262,7 @@ for s_idx = 1:n_subj
         temp_set_results_cond = nan(n_cond,n_sets,n_feature);
         
         if strcmp(p.Results.approach, 'kf')
-            fold_idx_end = fold_end_idx_array(folding_idx);
-            fold_idx_start = fold_start_idx_array(folding_idx);
-            fold = fold_idx_start:fold_idx_end;
+            fold = new_kfold_mat(folding_idx,~isnan(new_kfold_mat(folding_idx,:)));
         else
             fold = folding_idx;
         end
@@ -279,8 +282,13 @@ for s_idx = 1:n_subj
             p.Results.conditions,...
             subject_patterns,... 
             mcpa_summ.event_types,...
-            final_dimensions,...
+            {},...
             mcpa_summ.dimensions, [], []);
+        
+        if isempty(train_labels) && exist('subject_labels', 'var') % if doing kfold-find labels differently
+            train_labels = subject_labels(setdiff(1:size(subject_patterns,1),fold));
+            test_labels = subject_labels(fold);
+        end
         
         % Skip an iteration if all of train_data or all of test_data is NaN
         if sum(~isnan(train_data(:)))==0 || sum(~isnan(test_data(:)))==0
@@ -297,17 +305,17 @@ for s_idx = 1:n_subj
         % datasets. If what you'er trying to sample is less than the
         % available dataset, this function will sample without replacement.
         
-        if strcmp(p.Results.approach, 'kf') && (~isfield(p.Results, 'n_randomsubset')||isempty(p.Results.n_randomsubset))
-            allsubj_results.kf_n_randomsubset = 'no: using the whole dataset';
+        if strcmp(p.Results.approach, 'kf') && (~isfield(p.Results, 'randomsubset')||isempty(p.Results.randomsubset))
+            allsubj_results.kf_randomsubset = 'no: using the whole dataset';
             allsubj_results.kf_sampling = 'no sampling';  
             
-        elseif strcmp(p.Results.approach, 'kf') && isfield(p.Results, 'n_randomsubset')
+        elseif strcmp(p.Results.approach, 'kf') && isfield(p.Results, 'randomsubset')
             n_test = size(test_data,1);
             n_train = size(train_data,1);
             
-            subset_test = floor(p.Results.n_randomsubset*test_percent);
-            subset_train = floor(p.Results.n_randomsubset*(1-test_percent));
-            allsubj_results.kf_n_randomsubset = sprintf('yes: %d out of %d test data and %d out of %d train data', subset_test, n_test, subset_train, n_train); 
+            subset_test = floor(p.Results.randomsubset*p.Results.test_percent);
+            subset_train = floor(p.Results.randomsubset*(1-p.Results.test_percent));
+            allsubj_results.kf_randomsubset = sprintf('yes: %d out of %d test data and %d out of %d train data', subset_test, n_test, subset_train, n_train); 
 
             if subset_test <= n_test
                 sampled_test_data = randsample(1:n_test,subset_test,false);
