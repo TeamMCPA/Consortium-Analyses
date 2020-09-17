@@ -9,6 +9,9 @@ function [summarize_dimensions, final_dimensions] = recommend_dimensions(results
 
 % output: a list of the recommended dimensions to summarize over
 
+% created by Anna Herbolzheimer and Ben Zinszer 2019
+% updated AH summer 2020
+
 %% mcpa
 if strcmp(func2str(results_struct.test_handle),'mcpa_classify')
     if isWithinSubjects && strcmp(results_struct.approach, 'loo')
@@ -16,9 +19,8 @@ if strcmp(func2str(results_struct.test_handle),'mcpa_classify')
         final_dimensions = {'conditionXsession', 'feature'};
         
     elseif isWithinSubjects && strcmp(results_struct.approach, 'kf')
-        summarize_dimensions = {'time', 'repetitionXsession'}; 
-        final_dimensions = {'conditionXrepetition+session', 'feature'};
-        
+        summarize_dimensions = {'time', 'repetitionXsession', 'conditionXrepetition+session'}; 
+        final_dimensions = {'condition+repetition+session', 'feature'};    
     else
         summarize_dimensions = {'repetitionXsession', 'repetition+session', 'time'};
         final_dimensions = {'conditionXsubject', 'feature'};
@@ -31,8 +33,8 @@ elseif strcmp(func2str(results_struct.test_handle),'rsa_classify')
         final_dimensions = {'condition', 'feature', 'session'};
         
     elseif isWithinSubjects && strcmp(results_struct.approach, 'kf')
-        summarize_dimensions = {'time', 'repetitionXsession'}; 
-        final_dimensions = {'conditionXrepetition+session', 'feature'};
+        summarize_dimensions = {'time', 'repetitionXsession', 'conditionXrepetition+session'}; 
+        final_dimensions = {'condition+repetition+session', 'feature'};
         
     else
         summarize_dimensions = {'repetition', 'time'}; 
