@@ -1,4 +1,12 @@
 function new_kfold_mat = validate_balanced_classes(fold_start_idx_array, fold_end_idx_array, results_struct, num_folds, subject_labels)
+%% validate that classes are balanced across each fold for kfold cross validation
+% fold_start_idx_array - starting indices of each fold
+% fold_end_idx_array - ending indices of each fold
+% results_struct - results struct from input parser
+% num_folds - number of CV folds
+% subject_labels - array for the labels of each trial
+
+% created by Anna Herbolzheimer summer 2020
 
 %% start by getting the counts of each class in each fold
 validation_mat = nan(length(results_struct.conditions), num_folds);
