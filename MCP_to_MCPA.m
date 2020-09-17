@@ -117,7 +117,9 @@ for subj = 1:length(mcp_multiple)
        num_events(session,subj) = max(sum(mcp_multiple(subj).fNIRS_Data.Onsets_Matrix(startidx{subj}{session}:stopidx{subj}{session},:))); 
     end
 end
-num_repetitions = max(num_events,[],'all');
+
+% num_repetitions = max(num_events,[],'all');  
+num_repetitions = max(max(num_events,[],'omitnan'));
 
 %% Event type Handling
 

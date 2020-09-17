@@ -8,6 +8,9 @@ function p = parse_inputs(MCP_struct, varargin)
 % MCP_struct: MCP data structure
 % varargin: input to main function
 
+% created by Anna Herbolzheimer and Ben Zinszer 2019
+% updated by Anna Herbolzheimer summer 2020
+
 p = inputParser;
 
 for s = 1:length(MCP_struct)
@@ -40,8 +43,12 @@ addParameter(p, 'summarize_dimensions', {});
 addParameter(p, 'final_dimensions', {});
 addParameter(p, 'oxy_or_deoxy', 'Oxy', @ischar);
 
-% for within subjects decoding with 1 session
-addParameter(p, 'test_percent', []);
+% for within subjects 
+addParameter(p, 'approach', 'loo', @ischar); 
+addParameter(p, 'randomized_or_notrand', 'notrand', @ischar); 
+addParameter(p, 'test_percent', .2); % for kf 
+addParameter(p, 'randomsubset', []); % for kf 
+addParameter(p, 'balance_classes', true);
 
 % parameters for working in different feature spaces
 addParameter(p, 'feature_space', 'channel_space', @ischar);

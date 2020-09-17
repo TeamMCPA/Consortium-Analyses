@@ -83,77 +83,75 @@ model_classes = unique(model_labels(:),'stable');
 [~,train_order] = sort(model_labels);
 [~,test_order] = sort(test_labels);
 
-%% sort test data based on the re-ordered data
+% sort test data based on the re-ordered data
 test_labs = test_labels(test_order);
 test_dat = test_data(test_order, :,:,:);
 
 model_labs = model_labels(train_order);
 model_dat = model_data(train_order, :,:,:);
 
+
 %% remove where we have all NaNs
+% 
+empty_x_vals_model = [];
+empty_y_vals_model = [];
+for i = 1:size(model_data,4)
+    for j = 1:size(model_data,3)
+        [x,y] = find(isnan(model_dat(:,:,j,i)));
+        if length(unique(x)) == size(model_dat,1) && length(unique(y)) == size(model_dat,2)
+            continue;
+        else
+            empty_x_vals_model = [empty_x_vals_model; x];
+            empty_y_vals_model = [empty_y_vals_model; y];
+        end
+    end      
+end
+empty_x_vals_model = unique(empty_x_vals_model);
+empty_y_vals_model = unique(empty_y_vals_model);
 
-% empty_x_vals_model = [];
-% empty_y_vals_model = [];
-% for i = 1:size(model_data,4)
-%     for j = 1:size(model_data,3)
-%         [x,y] = find(isnan(model_dat(:,:,j,i)));
-%         if length(unique(x)) == size(model_dat,1) && length(unique(y)) == size(model_dat,2)
-%             continue;
-%         else
-%             empty_x_vals_model = [empty_x_vals_model; x];
-%             empty_y_vals_model = [empty_y_vals_model; y];
-%         end
-%     end      
-% end
-% empty_x_vals_model = unique(empty_x_vals_model);
-% empty_y_vals_model = unique(empty_y_vals_model);
-% 
-% 
-% empty_x_vals_test = [];
-% empty_y_vals_test = [];
-% for i = 1:size(test_data,4)
-%     for j = 1:size(test_data,3)
-%         [x,y] = find(isnan(test_data(:,:,j,i)));
-%         
-%         
-%         if length(unique(x)) == size(test_data,1) && length(unique(y)) == size(test_data,2)
-%             continue;
-%         else
-%             empty_x_vals_test = [empty_x_vals_test; x];
-%             empty_y_vals_test = [empty_y_vals_test; y];
-%         end
-%     end      
-% end
-% 
-% empty_x_vals_test = unique(empty_x_vals_test);
-% empty_y_vals_test = unique(empty_y_vals_test);
-% 
-% cols = 1:size(model_data,2);
-% rows = 1:size(model_data,1);
-% 
-% if size(model_data,2) > 8
-%     if length(empty_x_vals_model) == size(model_data,1) && length(empty_y_vals_model) ~= size(model_data,2)
-%         % remove columns
-%         remove_cols = union(empty_y_vals_model, empty_y_vals_test);
-%         keep = ~ismember(cols, remove_cols);
-%         model_dat = model_dat(:,keep', :,:);
-%         test_dat = test_dat(:, keep', :,:);   
-%     elseif length(empty_x_vals_model) == size(model_data,1) && length(empty_y_vals_model) == size(model_data,2)
-%         % this is an empty session
-%         warning('There is no data in this session')
-%     end
-% else
-%     if length(empty_x_vals_test) == size(model_data,1) && length(empty_y_vals_test) ~= size(test_data,2)
-%         test_cols = 1:size(test_dat,2);
-%         remove_cols = union(empty_y_vals_model, empty_y_vals_test);
-%         keep = ~ismember(test_cols, remove_cols);
-%         test_dat = test_dat(:, keep', :,:);
-%     end 
-% end
-%     
-%     
-% 
 
+empty_x_vals_test = [];
+empty_y_vals_test = [];
+for i = 1:size(test_data,4)
+    for j = 1:size(test_data,3)
+        [x,y] = find(isnan(test_data(:,:,j,i)));
+        
+        
+        if length(unique(x)) == size(test_data,1) && length(unique(y)) == size(test_data,2)
+            continue;
+        else
+            empty_x_vals_test = [empty_x_vals_test; x];
+            empty_y_vals_test = [empty_y_vals_test; y];
+        end
+    end      
+end
+
+empty_x_vals_test = unique(empty_x_vals_test);
+empty_y_vals_test = unique(empty_y_vals_test);
+
+cols = 1:size(model_data,2);
+rows = 1:size(model_data,1);
+
+if size(model_data,2) > 8
+    if length(empty_x_vals_model) == size(model_data,1) && length(empty_y_vals_model) ~= size(model_data,2)
+        remove columns
+        remove_cols = union(empty_y_vals_model, empty_y_vals_test);
+        keep = ~ismember(cols, remove_cols);
+        model_dat = model_dat(:,keep', :,:);
+        test_dat = test_dat(:, keep', :,:);   
+    elseif length(empty_x_vals_model) == size(model_data,1) && length(empty_y_vals_model) == size(model_data,2)
+        this is an empty session
+        warning('There is no data in this session')
+    end
+else
+    if length(empty_x_vals_test) == size(model_data,1) && length(empty_y_vals_test) ~= size(test_data,2)
+        test_cols = 1:size(test_dat,2);
+        remove_cols = union(empty_y_vals_model, empty_y_vals_test);
+        keep = ~ismember(test_cols, remove_cols);
+        test_dat = test_dat(:, keep', :,:);
+    end 
+end
+    
 %% Build similarity structures
 % Transform the model_data into similiarty or dissimilarity structures for each session by
 % correlating between conditions or finding pairwise differences between conditions and then 
@@ -163,7 +161,9 @@ if opts.similarity_space % create similarity structures
     %  iterate through all the layers (3rd dimension) and create
     % correlation matrices 
     
-    if ndims(model_dat) > 2
+    if ndims(model_dat) ~= 2 && size(model_dat,1) == length(model_classes)
+        % if we're doing leave one out (participant or session), first want
+        % to correlate the model data within session, then average across sessions
         model_mat = nan(size(model_dat,1),size(model_dat,1),size(model_dat,3),size(model_dat,4));
         for i = 1: (size(model_dat,3)*size(model_dat,4))
             model_mat(:,:,i) = corr(model_dat(:,:,i)', 'type', opts.metric);
@@ -174,25 +174,57 @@ if opts.similarity_space % create similarity structures
         % then average across participants
         training_matrix = nanmean(training_matrix,4);
         training_matrix = atanh(training_matrix);
+        
+        
+        % then repeat to create test data
+        test_mat = nan(size(test_dat,1),size(test_dat,1),size(test_dat,3),size(test_dat,4));
+        for i = 1: (size(test_dat,3)*size(test_dat,4))
+            test_mat(:,:,i) = corr(test_dat(:,:,i)', 'type', opts.metric);
+        end
+        test_matrix = nanmean(test_mat,3);
+        test_matrix = nanmean(test_matrix,4);
+
+        test_matrix = atanh(test_matrix);
+        
+    elseif ndims(model_dat) == 2 && size(model_dat,1) ~= length(model_classes)
+        % if doing kfold for withinsubjects cross validation, first need to aggregate over repetitions for each category  
+        temp_model_dat = nan(length(model_classes), size(model_dat,2));
+        temp_test_dat = nan(length(model_classes), size(test_dat,2));
+        for cl = 1:length(model_classes)
+            model_dat_for_this_class = model_dat(strcmp(model_labs, model_classes{cl}),:);
+            temp_model_dat(cl,:) = nanmean(model_dat_for_this_class,1);
+
+            test_dat_for_this_class = test_dat(strcmp(test_labs, model_classes{cl}),:);
+            temp_test_dat(cl,:) = nanmean(test_dat_for_this_class,1);
+        end
+
+        % then create test and train matrices in similarity space
+        test_matrix = atanh(corr(temp_test_dat'));
+        training_matrix = atanh(corr(temp_model_dat'));
+
+        model_labs = model_classes;
+        test_labs = model_classes;
     else
+        % if using a premade training model (like a semantic model), don't
+        % need to do anything to model_dat
         training_matrix = model_dat;
+        
+        % then create test data
+        test_mat = nan(size(test_dat,1),size(test_dat,1),size(test_dat,3),size(test_dat,4));
+        for i = 1: (size(test_dat,3)*size(test_dat,4))
+            test_mat(:,:,i) = corr(test_dat(:,:,i)', 'type', opts.metric);
+        end
+        test_matrix = nanmean(test_mat,3);
+        test_matrix = nanmean(test_matrix,4);
+
+        test_matrix = atanh(test_matrix);
+        
     end
-
-    % then repeat to create test data
-    test_mat = nan(size(test_dat,1),size(test_dat,1),size(test_dat,3),size(test_dat,4));
-    for i = 1: (size(test_dat,3)*size(test_dat,4))
-        test_mat(:,:,i) = corr(test_dat(:,:,i)', 'type', opts.metric);
-    end
-    test_matrix = nanmean(test_mat,3);
-    test_matrix = nanmean(test_matrix,4);
-
-    test_matrix = atanh(test_matrix);
-
-   
 else % create dissimilarity structures
     
     if ndims(model_data) > 2
-        % loop through each participants' sessions to find pairwise differences
+         % if we're doing leave one out (participant or session), first want
+        % to loop through each participants' sessions to find pairwise differences
         model_mat = nan(size(model_dat,1),size(model_dat,1),size(model_dat,3),size(model_dat,4));
         for i = 1: (size(model_dat,3)*size(model_dat,4))
             model_mat(:,:,i) = squareform(pdist(model_dat(:,:,i), opts.metric));
@@ -201,17 +233,48 @@ else % create dissimilarity structures
         training_matrix = nanmean(model_mat,3);
         % then average across participants
         training_matrix = nanmean(training_matrix,4);
+        
+        % then repeat to create test data
+        test_mat = nan(size(test_dat,1),size(test_dat,1),size(test_dat,3),size(test_dat,4));
+        for i = 1: (size(test_dat,3)*size(test_dat,4))
+            test_mat(:,:,i) = squareform(pdist(test_dat(:,:,i), opts.metric));
+        end
+        test_matrix = nanmean(test_mat,3);
+        test_matrix = nanmean(test_matrix,4);
+        
+    elseif ndims(model_dat) ~= 2 && size(model_dat,1) ~= length(model_classes)
+        % if doing kfold for withinsubjects cross validation, first need to aggregate over repetitions for each category  
+        temp_model_dat = nan(length(model_classes), size(model_dat,2));
+        temp_test_dat = nan(length(model_classes), size(test_dat,2));
+        for cl = 1:length(model_classes)
+            model_dat_for_this_class = model_dat(strcmp(model_labs, model_classes{cl}),:);
+            temp_model_dat(cl,:) = nanmean(model_dat_for_this_class,1);
+
+            test_dat_for_this_class = test_dat(strcmp(test_labs, model_classes{cl}),:);
+            temp_test_dat(cl,:) = nanmean(test_dat_for_this_class,1);
+        end
+
+        % then create dissimilarity matrices
+        test_matrix = squareform(pdist(temp_test_dat, opts.metric));
+        training_matrix = squareform(pdist(temp_model_dat, opts.metric));
+
+        model_labs = model_classes;
+        test_labs = model_classes;
     else
+        % if using a premade training model (like a semantic model), don't
+        % need to do anything to model_dat
         training_matrix = model_dat;
+        
+        % then repeat to create test data
+        test_mat = nan(size(test_dat,1),size(test_dat,1),size(test_dat,3),size(test_dat,4));
+        for i = 1: (size(test_dat,3)*size(test_dat,4))
+            test_mat(:,:,i) = squareform(pdist(test_dat(:,:,i), opts.metric));
+        end
+        test_matrix = nanmean(test_mat,3);
+        test_matrix = nanmean(test_matrix,4);
     end
     
-    % then repeat to create test data
-    test_mat = nan(size(test_dat,1),size(test_dat,1),size(test_dat,3),size(test_dat,4));
-    for i = 1: (size(test_dat,3)*size(test_dat,4))
-        test_mat(:,:,i) = squareform(pdist(test_dat(:,:,i), opts.metric));
-    end
-    test_matrix = nanmean(test_mat,3);
-    test_matrix = nanmean(test_matrix,4);
+   
 end
 
 
