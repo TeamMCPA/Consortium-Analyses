@@ -206,7 +206,7 @@ for s_idx = 1:n_subj
     %% K-Fold (kf)
     
     if strcmp(p.Results.approach, 'kf')   
-        subject_labels = repmat(p.Results.conditions', (size(subject_patterns,1)/8),1);
+        subject_labels = repmat(mcpa_summ.event_types, (size(subject_patterns,1)/8),1);
 
         % remove empty rows
         remove = [];
@@ -227,6 +227,7 @@ for s_idx = 1:n_subj
         fold_end_idx_array(end) = num_data;
         fold_start_idx_array = [1:num_in_fold: num_in_fold*num_folds];
 
+        
         % should we randomize the rows?
         if strcmp(p.Results.randomized_or_notrand, 'randomized')
             rng('default')
@@ -234,15 +235,21 @@ for s_idx = 1:n_subj
             subject_patterns(rand_inds, :);
             subject_labels(rand_inds);
         end
-
+        
+        
         % should we balance the classes?
         if p.Results.balance_classes
+            num_repetitions = num_data/length(p.Results.conditions);
             new_kfold_mat = validate_balanced_classes(fold_start_idx_array,...
                 fold_end_idx_array,...
                 p.Results,...
                 num_folds,...
-                subject_labels);
+                subject_labels,...
+                num_repetitions);
         end
+        
+        % define where test and train labels are derived from
+        event_types = subject_labels;
 
     %% Leave-One-Out (loo)
     elseif strcmp(p.Results.approach, 'loo')   
@@ -251,6 +258,9 @@ for s_idx = 1:n_subj
             new_index = randperm(size(subject_patterns,ndims(subject_patterns)));
             subject_patterns = subject_patterns(:,:,new_index);
         end
+        
+        % define where test and train labels are derived from
+        event_types = mcpa_summ.event_types;
         
         % define the fold
         num_folds = length(MCP_struct(s_idx).Experiment.Runs);
@@ -281,15 +291,10 @@ for s_idx = 1:n_subj
         [train_data, train_labels, test_data, test_labels] = split_test_and_train(fold,...
             p.Results.conditions,...
             subject_patterns,... 
-            mcpa_summ.event_types,...
+            event_types,...
             {},...
             mcpa_summ.dimensions, [], []);
-        
-        if isempty(train_labels) && exist('subject_labels', 'var') % if doing kfold-find labels differently
-            train_labels = subject_labels(setdiff(1:size(subject_patterns,1),fold));
-            test_labels = subject_labels(fold);
-        end
-        
+                
         % Skip an iteration if all of train_data or all of test_data is NaN
         if sum(~isnan(train_data(:)))==0 || sum(~isnan(test_data(:)))==0
             fprintf('skip sub %d fold %d \n', s_idx, folding_idx);
