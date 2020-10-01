@@ -1,4 +1,4 @@
-function new_kfold_mat = validate_balanced_classes(fold_start_idx_array, fold_end_idx_array, results_struct, num_folds, subject_labels)
+function new_kfold_mat = validate_balanced_classes(fold_start_idx_array, fold_end_idx_array, results_struct, n_folds, subject_labels, n_repetitions)
 %% validate that classes are balanced across each fold for kfold cross validation
 % fold_start_idx_array - starting indices of each fold
 % fold_end_idx_array - ending indices of each fold
@@ -9,11 +9,20 @@ function new_kfold_mat = validate_balanced_classes(fold_start_idx_array, fold_en
 % created by Anna Herbolzheimer summer 2020
 
 %% start by getting the counts of each class in each fold
-validation_mat = nan(length(results_struct.conditions), num_folds);
-for i = 1:num_folds
+% first initialize an empty matrix for fold indices
+fold_lengths = [];
+for ifold = 1:n_folds
+    fold_lengths = [fold_lengths length(fold_start_idx_array(ifold):fold_end_idx_array(ifold))];
+end
+max_fold_length = max(fold_lengths);
+kfold_mat = nan(n_folds, max_fold_length);
+    
+% then find number of each class in each fold
+validation_mat = nan(length(results_struct.conditions), n_folds);
+for i = 1:n_folds
     idx = fold_start_idx_array(i):fold_end_idx_array(i);
     validation_mat(:,i) = groupcounts(subject_labels(idx));
-    kfold_mat(i,:) = idx; 
+    kfold_mat(i,1:length(idx)) = idx; 
 end
 
 %% initialize a new matrix to add the fold indices to
@@ -25,9 +34,14 @@ class_num = mode(validation_mat, 'all');
 
 %% move indices around to balance out the classes
 rows_added_to = [];
+
 for row = 1:length(results_struct.conditions)
     % see if the class needs to be balanced across folds
-    current_set = validation_mat(row,:);                   
+    current_set = validation_mat(row,:);  
+    if sum(current_set) ~= n_repetitions
+        continue;
+    end
+    
     x = find(current_set ~= class_num);
     
     if ~isempty(x)
@@ -39,7 +53,7 @@ for row = 1:length(results_struct.conditions)
         class_inds = find(strcmp(subject_labels(kfold_mat(which_to_skim,:)), class_to_move));
         ind_to_select = randperm(length(class_inds)); % randomly select an index to move
 
-        dim =  new_kfold_mat(which_to_skim, (class_inds(ind_to_select(1:length(amount_to_even))))); % get the real value of the selected indices to move
+        dim = new_kfold_mat(which_to_skim, (class_inds(ind_to_select(1:length(amount_to_even))))); % get the real value of the selected indices to move
 
         rows_added_to = [rows_added_to, which_to_pad]; % keep track of how much has been added to each row
         for v = 1:length(dim)
@@ -53,5 +67,6 @@ for row = 1:length(results_struct.conditions)
         end
     end
 end
+
 
 end
