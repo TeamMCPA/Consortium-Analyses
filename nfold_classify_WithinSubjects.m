@@ -382,12 +382,12 @@ for s_idx = 1:n_subj
 
                 if iscell(comparisons)
                     subj_acc = nanmean(strcmp(predicted_labels(:,1,:), predicted_labels(:,2,:)));
-                    comparisons = cellfun(@(x) find(strcmp(x,mcpa_summ.event_types)),comparisons); 
+                    comparisons = cellfun(@(x) find(strcmp(x,p.Results.conditions)),comparisons); 
                 else
                     subj_acc = nanmean(strcmp(predicted_labels(:,1,:), predicted_labels(:,2,:)));
                 end
 
-                    % folding_idx should be the same size as however many folds you do 
+                % folding_idx should be the same size as however many folds you do 
                 for comp = 1:size(comparisons,1)
                     if size(comparisons,2)==1
                         allsubj_results.accuracy_matrix(comparisons(comp,1),:,set_idx,folding_idx,s_idx) = subj_acc(comp);
