@@ -18,7 +18,7 @@ max_fold_length = max(fold_lengths);
 kfold_mat = nan(n_folds, max_fold_length);
     
 % then find number of each class in each fold
-validation_mat = nan(length(results_struct.conditions), n_folds);
+validation_mat = nan(length(unique(subject_labels)), n_folds);
 for i = 1:n_folds
     idx = fold_start_idx_array(i):fold_end_idx_array(i);
     validation_mat(:,i) = groupcounts(subject_labels(idx));
@@ -70,3 +70,4 @@ end
 
 
 end
+
