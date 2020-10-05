@@ -1,22 +1,31 @@
-function mcp_struct = create_transformation_matrix(mcp_struct, convert_to_brodmanns, pathname, probe_loc_file, path_to_tdDatabase, session_idx)
+function mcp_struct = create_transformation_matrix(mcp_struct, convert_to_ROI, pos_pathname, probe_loc_file, database, areas, session_idx, use_proportional, mapping_function)
 %% create a transformation matrix for each subjects' sessions
 % input:
 % mcp_struct - mcp data structure for one participant
-% convert_to_brodmanns - true or false of whether we want ROI space or
+% convert_to_ROI - true or false of whether we want ROI space or
 % channel space
-% pathname - path to where that participant's session probe location data can be found
-%probe_loc_file - name of file where that session's probe locations are
-%stored (usually POS.mat)
-% path_to_tdDatabase - path to where the TD Database with MNI coordiantes
-% for Brodmann's areas can be found
+% pos_pathname - path to where that participant's session probe location data can be found
+% probe_loc_file - name of file where that session's probe locations are
+% stored (usually POS.mat)
+% ROIdatabase - database with MNI coordiantes where ROIs can be found
+% areas - name of ROIs to co-register to as they appear in MNI database
+% use_proportional - use proportional assignment instead of assinging one channel to one ROI
+% mapping_function - function used to map channels into ROIs or voxels
+
+%% check that only one subject was entered at a time
+if length(mcp_struct) > 1
+    error('Only one subject can be entered into create_transformation_matrix at a time. Please specify which participant to use.')
+end
 
 %% create transformation matrices
-if convert_to_brodmanns
-    % load the POS file
-    pos_mat = load([pathname probe_loc_file]);
-    n_channels = length(mcp_struct.Experiment.Probe_arrays.Channels);
-    transformation_mat = mapChanneltoROI(n_channels, 47, path_to_tdDatabase, pos_mat);
-else
+n_channels = length(mcp_struct.Experiment.Probe_arrays.Channels);
+
+if convert_to_ROI
+    
+    pos_mat = load([pos_pathname probe_loc_file]); % pos file
+    transformation_mat = mapping_function(n_channels, database, pos_mat, areas, use_proportional);
+
+else    
     transformation_mat = eye(n_channels);
 end
 

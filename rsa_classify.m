@@ -382,7 +382,7 @@ if ~isfield(opts,'pairwise') || ~opts.pairwise
     % put the labels back in the order they were put in as
     [~,reorder_test] = sort(test_order);
     classification = classification(reorder_test);
-    comparisons = comparisons(reorder_test);
+    comparisons = comparisons(reorder_test)';
     
     
 else
