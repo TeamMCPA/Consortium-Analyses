@@ -1,6 +1,9 @@
 function allsubj_results = create_results_struct(parsed_input, cv_function, all_sets, num_subj, num_sets, num_feature, num_cond, current_dimensions, final_dimensions, pattern_data)
 %% create a struct to store classification results. 
-% This will be later used in permutation testing 
+% This will be later used in permutation testing, cross validation, and nested cross validation
+
+% created by Anna Herbolzheimer and Ben Zinszer 2019
+% revised by Anna Herbolzheimer fall 2020
 
 allsubj_results = struct; % create empty structs
 allsubj_results.created = datestr(now);
@@ -30,4 +33,12 @@ for cond_id = 1:num_cond % now create place holders for decoding accuracies
     end
 end
 
+%% create an accuracy matrix if doing pairwise classification
+if isfield(parsed_input.opts_struct.pairwise) && parsed_input.opts_struct.pairwise == 1
+    allsubj_results.accuracy_matrix = nan(length(allsubj_results.conditions),...
+        length(allsubj_results.conditions),...
+        min(size(allsubj_results.subsets,1),...
+        allsubj_results.max_sets),...
+        size(pattern_data, ndims(pattern_data)-1),...
+        size(pattern_data, ndims(pattern_data)));
 end
