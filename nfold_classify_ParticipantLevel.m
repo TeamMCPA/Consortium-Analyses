@@ -192,7 +192,7 @@ for s_idx = 1:n_subj
     % structures. This works for our previous MCPA studies, but might
     % not be appropriate for other classifiers (like SVM).
 
-    [group_data, group_labels, subj_data, subj_labels] = split_test_and_train(s_idx,...
+    [train_data, train_labels, test_data, test_labels] = split_test_and_train(s_idx,...
         p.Results.conditions,...
         mcpa_summ.patterns,...
         mcpa_summ.event_types,...
@@ -214,69 +214,46 @@ for s_idx = 1:n_subj
         set_features = sets(set_idx,:);
         
 
-        %% classify
-        % call differently based on if we do RSA or not
-        % if we do pairwise comparison, the result test_labels will be a 3d
-        % matrix with the dimensions: predicted label x correct label x
-        % index of comparison. The output 'comparisons' will be the
-        % conditions that were compared and can either be a 2d cell array or a
-        % matrix of integers. If we don't do pairwise comparisons, the
-        % output 'test_labels' will be a 1d cell array of predicted labels.
-        % The output 'comparisons' will be a 1d array of the correct
-        % labels.
-        
-        % RSA
-        if strcmp(func2str(p.Results.test_handle),'rsa_classify')
-            [test_labels, comparisons] = p.Results.test_handle(...
-                group_data(:,set_features,:,:), ...
-                group_labels,...
-                subj_data(:,set_features,:),...
-                subj_labels,...
+        %% Classify
+        inds = pad_dimensions(final_dimensions, 'feature', set_features);
+        [predicted_labels, comparisons] = p.Results.test_handle(...
+                train_data(inds{:}), ...
+                train_labels,...
+                test_data(inds{:}),...
+                test_labels,...
                 p.Results.opts_struct);
-            
-        else
-%             if any(strcmp('incl_sessions',varargin))
-%                 error('incl_sessions parameter not available for non-rsa classifiers at this moment.');
-%             end
-            [test_labels, comparisons] = p.Results.test_handle(...
-                group_data(:,set_features), ...
-                group_labels,...
-                subj_data(:,set_features),...
-                subj_labels,...
-                p.Results.opts_struct);
-        end
         %% Record results .
-        if size(test_labels,2) > 1 % test labels will be a column vector if we don't do pairwise
+        if size(predicted_labels,2) > 1 % test labels will be a column vector if we don't do pairwise
             if s_idx==1 && set_idx == 1, allsubj_results.accuracy_matrix = nan(n_cond,n_cond,min(n_sets,p.Results.max_sets),n_subj); end
 
             % Then see if the classification results are empty
-            if ~iscell(test_labels(:,1,:)) && sum(isnan(test_labels(:,1,:)))==numel(test_labels(:,1,:))
+            if ~iscell(predicted_labels(:,1,:)) && sum(isnan(predicted_labels(:,1,:)))==numel(predicted_labels(:,1,:))
                 % if nans, then we'll need to save the subj_acc as nans
                 if iscell(comparisons) 
                     % if comparisons is cell array, we'll need to find the values in that array correspond to the condition location in event_types
-                    subj_acc = nan(length(test_labels(:,1,:)),1);
-                    comparisons = cellfun(@(x) find(strcmp(x,mcpa_summ.event_types)),comparisons);
+                    subj_acc = nan(length(predicted_labels(:,1,:)),1);
+                    comparisons = cellfun(@(x) find(strcmp(x,p.Results.conditions)),comparisons);
                 else
-                    subj_acc = nan(length(test_labels(:,1,:)),1);
+                    subj_acc = nan(length(predicted_labels(:,1,:)),1);
                 end
-            elseif iscell(test_labels(:,1,:)) && sum(sum(cellfun(@(a) ~ischar(a), test_labels(:,1,:)))) == numel(test_labels(:,1,:))
+            elseif iscell(predicted_labels(:,1,:)) && sum(sum(cellfun(@(a) ~ischar(a), predicted_labels(:,1,:)))) == numel(predicted_labels(:,1,:))
                 % if nans, then we'll need to save the subj_acc as nans
                 if iscell(comparisons) 
                     % if comparisons is cell array, we'll need to find the values in that array correspond to the condition location in event_types
-                    subj_acc = nan(length(test_labels(:,1,:)),1);
-                    comparisons = cellfun(@(x) find(strcmp(x,mcpa_summ.event_types)),comparisons);
+                    subj_acc = nan(length(predicted_labels(:,1,:)),1);
+                    comparisons = cellfun(@(x) find(strcmp(x,p.Results.conditions)),comparisons);
                 else
-                    subj_acc = nan(length(test_labels(:,1,:)),1);
+                    subj_acc = nan(length(predicted_labels(:,1,:)),1);
                 end
             else
                 % if not nans, see how comparisons is saved. 
                 % If its a cell array, then we need to find where the values in that array correspond to the condition location in event_types
                 % Then find the subject accuracy
                 if iscell(comparisons) 
-                    subj_acc = nanmean(strcmp(test_labels(:,1,:), test_labels(:,2,:)));
-                    comparisons = cellfun(@(x) find(strcmp(x,mcpa_summ.event_types)),comparisons);
+                    subj_acc = nanmean(strcmp(predicted_labels(:,1,:), predicted_labels(:,2,:)));
+                    comparisons = cellfun(@(x) find(strcmp(x,p.Results.conditions)),comparisons);
                 else
-                    subj_acc = nanmean(strcmp(test_labels(:,1,:), test_labels(:,2,:)));
+                    subj_acc = nanmean(strcmp(predicted_labels(:,1,:), predicted_labels(:,2,:)));
                 end
             end
 
@@ -292,7 +269,7 @@ for s_idx = 1:n_subj
             for cond_idx = 1:n_cond
                 temp_acc = cellfun(@strcmp,...
                     comparisons(strcmp(strjoin(string(p.Results.conditions{cond_idx}),'+'),comparisons)),... % known labels
-                    test_labels(strcmp(strjoin(string(p.Results.conditions{cond_idx}),'+'),comparisons))...% classifier labels
+                    predicted_labels(strcmp(strjoin(string(p.Results.conditions{cond_idx}),'+'),comparisons))...% classifier labels
                     );
                 
                 temp_set_results_cond(cond_idx,set_idx,set_features) = nanmean(temp_acc);

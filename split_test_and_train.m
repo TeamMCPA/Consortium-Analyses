@@ -1,9 +1,7 @@
 function [train_data, train_labels, test_data, test_labels] = split_test_and_train(fold_idx, conditions, pattern_data, event_types, final_dimensions, dimension_labels, test_events, train_events, subject_labels) 
-
-
 %% step 1: find the locations of the conditions we would like to classify
 % only need them if we aren't supplying test and train events
-if isempty(test_events)
+if isempty(test_events) && ndims(pattern_data) ~= 2
     % Set logical flags for indexing the conditions that will be compared.
     % Loop through the whole list of conditions and create flags for each.
     test_cond_flags = cell(length(conditions),1); % These are, for the moment, empty
@@ -20,6 +18,14 @@ if isempty(test_events)
     end
     test_cond_flags = [test_cond_flags{:}]';
     train_cond_flags = [train_cond_flags{:}]';
+elseif isempty(test_events) && ndims(pattern_data) == 2
+    cond_flags = [];
+    for cond_idx = 1:length(conditions)
+        cond = find(strcmp(event_types,conditions{cond_idx}));
+        cond_flags = [cond_flags; cond];
+    end
+    train_cond_flags = cond_flags(~ismember(cond_flags, fold_idx));
+    test_cond_flags = cond_flags(ismember(cond_flags, fold_idx));
 else
     test_cond_flags = test_events;
     train_cond_flags = train_events;   
@@ -58,7 +64,7 @@ end
 if ndims(pattern_data) == 3
     temp_train = pattern_data(train_cond_flags,:,group_vec);
 elseif ndims(pattern_data) == 2
-    temp_train = pattern_data(group_vec,:);
+    temp_train = pattern_data(train_cond_flags,:);
 else
     temp_train = pattern_data(train_cond_flags,:,:,group_vec);
 end
@@ -76,7 +82,7 @@ end
 if ndims(pattern_data) == 3
     temp_test = pattern_data(test_cond_flags,:,fold_idx);
 elseif ndims(pattern_data) == 2
-    temp_test = pattern_data(fold_idx,:);
+    temp_test = pattern_data(test_cond_flags,:);
 else
     temp_test = pattern_data(test_cond_flags,:,:,fold_idx);
 end
@@ -107,9 +113,8 @@ if ndims(pattern_data) > 2
     train_labels = repmat(event_types(train_cond_flags)', 1,train_label_repetitions)';
     test_labels = repmat(event_types(test_cond_flags)', 1,test_label_repetitions)';
 else
-    train_labels = [];
-    test_labels = [];
+    train_labels = event_types(train_cond_flags);
+    test_labels = event_types(test_cond_flags);
 end
-  
     
 end
