@@ -26,8 +26,18 @@ for cond_id = 1:num_cond % now create place holders for decoding accuracies
     allsubj_results.accuracy(cond_id).condition = allsubj_results.conditions(cond_id);
     allsubj_results.accuracy(cond_id).subjXfeature = nan(num_subj,num_feature);
     allsubj_results.accuracy(cond_id).subsetXsubj = nan(num_sets,num_subj);
-    if strcmp(func2str(cv_function), 'cross_validate_WithinSubjects')
+    if strcmp(func2str(cv_function), 'classify_WithinSubjects')
          allsubj_results.accuracy(cond_id).subjXsession = nan(num_subj,max_sessions);
+    end
+end
+
+if strcmp(func2str(cv_function), 'generalize_ParticipantLevel')
+    % This renames the conditions for the accuracy field - currently create_results_struct operates as
+    % though we're using all the conditions so it labels the accuracy fields as
+    % baby 1, baby 2, etc. when we really want baby, bottle, etc.
+    groups = unique(parsed_input.cond_key(:,2));
+    for group_id = 1:length(groups)
+        allsubj_results.accuracy(group_id).condition = groups(group_id);
     end
 end
 
