@@ -1,4 +1,4 @@
-function allsubj_results = create_results_struct(parsed_input, cv_function, all_sets, num_subj, num_sets, num_feature, num_cond, current_dimensions, final_dimensions, pattern_data)
+function allsubj_results = create_results_struct(parsed_input, cv_function, all_sets, num_subj, num_sets, num_feature, num_cond, current_dimensions, final_dimensions, pattern_data, event_types)
 %% create a struct to store classification results. 
 % This will be later used in permutation testing 
 
@@ -17,6 +17,7 @@ allsubj_results.final_dimensions = final_dimensions;
 allsubj_results.subsets = all_sets;
 allsubj_results.patterns = pattern_data;
 allsubj_results.dimensions = current_dimensions;
+allsubj_results.event_types = event_types;
 
 
 
@@ -31,7 +32,7 @@ for cond_id = 1:num_cond % now create place holders for decoding accuracies
 end
 
 %% create an accuracy matrix if doing pairwise
-if isfield(parsed_input.opts_struct.pairwise) && parsed_input.opts_struct.pairwise == 1
+if isfield(parsed_input.opts_struct, 'pairwise') && parsed_input.opts_struct.pairwise == 1
     allsubj_results.accuracy_matrix = nan(length(allsubj_results.conditions),...
         length(allsubj_results.conditions),...
         min(size(allsubj_results.subsets,1),...
