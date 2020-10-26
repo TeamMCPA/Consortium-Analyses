@@ -9,7 +9,7 @@ if size(predicted_labels,2) > 1 % test labels will be a column vector if we don'
         if iscell(correct_labels) 
             % if correct_labels is cell array, we'll need to find the values in that array correspond to the condition location in event_types
             subj_acc = nan(length(predicted_labels(:,1,:)),1);
-            correct_labels = cellfun(@(x) find(strcmp(x,mcpa_summ.event_types)),correct_labels);
+            correct_labels = cellfun(@(x) find(strcmp(x,results_struct.event_types)),correct_labels);
         else
             subj_acc = nan(length(predicted_labels(:,1,:)),1);
         end
@@ -18,7 +18,7 @@ if size(predicted_labels,2) > 1 % test labels will be a column vector if we don'
         if iscell(correct_labels) 
             % if correct_labels is cell array, we'll need to find the values in that array correspond to the condition location in event_types
             subj_acc = nan(length(predicted_labels(:,1,:)),1);
-            correct_labels = cellfun(@(x) find(strcmp(x,mcpa_summ.event_types)),correct_labels);
+            correct_labels = cellfun(@(x) find(strcmp(x,results_struct.event_types)),correct_labels);
         else
             subj_acc = nan(length(predicted_labels(:,1,:)),1);
         end
@@ -28,7 +28,7 @@ if size(predicted_labels,2) > 1 % test labels will be a column vector if we don'
         % Then find the subject accuracy
         if iscell(correct_labels) 
             subj_acc = nanmean(strcmp(predicted_labels(:,1,:), predicted_labels(:,2,:)));
-            correct_labels = cellfun(@(x) find(strcmp(x,mcpa_summ.event_types)),correct_labels);
+            correct_labels = cellfun(@(x) find(strcmp(x,results_struct.event_types)),correct_labels);
         else
             subj_acc = nanmean(strcmp(predicted_labels(:,1,:), predicted_labels(:,2,:)));
         end
