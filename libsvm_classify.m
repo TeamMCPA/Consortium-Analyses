@@ -109,9 +109,9 @@ if pairwise
         classification = test_class_names(classification_int); %pairwise using label names
         
         % Save the predicted labels (`classification`) to first column
-        results_of_comparisons(:,1, this_comp) = classification;
+        results_of_comparisons(1:length(classification),1, this_comp) = classification;
         % Save the true test labels (`test_labs`) to second column
-        results_of_comparisons(:,2, this_comp) = test_labs;
+        results_of_comparisons(1:length(test_labs),2, this_comp) = test_labs;
         end
     end
     comparisons = list_of_comparisons;
