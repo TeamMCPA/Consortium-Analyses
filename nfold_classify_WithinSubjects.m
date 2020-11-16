@@ -380,12 +380,9 @@ for s_idx = 1:n_subj
                     end
                 end
 
-                if iscell(comparisons)
-                    subj_acc = nanmean(strcmp(predicted_labels(:,1,:), predicted_labels(:,2,:)));
-                    comparisons = cellfun(@(x) find(strcmp(x,p.Results.conditions)),comparisons); 
-                else
-                    subj_acc = nanmean(strcmp(predicted_labels(:,1,:), predicted_labels(:,2,:)));
-                end
+                subj_acc = nanmean(strcmp(predicted_labels(:,1,:), predicted_labels(:,2,:)));
+                nan_idx = cellfun(@(x) any(isnan(x)), predicted_labels(:,1,:), 'UniformOutput', false);
+                subj_acc(:,:,[nan_idx{1,:,:}]) = nan;
 
                 % folding_idx should be the same size as however many folds you do 
                 for comp = 1:size(comparisons,1)
@@ -421,4 +418,4 @@ for s_idx = 1:n_subj
 end % end subject loop
 
 
-%end % end function
+end % end function
