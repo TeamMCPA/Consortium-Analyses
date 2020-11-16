@@ -234,49 +234,24 @@ for s_idx = 1:n_subj
         % Select the features for this subset
         set_features = sets(set_idx,:);
         
-        %% classify
-        % call differently based on if we do RSA or not
-        % if we do pairwise comparison, the result test_labels will be a 3d
-        % matrix with the dimensions: predicted label x correct label x
-        % index of comparison. The output 'comparisons' will be the
-        % conditions that were compared and can either be a 2d cell array or a
-        % matrix of integers. If we don't do pairwise comparisons, the
-        % output 'test_labels' will be a 1d cell array of predicted labels.
-        % The output 'comparisons' will be a 1d array of the correct
-        % labels.
-        
-        % RSA
-        if strcmp(func2str(p.Results.test_handle),'rsa_classify')
-            [test_labels, comparisons] = p.Results.test_handle(...
-                group_data(:,set_features,:,:), ...
-                group_labels,...
-                subj_data(:,set_features,:),...
-                subj_labels,...
-                p.Results.opts_struct);
-            
-        else
-%             if any(strcmp('incl_sessions',varargin))
-%                 error('incl_sessions parameter not available for non-rsa classifiers at this moment.');
-%             end
-            [test_labels, comparisons] = p.Results.test_handle(...
-                group_data(:,set_features), ...
-                group_labels,...
-                subj_data(:,set_features),...
-                subj_labels,...
-                p.Results.opts_struct);
-        end
+        %% Classify
+        inds = pad_dimensions(final_dimensions, 'feature', set_features);
+        [predicted_labels, comparisons] = p.Results.test_handle(...
+                    train_data(inds{:}), ...
+                    train_labels,...
+                    test_data(inds{:}),...
+                    test_labels,...
+                    p.Results.opts_struct);
+
         
         %% Compare the labels output by the classifier to the known labels
         if size(test_labels,2) > 1 % test labels will be a column vector if we don't do pairwise
             
             if s_idx==1 && set_idx == 1, allsubj_results.accuracy_matrix = nan(n_cond,n_cond,min(n_sets,p.Results.max_sets),n_subj); end
             
-            if iscell(comparisons)
-                subj_acc = nanmean(strcmp(test_labels(:,1,:), test_labels(:,2,:)));
-                comparisons = cellfun(@(x) find(strcmp(x,unique(mcpa_summ.event_groups))),comparisons);
-            else
-                subj_acc = nanmean(strcmp(test_labels(:,1,:), test_labels(:,2,:)));
-            end
+            subj_acc = nanmean(strcmp(predicted_labels(:,1,:), predicted_labels(:,2,:)));
+            nan_idx = cellfun(@(x) any(isnan(x)), predicted_labels(:,1,:), 'UniformOutput', false);
+            subj_acc(:,:,[nan_idx{1,:,:}]) = nan;
             
             for comp = 1:size(comparisons,1)
                 if size(comparisons,2)==1
