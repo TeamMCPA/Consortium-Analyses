@@ -216,47 +216,42 @@ for s_idx = 1:n_subj
 
         %% Classify
         inds = pad_dimensions(final_dimensions, 'feature', set_features);
-        for i = 1%:15
-            [predicted_labels, comparisons] = p.Results.test_handle(...
-                    train_data(inds{:}), ...
-                    train_labels,...
-                    test_data(inds{:}),...
-                    test_labels,...
-                    p.Results.opts_struct);
+        [predicted_labels, comparisons] = p.Results.test_handle(...
+                train_data(inds{:}), ...
+                train_labels,...
+                test_data(inds{:}),...
+                test_labels,...
+                p.Results.opts_struct);
         
-            %% Record results .
-            if size(predicted_labels,2) > 1 % test labels will be a column vector if we don't do pairwise
-                if s_idx==1 && set_idx == 1, allsubj_results.accuracy_matrix = nan(n_cond,n_cond,min(n_sets,p.Results.max_sets),n_subj); end
+        %% Record results .
+        if size(predicted_labels,2) > 1 % test labels will be a column vector if we don't do pairwise
+            if s_idx==1 && set_idx == 1, allsubj_results.accuracy_matrix = nan(n_cond,n_cond,min(n_sets,p.Results.max_sets),n_subj); end
 
-                subj_acc = nanmean(strcmp(predicted_labels(:,1,:), predicted_labels(:,2,:)));
-                nan_idx = cellfun(@(x) any(isnan(x)), predicted_labels(:,1,:), 'UniformOutput', false);
-                subj_acc(:,:,[nan_idx{1,:,:}]) = nan;
+            subj_acc = nanmean(strcmp(predicted_labels(:,1,:), predicted_labels(:,2,:)));
+            nan_idx = cellfun(@(x) any(isnan(x)), predicted_labels(:,1,:), 'UniformOutput', false);
+            subj_acc(:,:,[nan_idx{1,:,:}]) = nan;
 
 
-                % Then loop through comparisons and save accuracy to the results struct
-                for comp = 1:size(comparisons,1)
-                    if size(comparisons,2)==1
-                        allsubj_results.accuracy_matrix(comparisons(comp,1),:,set_idx,s_idx) = subj_acc(comp);
-                    else
-                        allsubj_results.accuracy_matrix(comparisons(comp,1),comparisons(comp,2),set_idx,s_idx) = subj_acc(comp);
-                    end
-                end
-            else
-                for cond_idx = 1:n_cond
-                    temp_acc = cellfun(@strcmp,...
-                        comparisons(strcmp(strjoin(string(p.Results.conditions{cond_idx}),'+'),comparisons)),... % known labels
-                        predicted_labels(strcmp(strjoin(string(p.Results.conditions{cond_idx}),'+'),comparisons))...% classifier labels
-                        );
-
-                    temp_set_results_cond(cond_idx,set_idx,set_features) = nanmean(temp_acc);
-                end
-                for cond_idx = 1:n_cond
-                    allsubj_results.accuracy(cond_idx).subsetXsubj(:,s_idx) = nanmean(temp_set_results_cond(cond_idx,:,:),3);
-                    allsubj_results.accuracy(cond_idx).subjXfeature(s_idx,:) = nanmean(temp_set_results_cond(cond_idx,:,:),2);
-                end
+            % Then loop through comparisons and save accuracy to the results struct
+            for comp = 1:size(comparisons,1)
+                allsubj_results.accuracy_matrix(comparisons(comp,1),comparisons(comp,2),set_idx,s_idx) = subj_acc(comp);
             end
+        else
+            for cond_idx = 1:n_cond
+                temp_acc = cellfun(@strcmp,...
+                    comparisons(strcmp(strjoin(string(p.Results.conditions{cond_idx}),'+'),comparisons)),... % known labels
+                    predicted_labels(strcmp(strjoin(string(p.Results.conditions{cond_idx}),'+'),comparisons))...% classifier labels
+                    );
 
+                temp_set_results_cond(cond_idx,set_idx,set_features) = nanmean(temp_acc);
+            end
+            for cond_idx = 1:n_cond
+                allsubj_results.accuracy(cond_idx).subsetXsubj(:,s_idx) = nanmean(temp_set_results_cond(cond_idx,:,:),3);
+                allsubj_results.accuracy(cond_idx).subjXfeature(s_idx,:) = nanmean(temp_set_results_cond(cond_idx,:,:),2);
+            end
         end
+
+
         %% Progress reporting
         if p.Results.verbose
             fprintf(' %0.1f mins\n',toc/60);
@@ -289,3 +284,5 @@ if p.Results.verbose
 end
 
 end
+
+

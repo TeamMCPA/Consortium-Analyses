@@ -384,13 +384,9 @@ for s_idx = 1:n_subj
                 nan_idx = cellfun(@(x) any(isnan(x)), predicted_labels(:,1,:), 'UniformOutput', false);
                 subj_acc(:,:,[nan_idx{1,:,:}]) = nan;
 
-                % folding_idx should be the same size as however many folds you do 
+                % Then loop through comparisons and save accuracy to the results struct
                 for comp = 1:size(comparisons,1)
-                    if size(comparisons,2)==1
-                        allsubj_results.accuracy_matrix(comparisons(comp,1),:,set_idx,folding_idx,s_idx) = subj_acc(comp);
-                    else
-                        allsubj_results.accuracy_matrix(comparisons(comp,1),comparisons(comp,2),set_idx,folding_idx,s_idx) = subj_acc(comp);
-                    end
+                    allsubj_results.accuracy_matrix(comparisons(comp,1),comparisons(comp,2),set_idx,s_idx) = subj_acc(comp);
                 end
             else
                 for cond_idx = 1:n_cond
@@ -418,4 +414,4 @@ for s_idx = 1:n_subj
 end % end subject loop
 
 
-end % end function
+%end % end function
