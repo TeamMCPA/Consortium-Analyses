@@ -179,8 +179,6 @@ for s_idx = 1:n_subj
     end
     tic;
     
-    %% Run over feature subsets
-    temp_set_results_cond = nan(n_cond,n_sets,n_feature);
     
     %% Folding & Dispatcher: Here's the important part
     % Right now, the data have to be treated differently for 2
@@ -225,17 +223,16 @@ for s_idx = 1:n_subj
         
         %% Record results .
         if size(predicted_labels,2) > 1 % test labels will be a column vector if we don't do pairwise
-            if s_idx==1 && set_idx == 1, allsubj_results.accuracy_matrix = nan(n_cond,n_cond,min(n_sets,p.Results.max_sets),n_subj); end
 
             subj_acc = nanmean(strcmp(predicted_labels(:,1,:), predicted_labels(:,2,:)));
             nan_idx = cellfun(@(x) any(isnan(x)), predicted_labels(:,1,:), 'UniformOutput', false);
             subj_acc(:,:,[nan_idx{1,:,:}]) = nan;
 
-
             % Then loop through comparisons and save accuracy to the results struct
             for comp = 1:size(comparisons,1)
                 allsubj_results.accuracy_matrix(comparisons(comp,1),comparisons(comp,2),set_idx,s_idx) = subj_acc(comp);
             end
+
         else
             subj_acc = strcmp(predicted_labels, test_labels);
             
@@ -245,8 +242,6 @@ for s_idx = 1:n_subj
                 allsubj_results.accuracy(cond_idx).subjXfeature(s_idx,:) = cond_acc;
             
             end
-
-
         end
 
 

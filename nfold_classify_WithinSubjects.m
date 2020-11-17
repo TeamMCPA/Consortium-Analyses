@@ -372,14 +372,7 @@ for s_idx = 1:n_subj
             %% Record results 
 
             if size(predicted_labels,2) > 1 % test labels will be a column vector if we don't do pairwise
-                if s_idx==1 && set_idx == 1 && folding_idx == 1
-                    if strcmp(p.Results.approach, 'kf')   
-                        allsubj_results.accuracy_matrix = nan(n_cond,n_cond,min(n_sets,p.Results.max_sets),num_folds,n_subj);                             
-                    elseif strcmp(p.Results.approach, 'loo')   
-                        allsubj_results.accuracy_matrix = nan(n_cond,n_cond,min(n_sets,p.Results.max_sets),n_sessions,n_subj); 
-                    end
-                end
-
+                
                 subj_acc = nanmean(strcmp(predicted_labels(:,1,:), predicted_labels(:,2,:)));
                 nan_idx = cellfun(@(x) any(isnan(x)), predicted_labels(:,1,:), 'UniformOutput', false);
                 subj_acc(:,:,[nan_idx{1,:,:}]) = nan;
@@ -389,18 +382,15 @@ for s_idx = 1:n_subj
                     allsubj_results.accuracy_matrix(comparisons(comp,1),comparisons(comp,2),set_idx,s_idx) = subj_acc(comp);
                 end
             else
-                for cond_idx = 1:n_cond
-                    temp_acc = cellfun(@strcmp,...
-                    test_labels(strcmp(strjoin(string(p.Results.conditions{cond_idx}),'+'),test_labels)),... % known labels
-                    predicted_labels(strcmp(strjoin(string(p.Results.conditions{cond_idx}),'+'),test_labels))...% classifier labels
-                    );
+                                
+                subj_acc = strcmp(predicted_labels, test_labels);
 
-                    temp_set_results_cond(cond_idx,set_idx,set_features) = nanmean(temp_acc);
-                end
                 for cond_idx = 1:n_cond
-                    allsubj_results.accuracy(cond_idx).subsetXsubj(:,s_idx) = nanmean(temp_set_results_cond(cond_idx,:,:),3);
-                    allsubj_results.accuracy(cond_idx).subjXfeature(s_idx,:) = nanmean(temp_set_results_cond(cond_idx,:,:),2);
-                    allsubj_results.accuracy(cond_idx).subjXsession(s_idx,folding_idx) = nanmean(temp_set_results_cond(cond_idx,:,:),3);
+                    cond_acc = nanmean(subj_acc(comparisons == cond_idx));
+                    allsubj_results.accuracy(cond_idx).subsetXsubj(:,s_idx) = cond_acc;
+                    allsubj_results.accuracy(cond_idx).subjXfeature(s_idx,:) = cond_acc;
+                    allsubj_results.accuracy(cond_idx).subjXsession(s_idx,folding_idx) = cond_acc;
+
                 end
             end
 
