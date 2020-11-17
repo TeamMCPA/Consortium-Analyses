@@ -139,7 +139,12 @@ else
         %% Classifier testing goes here
         classification_int = svmpredict(test_labels_int, test_data, model);
         classification = class_names(classification_int); %back to str
-        comparisons = test_labels;
+        
+        comparisons = nan(length(test_labels),1);
+        unique_labels = unique(test_labels);
+        for i = 1:length(unique_labels)
+            comparisons(strcmp(test_labels, unique_labels{i})) = i;
+        end
     end
 end
 

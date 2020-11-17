@@ -69,7 +69,11 @@ else
     
     classification = predict(logit_model, test_data);
     
-    comparisons = test_labels;
+    comparisons = nan(length(test_labels),1);
+    unique_labels = unique(test_labels);
+    for i = 1:length(unique_labels)
+        comparisons(strcmp(test_labels, unique_labels{i})) = i;
+    end
 end
 
 
