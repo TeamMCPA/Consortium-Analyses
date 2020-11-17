@@ -237,18 +237,16 @@ for s_idx = 1:n_subj
                 allsubj_results.accuracy_matrix(comparisons(comp,1),comparisons(comp,2),set_idx,s_idx) = subj_acc(comp);
             end
         else
+            subj_acc = strcmp(predicted_labels, test_labels);
+            
             for cond_idx = 1:n_cond
-                temp_acc = cellfun(@strcmp,...
-                    comparisons(strcmp(strjoin(string(p.Results.conditions{cond_idx}),'+'),comparisons)),... % known labels
-                    predicted_labels(strcmp(strjoin(string(p.Results.conditions{cond_idx}),'+'),comparisons))...% classifier labels
-                    );
+                cond_acc = nanmean(subj_acc(comparisons == cond_idx));
+                allsubj_results.accuracy(cond_idx).subsetXsubj(:,s_idx) = cond_acc;
+                allsubj_results.accuracy(cond_idx).subjXfeature(s_idx,:) = cond_acc;
+            
+            end
 
-                temp_set_results_cond(cond_idx,set_idx,set_features) = nanmean(temp_acc);
-            end
-            for cond_idx = 1:n_cond
-                allsubj_results.accuracy(cond_idx).subsetXsubj(:,s_idx) = nanmean(temp_set_results_cond(cond_idx,:,:),3);
-                allsubj_results.accuracy(cond_idx).subjXfeature(s_idx,:) = nanmean(temp_set_results_cond(cond_idx,:,:),2);
-            end
+
         end
 
 
