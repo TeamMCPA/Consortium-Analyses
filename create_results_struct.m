@@ -2,6 +2,9 @@ function allsubj_results = create_results_struct(within_subject, summed_mcpa, pa
 %% create a struct to store classification results. 
 % This will be later used in permutation testing 
 
+% created by Anna Herbolzheimer and Ben Zinszer Fall 2019
+% updated by AH Fall 2020
+
 allsubj_results = []; % create empty structs
 allsubj_results.created = datestr(now);
 allsubj_results.summed_mcpa_patterns = summed_mcpa.patterns;
@@ -33,5 +36,23 @@ for cond_id = 1:num_cond % now create place holders for decoding accuracies
          allsubj_results.accuracy(cond_id).subjXsession = nan(num_subj,max_sessions);
     end
 end
+
+if within_subject
+    if isfield(parsed_input.Results.opts_struct, 'pairwise') && parsed_input.Results.opts_struct.pairwise == 1
+        allsubj_results.accuracy_matrix = nan(length(allsubj_results.conditions),...
+            length(allsubj_results.conditions),...
+            min(size(allsubj_results.subsets,1),...
+            allsubj_results.max_sets),...
+            size(summed_mcpa.patterns, ndims(summed_mcpa.patterns)-1),...
+            size(summed_mcpa.patterns, ndims(summed_mcpa.patterns)));
+    end
+else
+    if isfield(parsed_input.Results.opts_struct, 'pairwise') && parsed_input.Results.opts_struct.pairwise == 1
+        allsubj_results.accuracy_matrix = nan(length(allsubj_results.conditions),...
+            length(allsubj_results.conditions),...
+            min(size(allsubj_results.subsets,1),...
+            allsubj_results.max_sets),...
+            size(summed_mcpa.patterns, ndims(summed_mcpa.patterns)));
+    end
 
 end
