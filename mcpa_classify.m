@@ -187,7 +187,7 @@ end
 % Initialize empty cell matrix for classifications
 classification = cell(size(test_dat,1),1);
 
-if opts.exclusive && length(model_classes)==size(test_dat,1) && opts.pairwise 
+if opts.exclusive && length(model_classes)==size(test_dat,1) && ~opts.pairwise 
     test_model_corrs = comparison_matrix(length(model_classes)+1:end,1:length(model_classes));
 
     if size(test_model_corrs,1)==2 && strcmp(opts.comparison_type, 'correlation')
