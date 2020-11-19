@@ -193,7 +193,6 @@ try
     summarized_MCPA_struct.patterns = summarized_MCPA_struct_pattern;
     summarized_MCPA_struct.dimensions = dimension_labels;
     summarized_MCPA_struct.summarize_dimensions = summarize_dimensions;
-    fprintf(' Done.\n');
     
 catch
     error('Failed to create the new struct');
