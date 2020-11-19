@@ -68,7 +68,13 @@ else
     t = templateSVM(input{:});
     svm_model = fitcecoc(train_data, train_labels, 'Learners', t);
     classification = predict(svm_model, test_data);
-    comparisons = test_labels;
+    
+    comparisons = nan(length(test_labels),1);
+    unique_labels = unique(test_labels);
+    for i = 1:length(unique_labels)
+        comparisons(strcmp(test_labels, unique_labels{i})) = i;
+    end
+        
 end
 
 end
