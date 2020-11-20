@@ -1,3 +1,4 @@
+
 function results_struct = classify_ParticipantLevel(results_struct)
 %% nfold_classify_ParticipantLevel takes in a struct containing the MCPA summarized patterns 
 % and classification parameters parsed from cross_validate,
@@ -21,9 +22,6 @@ for s_idx = 1:n_subj
         fprintf('Running %g feature subsets for Subject %g / %g',n_sets,s_idx,n_subj);
     end
     tic;
-    
-    %% Run over feature subsets
-    temp_set_results_cond = nan(n_cond,n_sets,n_feature);
     
     %% Split data into test and train 
     % on each fold, one participant's data will be left out as the test
@@ -52,7 +50,7 @@ for s_idx = 1:n_subj
         set_features = results_struct.subsets(set_idx,:);
         
         %% Classify
-        inds = subset_dimension(results_struct.final_dimensions, 'feature', set_features);
+        inds = pad_dimensions(results_struct.final_dimensions, 'feature', set_features);
         [predicted_labels, comparisons] = results_struct.test_handle(...
                 train_data(inds{:}), ...
                 train_labels,...
@@ -65,7 +63,6 @@ for s_idx = 1:n_subj
             comparisons,...
             predicted_labels,...
             set_idx,...
-            1,... 
             s_idx);
 
         

@@ -20,29 +20,17 @@ sets = map_features_to_sets(p, unmapped_sets);
 if ~isempty(p.Results.summarize_dimensions) || ~isfield(p.Results, 'summarize_dimensions')
     summarize_dimensions = p.Results.summarize_dimensions;
 else
-    isWithinSubjects = false;
     warning('summarize_dimensions not specified. Consulting recommend_dimensions.')
-    
-    [summarize_dimensions, ~] = recommend_dimensions(p.Results, isWithinSubjects);
-    
-    fprintf('Summarizing dimensions with %s:\n',func2str(p.Results.summary_handle))
-    fprintf('%s ',summarize_dimensions{:})
-    fprintf('\n')
+    isWithinSubjects = strcmp(func2str(cv_function), 'classify_WithinSubjects');
 end
 
-% then see if the user specified the final dimensions the data should take
-% before going into classification
 if ~isempty(p.Results.final_dimensions) || ~isfield(p.Results, 'final_dimensions')
     final_dimensions = p.Results.final_dimensions;
 else
-    isWithinSubjects = false;
     warning('final_dimensions not specified. Consulting recommend_dimensions.')
-    
-    [~, final_dimensions] = recommend_dimensions(p.Results, isWithinSubjects);
-
-    fprintf('The format the data will be in when it enters the classifier wrapper is: %s', final_dimensions{:});
-    fprintf('\n')
 end
+    
+
 
 %% Prep basic parameters
 n_subj = length(p.Results.incl_subjects);
@@ -59,11 +47,13 @@ final_results = create_results_struct(p.Results,...
     length(p.Results.incl_features),...
     length(p.Results.conditions),...
     [],...
-    final_dimensions,...
+    [],...
     [],...
     []);
 
 [parameter_space, proc_params, classif_params] = enumerate_parameter_space(final_results);
+
+
 
 %% begin the cross validation
 for s_idx = 1:n_subj
@@ -77,13 +67,23 @@ for s_idx = 1:n_subj
             parameter_space,...
             proc_params,...
             classif_params,...
-            p_idx);
+            p_idx,...
+            true);
         
-        inner_results_struct.incl_subjects = 1:(length(inner_results_struct.incl_subjects)-1);
-        
-        if inner_results_struct.verbose
-            inner_results_struct.verbose = false;
-            fprintf('running nested cross validation for parameter set: %g / %g', p_idx, size(parameter_space,1))
+        if isempty(p.Results.summarize_dimensions) || isfield(p.Results, 'summarize_dimensions')
+            [inner_results_struct.summarize_dimensions, ~] = recommend_dimensions(p.Results, isWithinSubjects);
+        else
+            inner_results_struct.summarize_dimensions = summarize_dimensions;
+        end
+        if isempty(p.Results.final_dimensions) || isfield(p.Results, 'final_dimensions')
+            [~, inner_results_struct.final_dimensions] = recommend_dimensions(p.Results, isWithinSubjects);
+        else
+            inner_results_struct.final_dimensions = final_dimensions;
+        end
+
+                
+        if inner_results_struct.verbose >= 1
+            fprintf('running nested cross validation for subject %g / % g and parameter set: %g / %g', s_idx, n_subj, p_idx, size(parameter_space,1))
             fprintf('\n')
         end
         
@@ -106,13 +106,12 @@ for s_idx = 1:n_subj
         % summarize the data
         mcpa_summ = summarize_MCPA_Struct(inner_results_struct.summary_handle,...
             mcpa_struct,...
-            summarize_dimensions);
+            inner_results_struct.summarize_dimensions);
         
         inner_results_struct.patterns = mcpa_summ.patterns;
         inner_results_struct.event_types = mcpa_summ.event_types;
         inner_results_struct.dimensions = mcpa_summ.dimensions;
         
-        inner_results_struct.summed_mcpa_patterns = mcpa_summ.patterns;
         inner_results_struct.summarize_dimensions = mcpa_summ.summarize_dimensions;
         
         inner_results_struct = cv_function(inner_results_struct); 
@@ -136,7 +135,8 @@ for s_idx = 1:n_subj
         parameter_space,...
         proc_params,...
         classif_params,...
-        rankings(1));
+        rankings(1),...
+        false);
 
     % scale the data
     if outer_results_struct.scale_data
@@ -160,7 +160,7 @@ for s_idx = 1:n_subj
     % summarize the data
     mcpa_summ = summarize_MCPA_Struct(outer_results_struct.summary_handle,...
         mcpa_struct,...
-        summarize_dimensions);
+        inner_results_struct.summarize_dimensions);
     outer_results_struct.event_types = mcpa_summ.event_types;
     
     % split the data
@@ -168,7 +168,7 @@ for s_idx = 1:n_subj
         p.Results.conditions,...
         mcpa_summ.patterns,...
         mcpa_summ.event_types,...
-        final_dimensions,...
+        inner_results_struct.final_dimensions,...
         mcpa_summ.dimensions, [], []);
 
     for set_idx = 1:min(n_sets,outer_results_struct.max_sets)
@@ -185,7 +185,7 @@ for s_idx = 1:n_subj
         
 
         %% Classify
-        inds = pad_dimensions(final_dimensions, 'feature', set_features);
+        inds = pad_dimensions(inner_results_struct.final_dimensions, 'feature', set_features);
         [predicted_labels, comparisons] = outer_results_struct.test_handle(...
                 train_data(inds{:}), ...
                 train_labels,...
@@ -198,7 +198,6 @@ for s_idx = 1:n_subj
             comparisons,...
             predicted_labels,...
             set_idx,...
-            1,... 
             s_idx);    
             
         
