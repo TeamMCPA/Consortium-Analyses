@@ -6,10 +6,10 @@ function [chan_list] = searchlight(MCP_data,seed,N)
 % coordinates)
 % seed: vector channel number(s) corresponding to the desired center points 
 % from which to compute the searchlight. If empty > all channels
-% N: number of surrounding channels
+% N: number of total channels to return (N-1 channels plus the seed)
 % outputs: 
-% chan_list: length(seed) x N  matrix storing the N closest channels 
-% surrounding each of the length(seed) seed channels
+% chan_list: length(seed) x N  matrix storing the N-1 closest channels 
+% surrounding each seed plus the seed 
 % Alexis Black, Claire Kabdebon, Alice Wang -- November 2020
 
 %if empty then assign it all channels
@@ -47,7 +47,7 @@ for s = 1:length(seed)
     % sort the distances from smallest to largest
     [~,indices] = sort(dist,'ascend');
 
-    %retrieve the N closest channels to the seed
+    %retrieve the N-1 closest channels to the seed
     chan_list(s,:) = indices(1:N);
 end
 
