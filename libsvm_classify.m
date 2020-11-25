@@ -10,24 +10,10 @@ function [classification, comparisons] = libsvm_classify(train_data, train_label
 % analytic goals.
 
 %% If the options struct is not provided, set default parameters
-%% determine if we use pairwise comparisons
-% pairwise option seemed to be forced to be true somewhere before this fucntion is called
-% using manual pairwise value for debugging multiclass
-if ~exist('opts','var') || ~isfield(opts, 'pairwise') || isempty(opts)
-    pairwise = false;
-else
-    pairwise = opts.pairwise;
-    opts = rmfield(opts,'pairwise');
-end
+%% determine if we use pairwise comparisons 
+pairwise = opts.pairwise;
+opts = rmfield(opts,'pairwise');
 
-if ~exist('pairwise','var')
-    pairwise = false;
-end
-
-%libsvm options
-if ~exist('opts','var') ||~isfield(opts, 'libsvm_options')|| isempty(opts)
-    opts.libsvm_options = '-s 0 -t 0 -q';
-end
 
 %% parse out the classification parameters
 input = parse_opts(opts);
@@ -139,12 +125,7 @@ else
         %% Classifier testing goes here
         classification_int = svmpredict(test_labels_int, test_data, model);
         classification = class_names(classification_int); %back to str
-        
-        comparisons = nan(length(test_labels),1);
-        unique_labels = unique(test_labels);
-        for i = 1:length(unique_labels)
-            comparisons(strcmp(test_labels, unique_labels{i})) = i;
-        end
+        comparisons = test_labels;
     end
 end
 

@@ -7,16 +7,8 @@ function [classification, comparisons] = svm_classify(train_data, train_labels, 
 %        opts (optional) - an options struct
 
 %% determine if we use pairwise comparisons 
-if ~exist('opts','var') || ~isfield(opts, 'pairwise') || isempty(opts)
-    pairwise = false;
-else
-    pairwise = opts.pairwise;
-    opts = rmfield(opts,'pairwise');
-end
-
-if ~exist('pairwise','var')
-    pairwise = false;
-end
+pairwise = opts.pairwise;
+opts = rmfield(opts,'pairwise');
 
 %% parse out the classification parameters
 input = parse_opts(opts);
@@ -68,13 +60,7 @@ else
     t = templateSVM(input{:});
     svm_model = fitcecoc(train_data, train_labels, 'Learners', t);
     classification = predict(svm_model, test_data);
-    
-    comparisons = nan(length(test_labels),1);
-    unique_labels = unique(test_labels);
-    for i = 1:length(unique_labels)
-        comparisons(strcmp(test_labels, unique_labels{i})) = i;
-    end
-        
+    comparisons = test_labels;
 end
 
 end

@@ -7,7 +7,7 @@ function [classification, comparisons] = mcpa_classify(model_data, model_labels,
 % examples) and instances in the test data.
 %
 % Correlation statistic (pearson, spearman, or kendall) may be selected
-% using opts.corr_stat, e.g., opts.corr_stat='pearson'
+% using opts.metric, e.g., opts.metric='pearson'
 %
 % In 'non-exclusive' mode (the default), classification decisions are based
 % simply on the greatest Fisher-adjusted correlation between test instance
@@ -23,45 +23,6 @@ function [classification, comparisons] = mcpa_classify(model_data, model_labels,
 % training set.
 %
 % All-possible-pairwise comparison (opts.pairwise) is under development.
-
-%% If the options struct is not provided, set default parameters
-if ~exist('opts','var') || isempty(opts) 
-    opts = struct;
-end
-if ~isfield(opts, 'comparison_type')
-    if isfield(opts, 'metric')
-        switch opts.metric
-            case {'spearman', 'pearson', 'kendall'}
-                warning('Similarity or Dissimilarity space has not been defined. Based on your chosen metric, we will put the data in similarity space.')
-                opts.comparison_type = 'correlation';
-            otherwise
-                warning('Similarity or Dissimilarity space has not been defined. Based on your chosen metric, we will put the data in dissimilarity space.')
-                opts.comparison_type = 'distance';
-        end
-    else
-        warning('Similarity or Dissimilarity space has not been defined. We will put the data in similarity space with the Spearman correlation.')
-        opts.comparison_type = 'correlation';
-    end
-end
-if ~isfield(opts, 'metric')
-    if strcmp(opts.comparison_type, 'correlation')
-        opts.metric = 'spearman';
-    else
-        opts.metric = 'euclidean';
-    end
-end
-if ~isfield(opts, 'exclusive')
-    opts.exclusive = true;
-end
-if ~isfield(opts, 'pairwise')
-    opts.pairwise = false;
-end
-if ~isfield(opts, 'tiebreak')
-    opts.tiebreak = true;
-end
-if ~isfield(opts, 'pairwise')
-    opts.pairwise = false;
-end
 
 %% Pull a list of all the unique classes / conditions, preserving order
 model_classes = unique(model_labels,'stable');
@@ -85,55 +46,55 @@ model_dat = model_data(train_order, :);
 % section finds NaN cells in the test and train matrix, then removes
 % columns where both test and train were entirely NaN
 
-% empty_x_vals_model = [];
-% empty_y_vals_model = [];
-% for i = 1:size(model_data,4)
-%     for j = 1:size(model_data,3)
-%         [x,y] = find(isnan(model_dat(:,:,j,i)));
-%         if length(unique(x)) == size(model_dat,1) && length(unique(y)) == size(model_dat,2)
-%             continue;
-%         else
-%             empty_x_vals_model = [empty_x_vals_model; x];
-%             empty_y_vals_model = [empty_y_vals_model; y];
-%         end
-%     end      
-% end
-% empty_x_vals_model = unique(empty_x_vals_model);
-% empty_y_vals_model = unique(empty_y_vals_model);
-% 
-% 
-% empty_x_vals_test = [];
-% empty_y_vals_test = [];
-% for i = 1:size(test_data,4)
-%     for j = 1:size(test_data,3)
-%         [x,y] = find(isnan(test_data(:,:,j,i)));
-%         if length(unique(x)) == size(test_data,1) && length(unique(y)) == size(test_data,2)
-%             continue;
-%         else
-%             empty_x_vals_test = [empty_x_vals_test; x];
-%             empty_y_vals_test = [empty_y_vals_test; y];
-%         end
-%     end      
-% end
-% 
-% empty_x_vals_test = unique(empty_x_vals_test);
-% empty_y_vals_test = unique(empty_y_vals_test);
-% 
-% cols = 1:size(model_data,2);
-% rows = 1:size(model_data,1);
-% 
-% if length(empty_x_vals_model) == size(model_data,1) && length(empty_y_vals_model) ~= size(model_data,2)
-%     % remove columns
-%     remove_cols = union(empty_y_vals_model, empty_y_vals_test);
-%     keep = ~ismember(cols, remove_cols);
-%     model_dat = model_dat(:,keep', :,:);
-%     test_dat = test_dat(:, keep', :,:);   
-% elseif length(empty_x_vals_model) == size(model_data,1) && length(empty_y_vals_model) == size(model_data,2)
-%     % this is an empty session
-%     warning('There is no data in this session')
-% end
-%     
-% 
+empty_x_vals_model = [];
+empty_y_vals_model = [];
+for i = 1:size(model_data,4)
+    for j = 1:size(model_data,3)
+        [x,y] = find(isnan(model_dat(:,:,j,i)));
+        if length(unique(x)) == size(model_dat,1) && length(unique(y)) == size(model_dat,2)
+            continue;
+        else
+            empty_x_vals_model = [empty_x_vals_model; x];
+            empty_y_vals_model = [empty_y_vals_model; y];
+        end
+    end      
+end
+empty_x_vals_model = unique(empty_x_vals_model);
+empty_y_vals_model = unique(empty_y_vals_model);
+
+
+empty_x_vals_test = [];
+empty_y_vals_test = [];
+for i = 1:size(test_data,4)
+    for j = 1:size(test_data,3)
+        [x,y] = find(isnan(test_data(:,:,j,i)));
+        if length(unique(x)) == size(test_data,1) && length(unique(y)) == size(test_data,2)
+            continue;
+        else
+            empty_x_vals_test = [empty_x_vals_test; x];
+            empty_y_vals_test = [empty_y_vals_test; y];
+        end
+    end      
+end
+
+empty_x_vals_test = unique(empty_x_vals_test);
+empty_y_vals_test = unique(empty_y_vals_test);
+
+cols = 1:size(model_data,2);
+rows = 1:size(model_data,1);
+
+if length(empty_x_vals_model) == size(model_data,1) && length(empty_y_vals_model) ~= size(model_data,2)
+    % remove columns
+    remove_cols = union(empty_y_vals_model, empty_y_vals_test);
+    keep = ~ismember(cols, remove_cols);
+    model_dat = model_dat(:,keep', :,:);
+    test_dat = test_dat(:, keep', :,:);   
+elseif length(empty_x_vals_model) == size(model_data,1) && length(empty_y_vals_model) == size(model_data,2)
+    % this is an empty session
+    warning('There is no data in this session')
+end
+    
+
 
 %% Average across training data to get model features for each class
 
@@ -187,7 +148,7 @@ end
 % Initialize empty cell matrix for classifications
 classification = cell(size(test_dat,1),1);
 
-if opts.exclusive && length(model_classes)==size(test_dat,1) && ~opts.pairwise 
+if opts.exclusive && length(model_classes)==size(test_dat,1) && ~opts.pairwise && length(model_classes) == 2
     test_model_corrs = comparison_matrix(length(model_classes)+1:end,1:length(model_classes));
 
     if size(test_model_corrs,1)==2 && strcmp(opts.comparison_type, 'correlation')
@@ -316,14 +277,12 @@ else
         test_model_corrs = test_model_corrs + rand(size(test_model_corrs))*min_diff/100;
         
         % Classify based on the maximum correlation
-        [~, test_class_idx] = max(test_model_corrs,[],2);
+        [comparisons, test_class_idx] = max(test_model_corrs,[],2);
         classification = model_classes(test_class_idx);
         
     end
     % put the labels back in the order they were put in as
     [~,reorder_test] = sort(test_order);
     classification = classification(reorder_test);
-    
-    comparisons = 1:length(test_labels);
 end
 
