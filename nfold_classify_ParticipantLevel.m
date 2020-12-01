@@ -91,8 +91,7 @@ mcpa_struct = MCP_to_MCPA(MCP_struct,...
     input_struct.oxy_or_deoxy);
 
 % Subset patterns by session
-inds = repmat({':'},1,ndims(mcpa_struct.patterns)); % Create index structure with all-elements in all-dimensions
-inds{strcmp(mcpa_struct.dimensions,'session')} = input_struct.incl_sessions; % In whichever dimension matches 'session', substitute the incl_sessions vector
+inds = pad_dimensions(mcpa_struct.dimensions, 'session', input_struct.incl_sessions);
 mcpa_struct.patterns = mcpa_struct.patterns(inds{:}); % Replace patterns matrix with the subsetted sessions data
 
 %% summarize MCPA struct

@@ -83,9 +83,8 @@ mcpa_struct = MCP_to_MCPA(MCP_struct,...
     input_struct.oxy_or_deoxy);
 
 % Subset patterns by session
-inds = repmat({':'},1,ndims(mcpa_struct.patterns));
-inds{strcmp(mcpa_struct.dimensions,'session')} = input_struct.incl_sessions;
-mcpa_struct.patterns = mcpa_struct.patterns(inds{:});
+inds = pad_dimensions(mcpa_struct.dimensions, 'session', input_struct.incl_sessions);
+mcpa_struct.patterns = mcpa_struct.patterns(inds{:}); % Replace patterns matrix with the subsetted sessions data
 
 %% summarize MCPA struct
 % Step 2: Apply the desired function (e.g., @nanmean) for summarizing time
