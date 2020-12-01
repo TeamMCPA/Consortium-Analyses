@@ -1,4 +1,4 @@
-function p = parse_inputs(MCP_struct, varargin)
+function input_struct = parse_inputs(MCP_struct, varargin)
 %% input parser 
 % takes input from function that calls it and creates a struct to store
 % clasification parameters
@@ -64,5 +64,7 @@ addParameter(p,'cond_key',{});
 addParameter(p,'test_marks',{});
 
 parse(p,varargin{:});
+
+input_struct = p.Results;
 
 end
