@@ -32,9 +32,10 @@ addParameter(p,'setsize',max(arrayfun(@(x) size(x.Experiment.Runs(1).Transformat
 addParameter(p,'max_sets',1000000,@isnumeric);
 addParameter(p,'test_handle',@mcpa_classify);
 addParameter(p,'opts_struct',[],@isstruct);
-addParameter(p,'verbose',true,@islogical);
+addParameter(p,'verbose',true);
 addParameter(p, 'summarize_dimensions', {});
 addParameter(p, 'final_dimensions', {});
+addParameter(p, 'suppress_warnings', false);
 addParameter(p, 'incl_features', [1:max(arrayfun(@(x) size(x.Experiment.Runs(1).Transformation_Matrix,2),MCP_struct))],@isnumeric); 
 
 

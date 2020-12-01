@@ -98,7 +98,7 @@ for s_idx = 1:n_subj
 
         % Subset patterns by session
         if max(inner_results_struct.incl_sessions) > size(mcpa_struct.patterns,ndims(mcpa_struct.patterns)-1)
-            inner_results_struct.incl_sessions = size(mcpa_struct.patterns,ndims(mcpa_struct.patterns)-1);
+            inner_results_struct.incl_sessions = 1:size(mcpa_struct.patterns,ndims(mcpa_struct.patterns)-1);
         end
         inds = pad_dimensions(mcpa_struct.dimensions, 'session', inner_results_struct.incl_sessions);
         mcpa_struct.patterns = mcpa_struct.patterns(inds{:}); % Replace patterns matrix with the subsetted sessions data
@@ -129,7 +129,7 @@ for s_idx = 1:n_subj
     [chosen_parameters, rankings] = eval_max_accuracy(nesting_results, parameter_space);
     nesting_results.('chosen_parameters') = chosen_parameters;
     nesting_results.('rankings') = rankings;
-    
+       
     %% apply to left out data
     outer_results_struct = populate_classification_options_struct(final_results,...
         parameter_space,...
@@ -137,6 +137,11 @@ for s_idx = 1:n_subj
         classif_params,...
         rankings(1),...
         false);
+    
+    % validate classification options
+    outer_results_struct.opts_struct = validate_classification_options_input(outer_results_struct, outer_results_struct.suppress_warnings);
+
+ 
 
     % scale the data
     if outer_results_struct.scale_data
@@ -185,6 +190,7 @@ for s_idx = 1:n_subj
         
 
         %% Classify
+        try
         inds = pad_dimensions(inner_results_struct.final_dimensions, 'feature', set_features);
         [predicted_labels, comparisons] = outer_results_struct.test_handle(...
                 train_data(inds{:}), ...
@@ -192,6 +198,11 @@ for s_idx = 1:n_subj
                 test_data(inds{:}),...
                 test_labels,...
                 outer_results_struct.opts_struct);
+            
+        catch me
+            
+            1;
+        end
             
            
         outer_results_struct = save_accuracy(outer_results_struct,...

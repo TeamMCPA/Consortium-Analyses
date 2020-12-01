@@ -1,4 +1,3 @@
-
 function results_struct = classify_ParticipantLevel(results_struct)
 %% nfold_classify_ParticipantLevel takes in a struct containing the MCPA summarized patterns 
 % and classification parameters parsed from cross_validate,
@@ -16,9 +15,12 @@ n_sets = size(results_struct.subsets,1);
 n_feature = length(results_struct.incl_features);
 try n_cond = length(unique(results_struct.conditions)); catch, n_cond = length(results_struct.conditions); end
 
+%% validate classification options
+results_struct.opts_struct = validate_classification_options_input(results_struct, results_struct.suppress_warnings);
+
 %% Folding & Dispatcher
 for s_idx = 1:n_subj    
-    if results_struct.verbose
+    if results_struct.verbose == 1
         fprintf('Running %g feature subsets for Subject %g / %g',n_sets,s_idx,n_subj);
     end
     tic;
@@ -67,7 +69,7 @@ for s_idx = 1:n_subj
 
         
         %% Progress reporting
-        if results_struct.verbose
+        if results_struct.verbose == 1
             fprintf(' %0.1f mins\n',toc/60);
         end
     end % end set_idx loop
