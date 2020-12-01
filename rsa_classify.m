@@ -6,7 +6,7 @@ function [classification, comparisons] = rsa_classify(model_data, model_labels, 
 %
 % opts: a struct that contains options for the classifier.
 %
-% opts.similarity_space determines how the features will be abstracted:
+% opts.comparison_type determines how the features will be abstracted:
 %    'similarity_space' if true, will use correlation-based similarity
 %    space (larger values more similar). opts.metric can be set to 
 %    'spearman', 'pearson', or 'kendall'.
@@ -35,45 +35,6 @@ function [classification, comparisons] = rsa_classify(model_data, model_labels, 
 % (hyperbolic arctangent) correlation matrices are displayed for all
 % subjects, sessions, etc.
 
-%% If the options struct is not provided, set default parameters
-if ~exist('opts','var') || isempty(opts) 
-    opts = struct;
-end
-if ~isfield(opts, 'similarity_space')
-    if isfield(opts, 'metric')
-        switch opts.metric
-            case {'spearman', 'pearson', 'kendall'}
-                warning('Similarity or Dissimilarity space has not been defined. Based on your chosen metric, we will put the data in similarity space.')
-                opts.similarity_space = true;
-            otherwise
-                warning('Similarity or Dissimilarity space has not been defined. Based on your chosen metric, we will put the data in dissimilarity space.')
-                opts.similarity_space = false;
-        end
-    else
-        warning('Similarity or Dissimilarity space has not been defined. We will put the data in similarity space with the Spearman correlation.')
-        opts.similarity_space = true;
-    end
-end
-if ~isfield(opts, 'metric')
-    if opts.similarity_space
-        opts.metric = 'spearman';
-    else
-        opts.metric = 'euclidean';
-    end
-end
-if ~isfield(opts, 'exclusive')
-    opts.exclusive = true;
-end
-if ~isfield(opts, 'pairwise')
-    opts.pairwise = false;
-end
-if ~isfield(opts, 'tiebreak')
-    opts.tiebreak = true;
-end
-if ~isfield(opts, 'verbose')
-    opts.verbose = 0;
-end
-
 %% Pull a list of all the unique classes / conditions, preserving order
 model_classes = unique(model_labels(:),'stable');
 
@@ -89,75 +50,13 @@ test_dat = test_data(test_order, :,:,:);
 
 model_labs = model_labels(train_order);
 model_dat = model_data(train_order, :,:,:);
-
-
-%% remove where we have all NaNs
-% 
-% empty_x_vals_model = [];
-% empty_y_vals_model = [];
-% for i = 1:size(model_data,4)
-%     for j = 1:size(model_data,3)
-%         [x,y] = find(isnan(model_dat(:,:,j,i)));
-%         if length(unique(x)) == size(model_dat,1) && length(unique(y)) == size(model_dat,2)
-%             continue;
-%         else
-%             empty_x_vals_model = [empty_x_vals_model; x];
-%             empty_y_vals_model = [empty_y_vals_model; y];
-%         end
-%     end      
-% end
-% empty_x_vals_model = unique(empty_x_vals_model);
-% empty_y_vals_model = unique(empty_y_vals_model);
-% 
-% 
-% empty_x_vals_test = [];
-% empty_y_vals_test = [];
-% for i = 1:size(test_data,4)
-%     for j = 1:size(test_data,3)
-%         [x,y] = find(isnan(test_data(:,:,j,i)));
-%         
-%         
-%         if length(unique(x)) == size(test_data,1) && length(unique(y)) == size(test_data,2)
-%             continue;
-%         else
-%             empty_x_vals_test = [empty_x_vals_test; x];
-%             empty_y_vals_test = [empty_y_vals_test; y];
-%         end
-%     end      
-% end
-% 
-% empty_x_vals_test = unique(empty_x_vals_test);
-% empty_y_vals_test = unique(empty_y_vals_test);
-% 
-% cols = 1:size(model_data,2);
-% rows = 1:size(model_data,1);
-% 
-% if size(model_data,2) > 8
-%     if length(empty_x_vals_model) == size(model_data,1) && length(empty_y_vals_model) ~= size(model_data,2)
-%         remove columns
-%         remove_cols = union(empty_y_vals_model, empty_y_vals_test);
-%         keep = ~ismember(cols, remove_cols);
-%         model_dat = model_dat(:,keep', :,:);
-%         test_dat = test_dat(:, keep', :,:);   
-%     elseif length(empty_x_vals_model) == size(model_data,1) && length(empty_y_vals_model) == size(model_data,2)
-%         this is an empty session
-%         warning('There is no data in this session')
-%     end
-% else
-%     if length(empty_x_vals_test) == size(model_data,1) && length(empty_y_vals_test) ~= size(test_data,2)
-%         test_cols = 1:size(test_dat,2);
-%         remove_cols = union(empty_y_vals_model, empty_y_vals_test);
-%         keep = ~ismember(test_cols, remove_cols);
-%         test_dat = test_dat(:, keep', :,:);
-%     end 
-% end
     
 %% Build similarity structures
 % Transform the model_data into similiarty or dissimilarity structures for each session by
 % correlating between conditions or finding pairwise differences between conditions and then 
 % average the similarity/dissimilarity structures together into a single model.
 
-if opts.similarity_space % create similarity structures
+if strcmp(opts.comparison_type, 'correlation') % create similarity structures
     %  iterate through all the layers (3rd dimension) and create
     % correlation matrices 
     
@@ -382,7 +281,7 @@ if ~isfield(opts,'pairwise') || ~opts.pairwise
     % put the labels back in the order they were put in as
     [~,reorder_test] = sort(test_order);
     classification = classification(reorder_test);
-    comparisons = reorder_test;
+    comparisons = comparisons(reorder_test)';
     
     
 else
