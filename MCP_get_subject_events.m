@@ -1,4 +1,4 @@
-function [event_matrix] = MCP_get_subject_events(mcp_struct, features, channels, time_window, event_types, base_window, oxy_or_deoxy, session_index)
+function [event_matrix] = MCP_get_subject_events(mcp_struct, features, channels, time_window, event_types, base_window, hemoglobin, session_index)
 
 %MCP_GET_SUBJECT_EVENTS Returns a matrix that contains HbO data for target 
 %subject in each type, feature, time, and type repetition.
@@ -28,7 +28,7 @@ end
 if length(mcp_struct)>1
     event_matrix = cell(length(mcp_struct),1);
     for subj_num = 1:length(mcp_struct)
-        event_matrix{subj_num} = MCP_get_subject_events(mcp_struct(subj_num), features, channels, time_window, event_types, base_window, oxy_or_deoxy, session_index);
+        event_matrix{subj_num} = MCP_get_subject_events(mcp_struct(subj_num), features, channels, time_window, event_types, base_window, hemoglobin, session_index);
     end
     return
 end
@@ -88,7 +88,7 @@ num_samps = max(time_window_samp) - min(time_window_samp) + 1;
 
 %%
 
-hemo_types = strsplit(oxy_or_deoxy, '+');
+hemo_types = strsplit(hemoglobin, '+');
 event_matrix = nan(num_samps, length(mcp_struct.Experiment.Probe_arrays.Channels)*length(hemo_types), size(marks_mat, 1), length(event_types));
 
 
