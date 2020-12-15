@@ -41,7 +41,8 @@ addParameter(p,'scale_data', false, @islogical);
 addParameter(p,'verbose',true,@islogical);
 addParameter(p, 'summarize_dimensions', {});
 addParameter(p, 'final_dimensions', {});
-addParameter(p, 'oxy_or_deoxy', 'Oxy', @ischar);
+addParameter(p, 'hemoglobin', 'Oxy', @ischar);
+addParameter(p, 'suppress_warnings', false);
 
 % for within subjects 
 addParameter(p, 'approach', 'loo', @ischar); 

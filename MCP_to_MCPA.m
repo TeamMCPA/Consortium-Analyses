@@ -1,7 +1,7 @@
-function MCPA_struct = MCP_to_MCPA(mcp_multiple, incl_subjects, incl_features, incl_channels, time_window, baseline_window, oxy_or_deoxy)
+function MCPA_struct = MCP_to_MCPA(mcp_multiple, incl_subjects, incl_features, incl_channels, time_window, baseline_window, hemoglobin)
 %MCP_TO_MCPA Convert MCP format data to MCPA_struct for analysis
 % The function is called with the following arguments:
-% MCP_to_MCPA(mcp_multiple, incl_subjects, incl_features, incl_channels, time_window, baseline_window, oxy_or_deoxy)
+% MCP_to_MCPA(mcp_multiple, incl_subjects, incl_features, incl_channels, time_window, baseline_window, hemoglobin)
 %
 % mcp_multiple: An customized MCP struct that contains all data for the 
 % analysis. Using MCP struct to store data can unify the way that data are 
@@ -42,7 +42,7 @@ function MCPA_struct = MCP_to_MCPA(mcp_multiple, incl_subjects, incl_features, i
 % is provided, baselining will be skipped. Default (no value provided) 
 % baseline is range [-5, 0] sec from stimulus marker.
 %
-% oxy_or_deoxy: a char-type input, either 'Oxy', 'Deoxy', or 'Total'
+% hemoglobin: a char-type input, either 'Oxy', 'Deoxy', or 'Total'
 % indicating what species of Hemoglobin to use. Default is 'Oxy'
 %
 % The function will return a new struct containing some metadata and the
@@ -69,17 +69,17 @@ else
 end
 
 %% Double-check for missing data
-if ~exist('oxy_or_deoxy','var')
-    oxy_or_deoxy = 'Oxy';
+if ~exist('hemoglobin','var')
+    hemoglobin = 'Oxy';
 end
 if ~exist('incl_subjects','var') || isempty(incl_subjects)
     incl_subjects = 1:length(mcp_multiple);
 end
 if ~exist('incl_features','var') || isempty(incl_features)
-    incl_features = [1:max(arrayfun(@(x) size(x.fNIRS_Data.Hb_data.(oxy_or_deoxy),2),mcp_multiple))];
+    incl_features = [1:max(arrayfun(@(x) size(x.fNIRS_Data.Hb_data.(hemoglobin),2),mcp_multiple))];
 end
 if ~exist('incl_channels','var') || isempty(incl_channels)
-    incl_channels = [1:max(arrayfun(@(x) size(x.fNIRS_Data.Hb_data.(oxy_or_deoxy),2),mcp_multiple))];
+    incl_channels = [1:max(arrayfun(@(x) size(x.fNIRS_Data.Hb_data.(hemoglobin),2),mcp_multiple))];
 end
 if ~exist('time_window','var') || isempty(time_window)
     time_window = [0,20];
@@ -155,7 +155,7 @@ for subj_idx = 1 : length(incl_subjects)
 
         % Event_matrix format:
         % (time x features x repetition x types)
-        event_matrix = MCP_get_subject_events(mcp_multiple(incl_subjects(subj_idx)), incl_features, incl_channels, time_window, event_types, baseline_window, oxy_or_deoxy, session_idx);
+        event_matrix = MCP_get_subject_events(mcp_multiple(incl_subjects(subj_idx)), incl_features, incl_channels, time_window, event_types, baseline_window, hemoglobin, session_idx);
         event_matrix = permute(event_matrix, [1 4 2 3]);
 
        

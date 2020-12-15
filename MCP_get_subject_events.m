@@ -1,4 +1,4 @@
-function [event_matrix] = MCP_get_subject_events(mcp_struct, features, channels, time_window, event_types, base_window, oxy_or_deoxy, session_index)
+function [event_matrix] = MCP_get_subject_events(mcp_struct, features, channels, time_window, event_types, base_window, hemoglobin, session_index)
 
 %MCP_GET_SUBJECT_EVENTS Returns a matrix that contains HbO data for target 
 %subject in each type, feature, time, and type repetition.
@@ -28,7 +28,7 @@ end
 if length(mcp_struct)>1
     event_matrix = cell(length(mcp_struct),1);
     for subj_num = 1:length(mcp_struct)
-        event_matrix{subj_num} = MCP_get_subject_events(mcp_struct(subj_num), features, channels, time_window, event_types, base_window, oxy_or_deoxy, session_index);
+        event_matrix{subj_num} = MCP_get_subject_events(mcp_struct(subj_num), features, channels, time_window, event_types, base_window, hemoglobin, session_index);
     end
     return
 end
@@ -37,7 +37,7 @@ end
 % find the location of hemoglobin data for this session
 session_locs = mcp_struct.Experiment.Runs(session_index).Index';
 % Extract hemoglobin data and marks from the MCP struct
-hemo_timeser = mcp_struct.fNIRS_Data.Hb_data.(oxy_or_deoxy)(session_locs, channels);
+hemo_timeser = mcp_struct.fNIRS_Data.Hb_data.(hemoglobin)(session_locs, channels);
 
 % Extract the transformation matrix and if its converting to ROI space,
 % weight it
