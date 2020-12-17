@@ -132,10 +132,11 @@ unique_names = cellfun(@(x) char(x{:}),all_names,'UniformOutput',false);
 [event_types, iev] = unique(cellstr(char(unique_names)),'stable');
 
 %% Extract data from the data file into the empty output matrix
+hemo_type = strsplit(hemoglobin,'+');
 
 % Initiate the subj_mat matrix that will be output later(begin with NaN)
 % Output matrix for MCPA_struct is in dimension: time_window x types x features x repetition x subjects
-subj_mat = nan(num_time_samps, length(event_types), length(incl_features), num_repetitions, max_num_sessions, length(incl_subjects));
+subj_mat = nan(num_time_samps, length(event_types), length(hemo_type)*length(incl_features), num_repetitions, max_num_sessions, length(incl_subjects));
 % Extract data from each subject
 for subj_idx = 1 : length(incl_subjects)
     
