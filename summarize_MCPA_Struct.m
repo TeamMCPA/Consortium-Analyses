@@ -94,7 +94,19 @@ else
     % skip the steps above and just follow the user input
     summary_operations = summary_function;
 end
+
+%% now make sure summary operations are in correct order (must reshape before summarizing)
+reshape_inds = cellfun(@(x) strfind(x, 'X'), summarize_dimensions, 'UniformOutput', false);
+reshape_inds = find(~cellfun(@isempty,reshape_inds));
+
+summarize_inds = setdiff(1:length(summarize_dimensions),reshape_inds);
             
+correct_order = [reshape_inds summarize_inds];
+
+summarize_dimensions = summarize_dimensions(correct_order);
+summary_operations = summary_operations(correct_order);
+
+
 %% Proceed through list of dimensions & actions, and perform them
 
 % Initialize this variable to keep a history of what summarizations are
@@ -179,8 +191,13 @@ if sum(strcmp('session', dimension_labels))
         summarized_MCPA_struct_pattern = concatenate_dimensions(pattern_matrix, [concat_to,dims_summarized]);
     end
 else
-    concat_to = find(strcmp(dimension_labels, 'feature'));
+    %     concat_to = find(strcmp(dimension_labels, 'feature'));
+%     summarized_MCPA_struct_pattern = concatenate_dimensions(pattern_matrix, [concat_to,dims_summarized]);
+
+    find_feature_dim = cellfun(@(x) strfind(x, 'feature'), dimension_labels, 'UniformOutput', false); 
+    concat_to = find(~cellfun(@isempty,find_feature_dim));
     summarized_MCPA_struct_pattern = concatenate_dimensions(pattern_matrix, [concat_to,dims_summarized]);
+
 end    
 
 dimension_labels = dimension_labels(~cellfun('isempty',dimension_labels));
