@@ -1,4 +1,4 @@
-function options_struct = validate_classification_options_input(parsed_input)
+function options_struct = validate_classification_options_input(parsed_input, suppress_warnings)
 %% validate input for classification parameters and output the options struct
 if ~isfield(parsed_input,'opts_struct')
     options_struct = struct;
@@ -17,14 +17,28 @@ if strcmp(func2str(parsed_input.test_handle), 'mcpa_classify') || strcmp(func2st
         if isfield(options_struct, 'metric')
             switch options_struct.metric
                 case {'spearman', 'pearson', 'kendall'}
-                    warning('Similarity or Dissimilarity space has not been defined. Based on your chosen metric, we will put the data in similarity space.')
+                    if ~suppress_warnings
+                        warning('Similarity or Dissimilarity space has not been defined. Based on your chosen metric, we will put the data in similarity space.')
+                    end
                     options_struct.comparison_type = 'correlation';
                 otherwise
-                    warning('Similarity or Dissimilarity space has not been defined. Based on your chosen metric, we will put the data in dissimilarity space.')
+                    if ~suppress_warnings
+                        warning('Similarity or Dissimilarity space has not been defined. Based on your chosen metric, we will put the data in dissimilarity space.')
+                    end                            
                     options_struct.comparison_type = 'distance';
             end
+            
+            switch options_struct.metric
+                case '1-spearman'
+                    options_struct.metric = 'spearman';
+                case '1-pearson'
+                    options_struct.metric = 'correlation';
+            end
+
         else
-            warning('Similarity or dissimilarity has not been defined. Putting the data in similarity space with the Spearman correlation.')
+            if ~suppress_warnings
+                warning('Similarity or dissimilarity has not been defined. Putting the data in similarity space with the Spearman correlation.')
+            end
             options_struct.comparison_type = 'correlation';
         end
     end
@@ -48,7 +62,7 @@ end
 
 %% parameters for libsvm
 if ~isfield(options_struct, 'libsvm_options') && strcmp(func2str(parsed_input.test_handle), 'libsvm_classify')
-    opts.libsvm_options = '-s 0 -t 0 -q';
+    options_struct.libsvm_options = '-s 0 -t 0 -q';
 end
 %% parameters specific to RSA
 if ~isfield(options_struct, 'verbose') && strcmp(func2str(parsed_input.test_handle), 'rsa_classify')
