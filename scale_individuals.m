@@ -9,24 +9,23 @@ if ~isfield(input_struct, 'scale_withinSessions')
     input_struct.scale_withinSessions = true;
 end
 
-
-
-if input_struct.scale_withinSessions % if we want to norm within each session
-    for participant = 1:length(mcp_struct) % for each participant
-        scaled_data = [];
-        for session = 1:length(mcp_struct(participant).Experiment.Runs) % scale each session
-            current_dataset_idx = mcp_struct(participant).Experiment.Runs(session).Index'; 
-            current_dataset= mcp_struct(participant).fNIRS_Data.Hb_data.(input_struct.oxy_or_deoxy)(current_dataset_idx,:);
-            session_scaled = input_struct.scale_function(current_dataset, input_struct);
-            scaled_data = [scaled_data; session_scaled];
+%% figure out which data we are scaling
+hemo_types = strsplit(input_struct.hemoglobin, '+');
+for hemo_type = 1:length(hemo_types)
+    current_hemo_type = hemo_types{hemo_type};
+    for participant = 1:length(mcp_struct)
+        % create empty matrix to store results
+        scaled_hemo_data = nan(size(mcp_struct(participant).fNIRS_Data.Hb_data.(current_hemo_type))); 
+        for session = 1:length(mcp_struct(participant).Experiment.Runs) % scale each session individually
+            % get indices for this dataset
+            current_dataset_idx = mcp_struct(participant).Experiment.Runs(session).Index';            
+            % scale data
+            session_scaled = input_struct.scale_function(mcp_struct(participant).fNIRS_Data.Hb_data.(current_hemo_type)(current_dataset_idx,:), input_struct);            
+            % save to new matrix
+            scaled_hemo_data(current_dataset_idx,:) = session_scaled;  
         end
-        mcp_struct(participant).fNIRS_Data.Hb_data.(input_struct.oxy_or_deoxy) = scaled_data; % then recombine
-    end
-else % if we want to norm across sessions - only valid if using nfold_classify_ParticipantLevel
-    for participant = 1:length(mcp_struct) % for each participant, scale their whole hemotimeseries 
-        scaled_data = input_struct.scale_function(mcp_struct.fNIRS_Data.Hb_data.(input_struct.oxy_or_deoxy), input_struct);
-        mcp_struct(participant).fNIRS_Data.Hb_data.(input_struct.oxy_or_deoxy) = scaled_data;
+        mcp_struct(participant).fNIRS_Data.Hb_data.(current_hemo_type) = scaled_hemo_data;
     end
 end
-
+    
 end
