@@ -7,7 +7,8 @@ function padded_inds = pad_dimensions(current_dimensions, dim_to_match, value_to
 % (e.g. 1:5)
 
 padded_inds = repmat({':'},1,length(current_dimensions)); % Create index structure with all-elements in all-dimensions
-padded_inds{strcmp(current_dimensions,dim_to_match)} = value_to_insert;% In whichever dimension matches 'session', substitute the incl_sessions vector
+
+padded_inds{contains(current_dimensions, dim_to_match)} = value_to_insert;% In whichever dimension matches 'dim_to_match', substitute the incl_sessions vector
 
 end
 

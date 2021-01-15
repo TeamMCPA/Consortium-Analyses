@@ -94,7 +94,19 @@ else
     % skip the steps above and just follow the user input
     summary_operations = summary_function;
 end
+
+%% now make sure summary operations are in correct order (must reshape before summarizing)
+reshape_inds = cellfun(@(x) strfind(x, 'X'), summarize_dimensions, 'UniformOutput', false);
+reshape_inds = find(~cellfun(@isempty,reshape_inds));
+
+summarize_inds = setdiff(1:length(summarize_dimensions),reshape_inds);
             
+correct_order = [reshape_inds summarize_inds];
+
+summarize_dimensions = summarize_dimensions(correct_order);
+summary_operations = summary_operations(correct_order);
+
+
 %% Proceed through list of dimensions & actions, and perform them
 
 % Initialize this variable to keep a history of what summarizations are
@@ -145,14 +157,14 @@ for curr_dim = 1:length(summarize_dimensions)
                 operation = operation{:}; 
             end
             
-            for summerizer = 1:length(operation) % apply each summarizing function to the specified dimension
+            for summarizer = 1:length(operation) % apply each summarizing function to the specified dimension
                 inds = repmat({':'},1,ndims(temp_pattern_matrix));
-                inds{dim_to_summarize} = summerizer;
+                inds{dim_to_summarize} = summarizer;
                 inds(cellfun(@isempty, inds)) = {1};
                 
                 % if we applied 1 function, that dimension will now be size 1, if we applied 2 functions, it will be size 2
                 % for example, if we applied nanmean to time, we get 1 x 8 x139 x 15 x 4 x16 but if we applied min and max to time we get 2 x 8 x 138 x 15 x 4 x 16
-                temp_pattern_matrix(inds{:}) = operation{summerizer}(pattern_matrix,dim_to_summarize);  
+                temp_pattern_matrix(inds{:}) = operation{summarizer}(pattern_matrix,dim_to_summarize);  
             end
             
             pattern_matrix = temp_pattern_matrix;
@@ -179,8 +191,11 @@ if sum(strcmp('session', dimension_labels))
         summarized_MCPA_struct_pattern = concatenate_dimensions(pattern_matrix, [concat_to,dims_summarized]);
     end
 else
-    concat_to = find(strcmp(dimension_labels, 'feature'));
+
+    find_feature_dim = cellfun(@(x) strfind(x, 'feature'), dimension_labels, 'UniformOutput', false); 
+    concat_to = find(~cellfun(@isempty,find_feature_dim));
     summarized_MCPA_struct_pattern = concatenate_dimensions(pattern_matrix, [concat_to,dims_summarized]);
+
 end    
 
 dimension_labels = dimension_labels(~cellfun('isempty',dimension_labels));
