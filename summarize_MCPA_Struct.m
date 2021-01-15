@@ -157,14 +157,14 @@ for curr_dim = 1:length(summarize_dimensions)
                 operation = operation{:}; 
             end
             
-            for summerizer = 1:length(operation) % apply each summarizing function to the specified dimension
+            for summarizer = 1:length(operation) % apply each summarizing function to the specified dimension
                 inds = repmat({':'},1,ndims(temp_pattern_matrix));
-                inds{dim_to_summarize} = summerizer;
+                inds{dim_to_summarize} = summarizer;
                 inds(cellfun(@isempty, inds)) = {1};
                 
                 % if we applied 1 function, that dimension will now be size 1, if we applied 2 functions, it will be size 2
                 % for example, if we applied nanmean to time, we get 1 x 8 x139 x 15 x 4 x16 but if we applied min and max to time we get 2 x 8 x 138 x 15 x 4 x 16
-                temp_pattern_matrix(inds{:}) = operation{summerizer}(pattern_matrix,dim_to_summarize);  
+                temp_pattern_matrix(inds{:}) = operation{summarizer}(pattern_matrix,dim_to_summarize);  
             end
             
             pattern_matrix = temp_pattern_matrix;
@@ -191,8 +191,6 @@ if sum(strcmp('session', dimension_labels))
         summarized_MCPA_struct_pattern = concatenate_dimensions(pattern_matrix, [concat_to,dims_summarized]);
     end
 else
-    %     concat_to = find(strcmp(dimension_labels, 'feature'));
-%     summarized_MCPA_struct_pattern = concatenate_dimensions(pattern_matrix, [concat_to,dims_summarized]);
 
     find_feature_dim = cellfun(@(x) strfind(x, 'feature'), dimension_labels, 'UniformOutput', false); 
     concat_to = find(~cellfun(@isempty,find_feature_dim));
