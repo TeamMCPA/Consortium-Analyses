@@ -30,8 +30,29 @@ for cond_id = 1:num_cond % now create place holders for decoding accuracies
     allsubj_results.accuracy(cond_id).subjXfeature = nan(num_subj,num_feature);
     allsubj_results.accuracy(cond_id).subsetXsubj = nan(num_sets,num_subj);
     if within_subject
-         allsubj_results.accuracy(cond_id).subjXsession = nan(num_subj,max_sessions);
+         allsubj_results.accuracy(cond_id).subjXsession = nan(num_subj,allsubj_results.max_sessions);
     end
+end
+
+%% create an accuracy matrix if doing pairwise
+if within_subject
+    if isfield(parsed_input.opts_struct, 'pairwise') && parsed_input.opts_struct.pairwise == 1
+        allsubj_results.accuracy_matrix = nan(length(allsubj_results.conditions),...
+            length(allsubj_results.conditions),...
+            min(size(allsubj_results.subsets,1),...
+            allsubj_results.max_sets),...
+            size(summed_mcpa.patterns, ndims(summed_mcpa.patterns)-1),...
+            size(summed_mcpa.patterns, ndims(summed_mcpa.patterns)));
+    end
+else
+    if isfield(parsed_input.opts_struct, 'pairwise') && parsed_input.opts_struct.pairwise == 1
+        allsubj_results.accuracy_matrix = nan(length(allsubj_results.conditions),...
+            length(allsubj_results.conditions),...
+            min(size(allsubj_results.subsets,1),...
+            allsubj_results.max_sets),...
+            size(summed_mcpa.patterns, ndims(summed_mcpa.patterns)));
+    end
+
 end
 
 end
