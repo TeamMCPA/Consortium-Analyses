@@ -9,13 +9,9 @@ function [classification, comparisons] = libsvm_classify(train_data, train_label
 % they choose those options in a way that is appropriate for their
 % analytic goals.
 
-%% If the options struct is not provided, set default parameters
-%% determine if we use pairwise comparisons 
+%% parse out the classification parameters
 pairwise = opts.pairwise;
 opts = rmfield(opts,'pairwise');
-
-
-%% parse out the classification parameters
 input = parse_opts(opts);
 
 %% Path

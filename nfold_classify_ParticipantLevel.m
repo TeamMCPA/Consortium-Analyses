@@ -224,63 +224,26 @@ for s_idx = 1:n_subj
                 input_struct.opts_struct);
         %% Record results .
 
-        if size(predicted_labels,2) > 1 % test labels will be a column vector if we don't do pairwise
-            if s_idx==1 && set_idx == 1, allsubj_results.accuracy_matrix = nan(n_cond,n_cond,min(n_sets,input_struct.max_sets),n_subj); end
-
-            % Then see if the classification results are empty
-            if ~iscell(predicted_labels(:,1,:)) && sum(isnan(predicted_labels(:,1,:)))==numel(predicted_labels(:,1,:))
-                % if nans, then we'll need to save the subj_acc as nans
-                if iscell(comparisons) 
-                    % if comparisons is cell array, we'll need to find the values in that array correspond to the condition location in event_types
-                    subj_acc = nan(length(predicted_labels(:,1,:)),1);
-                    comparisons = cellfun(@(x) find(strcmp(x,input_struct.conditions)),comparisons);
-                else
-                    subj_acc = nan(length(predicted_labels(:,1,:)),1);
-                end
-            elseif iscell(predicted_labels(:,1,:)) && sum(sum(cellfun(@(a) ~ischar(a), predicted_labels(:,1,:)))) == numel(predicted_labels(:,1,:))
-                % if nans, then we'll need to save the subj_acc as nans
-                if iscell(comparisons) 
-                    % if comparisons is cell array, we'll need to find the values in that array correspond to the condition location in event_types
-                    subj_acc = nan(length(predicted_labels(:,1,:)),1);
-                    comparisons = cellfun(@(x) find(strcmp(x,input_struct.conditions)),comparisons);
-                else
-                    subj_acc = nan(length(predicted_labels(:,1,:)),1);
-                end
-            else
-                % if not nans, see how comparisons is saved. 
-                % If its a cell array, then we need to find where the values in that array correspond to the condition location in event_types
-                % Then find the subject accuracy
-                if iscell(comparisons) 
-                    subj_acc = nanmean(strcmp(predicted_labels(:,1,:), predicted_labels(:,2,:)));
-                    comparisons = cellfun(@(x) find(strcmp(x,input_struct.conditions)),comparisons);
-                else
-                    subj_acc = nanmean(strcmp(predicted_labels(:,1,:), predicted_labels(:,2,:)));
-                end
-            end
+        if size(predicted_labels,2) > 1 % test labels will be a column vector if we don't do pairwise          
+            subj_acc = nanmean(strcmp(predicted_labels(:,1,:), predicted_labels(:,2,:)));
+            nan_idx = cellfun(@(x) any(isnan(x)), predicted_labels(:,1,:), 'UniformOutput', false);
+            subj_acc(:,:,[nan_idx{1,:,:}]) = nan;
 
             % Then loop through comparisons and save accuracy to the results struct
             for comp = 1:size(comparisons,1)
-                if size(comparisons,2)==1
-                    allsubj_results.accuracy_matrix(comparisons(comp,1),:,set_idx,s_idx) = subj_acc(comp);
-                else
-                    allsubj_results.accuracy_matrix(comparisons(comp,1),comparisons(comp,2),set_idx,s_idx) = subj_acc(comp);
-                end
+                allsubj_results.accuracy_matrix(comparisons(comp,1),comparisons(comp,2),set_idx, s_idx) = subj_acc(comp);
             end
+
         else
+            subj_acc = strcmp(predicted_labels, test_labels);
             for cond_idx = 1:n_cond
-                temp_acc = cellfun(@strcmp,...
-                    test_labels(strcmp(strjoin(string(input_struct.conditions{cond_idx}),'+'),test_labels)),... % known labels
-                    predicted_labels(strcmp(strjoin(string(input_struct.conditions{cond_idx}),'+'),test_labels))...% classifier labels
-                    );
-                
-                temp_set_results_cond(cond_idx,set_idx,set_features) = nanmean(temp_acc);
-            end
-            for cond_idx = 1:n_cond
-                allsubj_results.accuracy(cond_idx).subsetXsubj(:,s_idx) = nanmean(temp_set_results_cond(cond_idx,:,:),3);
-                allsubj_results.accuracy(cond_idx).subjXfeature(s_idx,:) = nanmean(temp_set_results_cond(cond_idx,:,:),2);
+                cond_acc = nanmean(subj_acc(comparisons == cond_idx));
+                allsubj_results.accuracy(cond_idx).subsetXsubj(:,s_idx) = cond_acc;
+                allsubj_results.accuracy(cond_idx).subjXfeature(s_idx,:) = cond_acc;
             end
         end
-        
+            
+
         %% Progress reporting
         if input_struct.verbose
             fprintf(' %0.1f mins\n',toc/60);
