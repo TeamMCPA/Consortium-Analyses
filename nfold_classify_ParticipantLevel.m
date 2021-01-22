@@ -230,12 +230,12 @@ for s_idx = 1:n_subj
             subj_acc(:,:,[nan_idx{1,:,:}]) = nan;
 
             % Then loop through comparisons and save accuracy to the results struct
-            for comp = 1:size(correct_labels,1)
-                allsubj_results.accuracy_matrix(correct_labels(comp,1),correct_labels(comp,2),set_idx, s_idx) = subj_acc(comp);
+            for comp = 1:size(comparisons,1)
+                allsubj_results.accuracy_matrix(comparisons(comp,1),comparisons(comp,2),set_idx, s_idx) = subj_acc(comp);
             end
 
         else
-            subj_acc = strcmp(predicted_labels, correct_labels);
+            subj_acc = strcmp(predicted_labels, test_labels);
             for cond_idx = 1:n_cond
                 cond_acc = nanmean(subj_acc(comparisons == cond_idx));
                 allsubj_results.accuracy(cond_idx).subsetXsubj(:,s_idx) = cond_acc;

@@ -2,11 +2,10 @@ function [classification, comparisons] = logit_classify(train_data, train_labels
 %% logistic regression wrapper
 % takes in training data, training labels, testing data, and testing labels
 % (unused) as well as opts struct with classification parameters
-%% determine if this will be pairwise 
-pairwise = opts.pairwise;
-opts = rmfield(opts,'pairwise');
 
 %% parse parameters
+pairwise = opts.pairwise;
+opts = rmfield(opts,'pairwise');
 input = parse_opts(opts);
 
 %% if pairwise classification
@@ -60,7 +59,11 @@ else
     
     classification = predict(logit_model, test_data);
     
-    comparisons = test_labels;
+    comparisons = nan(length(test_labels),1);
+    unique_labels = unique(test_labels);
+    for i = 1:length(unique_labels)
+        comparisons(strcmp(test_labels, unique_labels{i})) = i;
+    end
 end
 
 
