@@ -46,80 +46,57 @@ model_dat = model_data(train_order, :);
 % section finds NaN cells in the test and train matrix, then removes
 % columns where both test and train were entirely NaN
 
-% empty_x_vals_model = [];
-% empty_y_vals_model = [];
-% for i = 1:size(model_data,4)
-%     for j = 1:size(model_data,3)
-%         [x,y] = find(isnan(model_dat(:,:,j,i)));
-%         if length(unique(x)) == size(model_dat,1) && length(unique(y)) == size(model_dat,2)
-%             continue;
-%         else
-%             empty_x_vals_model = [empty_x_vals_model; x];
-%             empty_y_vals_model = [empty_y_vals_model; y];
-%         end
-%     end      
-% end
-% empty_x_vals_model = unique(empty_x_vals_model);
-% empty_y_vals_model = unique(empty_y_vals_model);
-% 
-% 
-% empty_x_vals_test = [];
-% empty_y_vals_test = [];
-% for i = 1:size(test_data,4)
-%     for j = 1:size(test_data,3)
-%         [x,y] = find(isnan(test_data(:,:,j,i)));
-%         if length(unique(x)) == size(test_data,1) && length(unique(y)) == size(test_data,2)
-%             continue;
-%         else
-%             empty_x_vals_test = [empty_x_vals_test; x];
-%             empty_y_vals_test = [empty_y_vals_test; y];
-%         end
-%     end      
-% end
-% 
-% empty_x_vals_test = unique(empty_x_vals_test);
-% empty_y_vals_test = unique(empty_y_vals_test);
-% 
-% cols = 1:size(model_data,2);
-% rows = 1:size(model_data,1);
-% 
-% if length(empty_x_vals_model) == size(model_data,1) && length(empty_y_vals_model) ~= size(model_data,2)
-%     % remove columns
-%     remove_cols = union(empty_y_vals_model, empty_y_vals_test);
-%     keep = ~ismember(cols, remove_cols);
-%     model_dat = model_dat(:,keep', :,:);
-%     test_dat = test_dat(:, keep', :,:);   
-% elseif length(empty_x_vals_model) == size(model_data,1) && length(empty_y_vals_model) == size(model_data,2)
-%     % this is an empty session
-%     warning('There is no data in this session')
-% end
-%     
-% 
+empty_x_vals_model = [];
+empty_y_vals_model = [];
+for i = 1:size(model_data,4)
+    for j = 1:size(model_data,3)
+        [x,y] = find(isnan(model_dat(:,:,j,i)));
+        if length(unique(x)) == size(model_dat,1) && length(unique(y)) == size(model_dat,2)
+            continue;
+        else
+            empty_x_vals_model = [empty_x_vals_model; x];
+            empty_y_vals_model = [empty_y_vals_model; y];
+        end
+    end      
+end
+empty_x_vals_model = unique(empty_x_vals_model);
+empty_y_vals_model = unique(empty_y_vals_model);
 
-%% Average across training data to get model features for each class
 
-if size(model_dat, 1) > length(model_classes)
-    % if doing kfold for within subjects CV, we first need to aggregate
-    % across repetitions for test and train data to get 1 representation
-    % for each category
-    temp_model_dat = nan(length(model_classes), size(model_dat,2));
-    temp_test_dat = nan(length(model_classes), size(test_dat,2));
-    for cl = 1:length(model_classes)
-        model_dat_for_this_class = model_dat(strcmp(model_labs, model_classes{cl}),:);
-        temp_model_dat(cl,:) = nanmean(model_dat_for_this_class,1);
-        
-        test_dat_for_this_class = test_dat(strcmp(test_labs, model_classes{cl}),:);
-        temp_test_dat(cl,:) = nanmean(test_dat_for_this_class,1);
-    end
-    
-    test_dat = temp_test_dat;
-    model_dat = temp_model_dat;
-    
-    model_labs = model_classes;
-    test_labs = model_classes;
-    
+empty_x_vals_test = [];
+empty_y_vals_test = [];
+for i = 1:size(test_data,4)
+    for j = 1:size(test_data,3)
+        [x,y] = find(isnan(test_data(:,:,j,i)));
+        if length(unique(x)) == size(test_data,1) && length(unique(y)) == size(test_data,2)
+            continue;
+        else
+            empty_x_vals_test = [empty_x_vals_test; x];
+            empty_y_vals_test = [empty_y_vals_test; y];
+        end
+    end      
+end
+
+empty_x_vals_test = unique(empty_x_vals_test);
+empty_y_vals_test = unique(empty_y_vals_test);
+
+cols = 1:size(model_data,2);
+rows = 1:size(model_data,1);
+
+if length(empty_x_vals_model) == size(model_data,1) && length(empty_y_vals_model) ~= size(model_data,2)
+    % remove columns if the whole column is empty
+    remove_cols = union(empty_y_vals_model, empty_y_vals_test);
+    keep = ~ismember(cols, remove_cols);
+    model_dat = model_dat(:,keep', :,:);
+    test_dat = test_dat(:, keep', :,:);   
+elseif length(empty_x_vals_model) == size(model_data,1) && length(empty_y_vals_model) == size(model_data,2)
+    % this is an empty session
+    warning('There is no data in this session')
 end
     
+
+
+%% Average across training data to get model features for each class
 model_patterns = nan(size(model_dat,2),length(model_classes));
 for class_idx = 1:length(model_classes)
     model_patterns(:,class_idx) = nanmean(model_dat(strcmp(model_classes{class_idx},model_labs),:),1)';
@@ -138,17 +115,20 @@ else
     comparison_matrix = squareform(pdist([model_patterns,test_dat']', opts.metric)); 
 end
     
-
-% Isolate the columns representing the model_patterns, and the rows
-% representing the test_data to get the correlations for each item
-% in test data against all the model patterns.
-
-
 %% Save out the classification results based on greatest correlation coefficient for each test pattern
 % Initialize empty cell matrix for classifications
 classification = cell(size(test_dat,1),1);
 
 if opts.exclusive && length(model_classes)==size(test_dat,1) && ~opts.pairwise 
+    %% case for exclusive labels
+    % wherein each class can only be assigned to one row of test data
+    % (e.g., at Participant level when you are looking at
+    % condition-averaged data, and only one pattern per condition)
+    % only works for 2 categories
+    
+    % Isolate the columns representing the model_patterns, and the rows
+    % representing the test_data to get the correlations for each item
+    % in test data against all the model patterns.
     test_model_corrs = comparison_matrix(length(model_classes)+1:end,1:length(model_classes));
 
     if size(test_model_corrs,1)==2 && strcmp(opts.comparison_type, 'correlation')
@@ -197,6 +177,9 @@ if opts.exclusive && length(model_classes)==size(test_dat,1) && ~opts.pairwise
     
     comparisons = test_labels;
 elseif opts.exclusive && length(model_classes)==size(test_dat,1) && opts.pairwise 
+    %% case for pairwise classification
+    % works for multiple classes
+    
     number_classes = length(model_classes);
 
     % Generate a list of every pairwise comparison and the results array
@@ -204,13 +187,12 @@ elseif opts.exclusive && length(model_classes)==size(test_dat,1) && opts.pairwis
     number_of_comparisons = size(list_of_comparisons,1);
     results_of_comparisons = cell(2, 2, number_of_comparisons);
 
-    try
     for this_comp = 1:number_of_comparisons
         test_classes = list_of_comparisons(this_comp,:);
 
         test_model_corrs = comparison_matrix(length(model_classes)+test_classes,test_classes);
 
-        if size(test_model_corrs,1)==2 && strcmp(opts.comparison_type, 'correlation')
+        if strcmp(opts.comparison_type, 'correlation')
             if trace(test_model_corrs) > trace(rot90(test_model_corrs))
                 classification(1) = model_classes(test_classes(1));
                 classification(2) = model_classes(test_classes(2));
@@ -254,18 +236,15 @@ elseif opts.exclusive && length(model_classes)==size(test_dat,1) && opts.pairwis
         results_of_comparisons(1,2,this_comp) = model_classes(test_classes(1));
         results_of_comparisons(2,2,this_comp) = model_classes(test_classes(2));
     end
-    
-    catch
-        fprintf('failed')
-    end
-
 
     comparisons = list_of_comparisons;
     classification = results_of_comparisons;
 
     
 else
-    % If doing n-way classification (not all-possible-pairwise)
+    %% case for n-way classification (not all-possible-pairwise)
+    % works for more than 2 classes
+    
     if ~isfield(opts,'pairwise') || opts.pairwise==false
         test_model_corrs = comparison_matrix(length(model_classes)+1:end,1:length(model_classes));
         % Adjust all values in test_model_corrs by <1% of the smallest
