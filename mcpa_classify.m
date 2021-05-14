@@ -115,17 +115,20 @@ else
     comparison_matrix = squareform(pdist([model_patterns,test_dat']', opts.metric)); 
 end
     
-
-% Isolate the columns representing the model_patterns, and the rows
-% representing the test_data to get the correlations for each item
-% in test data against all the model patterns.
-
-
 %% Save out the classification results based on greatest correlation coefficient for each test pattern
 % Initialize empty cell matrix for classifications
 classification = cell(size(test_dat,1),1);
 
 if opts.exclusive && length(model_classes)==size(test_dat,1) && ~opts.pairwise 
+    %% case for exclusive labels
+    % wherein each class can only be assigned to one row of test data
+    % (e.g., at Participant level when you are looking at
+    % condition-averaged data, and only one pattern per condition)
+    % only works for 2 categories
+    
+    % Isolate the columns representing the model_patterns, and the rows
+    % representing the test_data to get the correlations for each item
+    % in test data against all the model patterns.
     test_model_corrs = comparison_matrix(length(model_classes)+1:end,1:length(model_classes));
 
     if size(test_model_corrs,1)==2 && strcmp(opts.comparison_type, 'correlation')
@@ -174,6 +177,9 @@ if opts.exclusive && length(model_classes)==size(test_dat,1) && ~opts.pairwise
     
     comparisons = test_labels;
 elseif opts.exclusive && length(model_classes)==size(test_dat,1) && opts.pairwise 
+    %% case for pairwise classification
+    % works for multiple classes
+    
     number_classes = length(model_classes);
 
     % Generate a list of every pairwise comparison and the results array
@@ -181,13 +187,12 @@ elseif opts.exclusive && length(model_classes)==size(test_dat,1) && opts.pairwis
     number_of_comparisons = size(list_of_comparisons,1);
     results_of_comparisons = cell(2, 2, number_of_comparisons);
 
-    try
     for this_comp = 1:number_of_comparisons
         test_classes = list_of_comparisons(this_comp,:);
 
         test_model_corrs = comparison_matrix(length(model_classes)+test_classes,test_classes);
 
-        if size(test_model_corrs,1)==2 && strcmp(opts.comparison_type, 'correlation')
+        if strcmp(opts.comparison_type, 'correlation')
             if trace(test_model_corrs) > trace(rot90(test_model_corrs))
                 classification(1) = model_classes(test_classes(1));
                 classification(2) = model_classes(test_classes(2));
@@ -231,18 +236,15 @@ elseif opts.exclusive && length(model_classes)==size(test_dat,1) && opts.pairwis
         results_of_comparisons(1,2,this_comp) = model_classes(test_classes(1));
         results_of_comparisons(2,2,this_comp) = model_classes(test_classes(2));
     end
-    
-    catch
-        fprintf('failed')
-    end
-
 
     comparisons = list_of_comparisons;
     classification = results_of_comparisons;
 
     
 else
-    % If doing n-way classification (not all-possible-pairwise)
+    %% case for n-way classification (not all-possible-pairwise)
+    % works for more than 2 classes
+    
     if ~isfield(opts,'pairwise') || opts.pairwise==false
         test_model_corrs = comparison_matrix(length(model_classes)+1:end,1:length(model_classes));
         % Adjust all values in test_model_corrs by <1% of the smallest
