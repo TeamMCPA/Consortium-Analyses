@@ -39,6 +39,14 @@ end
 session_locs = mcp_struct.Experiment.Runs(session_index).Index';
 
 marks_vec = mcp_struct.fNIRS_Data.Onsets_Matrix(session_locs,:);
+
+if session_index > 1
+    prev_session_end = max(mcp_struct.Experiment.Runs(session_index-1).Index');
+else
+    prev_session_end = 0;
+end
+
+
 if size(marks_vec, 2) > 1
     
     % Determine the maximum number of reps for any given marker (iterates
@@ -49,7 +57,7 @@ if size(marks_vec, 2) > 1
     
     for type_i = 1:size(marks_vec,2)
         %Find the array index in the marks_vec
-        temp_marks = find(marks_vec(:, type_i) == 1); 
+        temp_marks = prev_session_end + find(marks_vec(:, type_i) == 1); 
         marks_mat(1:length(temp_marks), type_i) = temp_marks;
     end
     
@@ -112,7 +120,7 @@ for hemo = 1:length(hemo_types)
     end
 
     % transform the hemodynamic timeseries
-    hemo_timeser = hemo_timeser * transformation_mat;
+    %hemo_timeser = hemo_timeser * transformation_mat;
 
 
     for type_i = 1 : length(event_types)
