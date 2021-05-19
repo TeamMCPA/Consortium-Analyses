@@ -175,6 +175,9 @@ for hemo = 1:length(hemo_types)
                 % For the moment, we carelessly discard these trials. There is
                 % probably a better way to do it, but you have to match up the 
                 % lengths of the vectors and figure out rebaselining. Todo.
+                if ~isnan(marks_mat(event_j,event_marks))
+                    warning('discarding trials where the baseline or time window are out of bounds')
+                end
                 event_matrix(:,hemo:length(hemo_types):end,event_j:end,type_i) = NaN;
             end
         end
