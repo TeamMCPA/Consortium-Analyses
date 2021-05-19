@@ -103,7 +103,7 @@ event_matrix = nan(num_samps, length(mcp_struct.Experiment.Probe_arrays.Channels
 for hemo = 1:length(hemo_types)
     
     % Extract hemoglobin data and marks from the MCP struct
-    hemo_timeser = mcp_struct.fNIRS_Data.Hb_data.(hemo_types{hemo})(session_locs, channels);
+    hemo_timeser = mcp_struct.fNIRS_Data.Hb_data.(hemo_types{hemo})(:, channels);
 
     % Extract the transformation matrix and if its converting to ROI space,
     % weight it
@@ -120,6 +120,7 @@ for hemo = 1:length(hemo_types)
     end
 
     % transform the hemodynamic timeseries
+    %hemo_timeser(isnan(hemo_timeser)) = 0;
     %hemo_timeser = hemo_timeser * transformation_mat;
 
 
