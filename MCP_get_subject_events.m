@@ -85,12 +85,12 @@ base_window_samp = round(base_window.*Fs_val); % converting time (s) to number o
 
 % The output matrix setup(time x features x type repetition x types)
 num_samps = max(time_window_samp) - min(time_window_samp) + 1;
+num_feats = max(arrayfun(@(x) size(x.Transformation_Matrix,2),mcp_struct.Experiment.Runs));
 
 %%
 
 hemo_types = strsplit(hemoglobin, '+');
-event_matrix = nan(num_samps, length(mcp_struct.Experiment.Probe_arrays.Channels)*length(hemo_types), size(marks_mat, 1), length(event_types));
-
+event_matrix = nan(num_samps, num_feats*length(hemo_types), size(marks_mat, 1), length(event_types));
 
 for hemo = 1:length(hemo_types)
     
@@ -166,6 +166,9 @@ for hemo = 1:length(hemo_types)
                 % For the moment, we carelessly discard these trials. There is
                 % probably a better way to do it, but you have to match up the 
                 % lengths of the vectors and figure out rebaselining. Todo.
+                if ~isnan(marks_mat(event_j,event_marks))
+                    warning('discarding trials where the baseline or time window are out of bounds')
+                end
                 event_matrix(:,hemo:length(hemo_types):end,event_j:end,type_i) = NaN;
             end
         end
