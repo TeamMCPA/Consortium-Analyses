@@ -39,14 +39,6 @@ end
 session_locs = mcp_struct.Experiment.Runs(session_index).Index';
 
 marks_vec = mcp_struct.fNIRS_Data.Onsets_Matrix(session_locs,:);
-
-if session_index > 1
-    prev_session_end = max(mcp_struct.Experiment.Runs(session_index-1).Index');
-else
-    prev_session_end = 0;
-end
-
-
 if size(marks_vec, 2) > 1
     
     % Determine the maximum number of reps for any given marker (iterates
@@ -57,7 +49,7 @@ if size(marks_vec, 2) > 1
     
     for type_i = 1:size(marks_vec,2)
         %Find the array index in the marks_vec
-        temp_marks = prev_session_end + find(marks_vec(:, type_i) == 1); 
+        temp_marks = find(marks_vec(:, type_i) == 1); 
         marks_mat(1:length(temp_marks), type_i) = temp_marks;
     end
     
@@ -93,17 +85,17 @@ base_window_samp = round(base_window.*Fs_val); % converting time (s) to number o
 
 % The output matrix setup(time x features x type repetition x types)
 num_samps = max(time_window_samp) - min(time_window_samp) + 1;
+num_feats = max(arrayfun(@(x) size(x.Transformation_Matrix,2),mcp_struct.Experiment.Runs));
 
 %%
 
 hemo_types = strsplit(hemoglobin, '+');
-event_matrix = nan(num_samps, length(mcp_struct.Experiment.Probe_arrays.Channels)*length(hemo_types), size(marks_mat, 1), length(event_types));
-
+event_matrix = nan(num_samps, num_feats*length(hemo_types), size(marks_mat, 1), length(event_types));
 
 for hemo = 1:length(hemo_types)
     
     % Extract hemoglobin data and marks from the MCP struct
-    hemo_timeser = mcp_struct.fNIRS_Data.Hb_data.(hemo_types{hemo})(:, channels);
+    hemo_timeser = mcp_struct.fNIRS_Data.Hb_data.(hemo_types{hemo})(session_locs, channels);
 
     % Extract the transformation matrix and if its converting to ROI space,
     % weight it
@@ -120,8 +112,7 @@ for hemo = 1:length(hemo_types)
     end
 
     % transform the hemodynamic timeseries
-    %hemo_timeser(isnan(hemo_timeser)) = 0;
-    %hemo_timeser = hemo_timeser * transformation_mat;
+    hemo_timeser = hemo_timeser * transformation_mat;
 
 
     for type_i = 1 : length(event_types)
