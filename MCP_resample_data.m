@@ -1,5 +1,4 @@
 
-
 function new_mcp_file = MCP_resample_data(mcp_file,new_sampling_rate,save_flag)
 %% Resample hemoglobin data as if the machine had a different sampling rate
 % This is useful when doing timeXfeatures classification, or if comparing
@@ -15,6 +14,7 @@ function new_mcp_file = MCP_resample_data(mcp_file,new_sampling_rate,save_flag)
 
 
 % Benjamin Zinszer & Anna Herbolzheimer 3 Sept 2020
+% edited AH 26 May 2021 - added mask for dropped channels
 
 %% Clean up / process inputs
 % Open the old MCP struct or file
@@ -96,9 +96,27 @@ if round(old_sampling_rate,4) ~= round(new_sampling_rate,4)
 
         % Generate the new Hb data
         new_Hz = new_sampling_rate;
-        [new_oxy, new_Tx] = resample(old_oxy,old_Tx,new_Hz);
-        [new_deoxy, ~] = resample(old_deoxy,old_Tx,new_Hz);
-        [new_total, ~] = resample(old_total,old_Tx,new_Hz);
+        
+        % mask out NaNs if there are dropped channels
+        [x, y] = find(isnan(old_oxy));
+        
+        if length(unique(x))==size(old_oxy,1)
+            old_oxy(:, y) = 0;
+            old_deoxy(:, y) = 0;
+            old_total(:, y) = 0;
+        
+            [new_oxy, new_Tx] = resample(old_oxy,old_Tx,new_Hz);
+            [new_deoxy, ~] = resample(old_deoxy,old_Tx,new_Hz);
+            [new_total, ~] = resample(old_total,old_Tx,new_Hz);
+            
+            new_oxy(:, y) = NaN;
+            new_deoxy(:, y) = NaN;
+            new_total(:, y) = NaN;
+        else
+            [new_oxy, new_Tx] = resample(old_oxy,old_Tx,new_Hz);
+            [new_deoxy, ~] = resample(old_deoxy,old_Tx,new_Hz);
+            [new_total, ~] = resample(old_total,old_Tx,new_Hz);
+        end
         
         % Generate the new onsets data.
         old_ons_idx = find(any(old_onset_matrix~=0,2));
