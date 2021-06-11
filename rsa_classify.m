@@ -46,11 +46,11 @@ model_classes = unique(model_labels(:),'stable');
 [~,test_order] = sort(test_labels);
 
 % sort test data based on the re-ordered data
-test_labs = test_labels(test_order);
-test_dat = test_data(test_order, :,:,:);
+test_labs = test_labels;%(test_order);
+test_dat = test_data;%(test_order, :,:,:);
 
-model_labs = model_labels(train_order);
-model_dat = model_data(train_order, :,:,:);
+model_labs = model_labels;%(train_order);
+model_dat = model_data;%(train_order, :,:,:);
 
 %% remove where we have all NaNs
 % 
@@ -118,64 +118,127 @@ model_dat = model_data(train_order, :,:,:);
 % correlating between conditions or finding pairwise differences between conditions and then 
 % average the similarity/dissimilarity structures together into a single model.
 
-% if using a premade training model (like a semantic model), don't
-% need to do anything to model_dat
-% if we're doing leave one out (participant or session), first want
-% to correlate the model data within session, then average across sessions
+if strcmp(opts.comparison_type, 'correlation') % create similarity structures
+    %  iterate through all the layers (3rd dimension) and create
+    % correlation matrices 
+    
+    if ndims(model_dat) ~= 2 && size(model_dat,1) == length(model_classes)
+        % if we're doing leave one out (participant or session), first want
+        % to correlate the model data within session, then average across sessions
+        model_mat = nan(size(model_dat,1),size(model_dat,1),size(model_dat,3),size(model_dat,4));
+        for i = 1: (size(model_dat,3)*size(model_dat,4))
+            model_mat(:,:,i) = corr(model_dat(:,:,i)','rows','pairwise', 'type', opts.metric);
+        end
+        
+        
+        % then average across each participants' sessions
+        training_matrix = nanmean(model_mat,3);
+        % then average across participants
+        training_matrix = nanmean(training_matrix,4);
+        training_matrix = atanh(training_matrix);
+        
+        
+        % then repeat to create test data
+        test_mat = nan(size(test_dat,1),size(test_dat,1),size(test_dat,3),size(test_dat,4));
+        for i = 1: (size(test_dat,3)*size(test_dat,4))
+            test_mat(:,:,i) = corr(test_dat(:,:,i)','rows','pairwise', 'type', opts.metric);
+        end
+        test_matrix = nanmean(test_mat,3);
+        test_matrix = nanmean(test_matrix,4);
 
-% build similarity matrices
-if ndims(model_dat) == 2 && size(model_dat,1) == length(model_classes)
-    model_mat = model_dat;
-else
-    model_mat = opts.similarity_function(model_dat, opts);
+        test_matrix = atanh(test_matrix);
+        
+    elseif ndims(model_dat) == 2 && size(model_dat,1) ~= length(model_classes)
+        % if doing kfold for withinsubjects cross validation, first need to aggregate over repetitions for each category  
+        temp_model_dat = nan(length(model_classes), size(model_dat,2));
+        temp_test_dat = nan(length(model_classes), size(test_dat,2));
+        for cl = 1:length(model_classes)
+            model_dat_for_this_class = model_dat(strcmp(model_labs, model_classes{cl}),:);
+            temp_model_dat(cl,:) = nanmean(model_dat_for_this_class,1);
+
+            test_dat_for_this_class = test_dat(strcmp(test_labs, model_classes{cl}),:);
+            temp_test_dat(cl,:) = nanmean(test_dat_for_this_class,1);
+        end
+
+        % then create test and train matrices in similarity space
+        test_matrix = atanh(corr(temp_test_dat'));
+        training_matrix = atanh(corr(temp_model_dat'));
+
+        model_labs = model_classes;
+        test_labs = model_classes;
+    else
+        % if using a premade training model (like a semantic model), don't
+        % need to do anything to model_dat
+        training_matrix = model_dat;
+        
+        % then create test data
+        test_mat = nan(size(test_dat,1),size(test_dat,1),size(test_dat,3),size(test_dat,4));
+        for i = 1: (size(test_dat,3)*size(test_dat,4))
+            test_mat(:,:,i) = corr(test_dat(:,:,i)', 'type', opts.metric);
+        end
+        test_matrix = nanmean(test_mat,3);
+        test_matrix = nanmean(test_matrix,4);
+
+        test_matrix = atanh(test_matrix);
+        
+    end
+else % create dissimilarity structures
+    
+    if ndims(model_data) > 2
+         % if we're doing leave one out (participant or session), first want
+        % to loop through each participants' sessions to find pairwise differences
+        model_mat = nan(size(model_dat,1),size(model_dat,1),size(model_dat,3),size(model_dat,4));
+        for i = 1: (size(model_dat,3)*size(model_dat,4))
+            model_mat(:,:,i) = squareform(pdist(model_dat(:,:,i), opts.metric));
+        end
+        % then average across each participants' sessions
+        training_matrix = nanmean(model_mat,3);
+        % then average across participants
+        training_matrix = nanmean(training_matrix,4);
+        
+        % then repeat to create test data
+        test_mat = nan(size(test_dat,1),size(test_dat,1),size(test_dat,3),size(test_dat,4));
+        for i = 1: (size(test_dat,3)*size(test_dat,4))
+            test_mat(:,:,i) = squareform(pdist(test_dat(:,:,i), opts.metric));
+        end
+        test_matrix = nanmean(test_mat,3);
+        test_matrix = nanmean(test_matrix,4);
+        
+    elseif ndims(model_dat) ~= 2 && size(model_dat,1) ~= length(model_classes)
+        % if doing kfold for withinsubjects cross validation, first need to aggregate over repetitions for each category  
+        temp_model_dat = nan(length(model_classes), size(model_dat,2));
+        temp_test_dat = nan(length(model_classes), size(test_dat,2));
+        for cl = 1:length(model_classes)
+            model_dat_for_this_class = model_dat(strcmp(model_labs, model_classes{cl}),:);
+            temp_model_dat(cl,:) = nanmean(model_dat_for_this_class,1);
+
+            test_dat_for_this_class = test_dat(strcmp(test_labs, model_classes{cl}),:);
+            temp_test_dat(cl,:) = nanmean(test_dat_for_this_class,1);
+        end
+
+        % then create dissimilarity matrices
+        test_matrix = squareform(pdist(temp_test_dat, opts.metric));
+        training_matrix = squareform(pdist(temp_model_dat, opts.metric));
+
+        model_labs = model_classes;
+        test_labs = model_classes;
+    else
+        % if using a premade training model (like a semantic model), don't
+        % need to do anything to model_dat
+        training_matrix = model_dat;
+        
+        % then repeat to create test data
+        test_mat = nan(size(test_dat,1),size(test_dat,1),size(test_dat,3),size(test_dat,4));
+        for i = 1: (size(test_dat,3)*size(test_dat,4))
+            test_mat(:,:,i) = squareform(pdist(test_dat(:,:,i), opts.metric));
+        end
+        test_matrix = nanmean(test_mat,3);
+        test_matrix = nanmean(test_matrix,4);
+    end
+    
+   
 end
 
-test_mat = opts.similarity_function(test_dat, opts);
-
-% now average across sessions and subjects
-if opts.weighted_average
-    total_trials = unique(sum(opts.trials_per_session,2,'omitnan'));
-    if length(total_trials) > 1
-        error('uneven number of trials. no solution for that yet')
-    end
-    
-    model_mat_tmp = nan(size(model_mat,1), size(model_mat,2), size(model_mat,4));
-    model_trials_per_session = opts.trials_per_session(setdiff(1:length(opts.trials_per_session), opts.fold),:);
-    for subj = 1:size(model_mat,4)
-        tmp_mat = nan(size(model_mat,1), size(model_mat,2), size(model_mat,3));
-        for sess = 1:size(model_mat,3)
-            tmp_mat(:,:,sess) = (model_trials_per_session(subj, sess)*model_mat(:,:,sess, subj))/total_trials;           
-        end
-        tmp_mat = sum(tmp_mat,3, 'omitnan');
-        model_mat_tmp(:,:,subj) = tmp_mat;
-    end
-    training_matrix = atanh(nanmean(model_mat_tmp,4));
-    
-    test_mat_tmp = nan(size(test_mat,1), size(test_mat,2), size(test_mat,4));
-    test_trials_per_session = opts.trials_per_session(opts.fold,:);
-    for subj = 1:size(test_mat,4)
-        tmp_mat = nan(size(test_mat,1), size(test_mat,2), size(test_mat,3));
-        for sess = 1:size(test_mat,3)
-            tmp_mat(:,:,sess) = (test_trials_per_session(subj, sess)*test_mat(:,:,sess, subj))/total_trials;           
-        end
-        tmp_mat = sum(tmp_mat,3, 'omitnan');
-        test_mat_tmp(:,:,subj) = tmp_mat;
-    end
-    test_matrix = atanh(nanmean(test_mat_tmp,4));
-    
-else
-    % then average across each participants' sessions
-    training_matrix = nanmean(model_mat,3);
-    % then average across participants
-    training_matrix = nanmean(training_matrix,4);
-    training_matrix = atanh(training_matrix);
-    
-    % repeat for test matrix
-    test_matrix = nanmean(test_mat,3);
-    test_matrix = nanmean(test_matrix,4);
-    test_matrix = atanh(test_matrix);
-    
-end
 
 %% Visualize the matrices
 
@@ -183,9 +246,8 @@ if opts.verbose > 1
     
     plot_idx = 1;
     figure
- 
-    for session_idx = 1:size(model_data,3)        
-        for subject_idx = 15%1:size(model_data,4)
+    for session_idx = 1:size(model_data,3)
+        for subject_idx = 1:size(model_data,4)
             subplot(size(model_data,3),size(model_data,4),plot_idx);
             imagesc(model_mat(:,:,session_idx, subject_idx))
             title(['Subj ' num2str(subject_idx) ' Sess ' num2str(session_idx)])
