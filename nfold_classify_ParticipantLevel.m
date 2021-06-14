@@ -54,7 +54,7 @@ end
 input_struct = parse_inputs(MCP_struct, varargin{:});  
 
 %% validate classification options
-input_struct.opts_struct = validate_classification_options_input(input_struct, input_struct.suppress_warnings);
+input_struct.opts_struct = validate_classification_options_input(MCP_struct, input_struct, input_struct.suppress_warnings);
 
 %% Setting up the combinations of feature subsets
 % Create all possible subsets. If setsize is equal to the total number of
@@ -213,7 +213,9 @@ for s_idx = 1:n_subj
         % Select the features for this subset
         set_features = sets(set_idx,:);
         
-
+        if isfield(input_struct.opts_struct, 'trials_per_session')
+            input_struct.opts_struct.fold = s_idx;
+        end
         %% Classify
         inds = pad_dimensions(final_dimensions, 'feature', set_features);
         [predicted_labels, comparisons] = input_struct.test_handle(...

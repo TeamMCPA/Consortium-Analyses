@@ -66,7 +66,7 @@ end
 input_struct = parse_inputs(MCP_struct, varargin{:});  
 
 %% validate classification options
-input_struct.opts_struct = validate_classification_options_input(input_struct, input_struct.suppress_warnings);
+input_struct.opts_struct = validate_classification_options_input(MCP_struct, input_struct, input_struct.suppress_warnings);
 
 %% Setting up the combinations of feature subsets
 
