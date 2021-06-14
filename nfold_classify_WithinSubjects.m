@@ -208,7 +208,7 @@ for s_idx = 1:n_subj
     %% K-Fold (kf)
     
     if strcmp(input_struct.approach, 'kf')   
-        subject_labels = repmat(mcpa_summ.event_types, (size(subject_patterns,1)/8),1);
+        subject_labels = repmat(mcpa_summ.event_types, (size(subject_patterns,1)/n_cond),1);
 
         % remove empty rows
         remove = [];
