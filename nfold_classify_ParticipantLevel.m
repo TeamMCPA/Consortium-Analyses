@@ -245,12 +245,12 @@ for s_idx = 1:n_subj
             end
         end
             
-
-        %% Progress reporting
-        if input_struct.verbose
-            fprintf(' %0.1f mins\n',toc/60);
-        end
     end % end set_idx loop
+    %% Progress reporting
+    if input_struct.verbose
+        fprintf(' %0.1f mins\n',toc/60);
+    end
+    
 end % end subject loop
 
 %% Visualization
