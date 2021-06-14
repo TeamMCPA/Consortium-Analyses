@@ -12,7 +12,7 @@ else
     opts = rmfield(opts,'pairwise');
 end
 
-if ~exists('pairwise','var')
+if ~exist('pairwise','var')
     pairwise = false;
 end
 
