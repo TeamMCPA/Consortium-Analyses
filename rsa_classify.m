@@ -77,34 +77,12 @@ test_mat = opts.similarity_function(test_dat, opts);
 
 % then average across sessions and subjects
 if opts.weighted_average
-    total_trials = unique(sum(opts.trials_per_session,2,'omitnan'));
-    if length(total_trials) > 1
-        error('uneven number of trials. no solution for that yet')
-    end
+    training_matrix = weighted_average(model_mat, true, opts);
+    training_matrix = atanh(nanmean(training_matrix,4));
     
-    model_mat_tmp = nan(size(model_mat,1), size(model_mat,2), size(model_mat,4));
-    model_trials_per_session = opts.trials_per_session(setdiff(1:length(opts.trials_per_session), opts.fold),:);
-    for subj = 1:size(model_mat,4)
-        tmp_mat = nan(size(model_mat,1), size(model_mat,2), size(model_mat,3));
-        for sess = 1:size(model_mat,3)
-            tmp_mat(:,:,sess) = (model_trials_per_session(subj, sess)*model_mat(:,:,sess, subj))/total_trials;           
-        end
-        tmp_mat = sum(tmp_mat,3, 'omitnan');
-        model_mat_tmp(:,:,subj) = tmp_mat;
-    end
-    training_matrix = atanh(nanmean(model_mat_tmp,4));
-    
-    test_mat_tmp = nan(size(test_mat,1), size(test_mat,2), size(test_mat,4));
-    test_trials_per_session = opts.trials_per_session(opts.fold,:);
-    for subj = 1:size(test_mat,4)
-        tmp_mat = nan(size(test_mat,1), size(test_mat,2), size(test_mat,3));
-        for sess = 1:size(test_mat,3)
-            tmp_mat(:,:,sess) = (test_trials_per_session(subj, sess)*test_mat(:,:,sess, subj))/total_trials;           
-        end
-        tmp_mat = sum(tmp_mat,3, 'omitnan');
-        test_mat_tmp(:,:,subj) = tmp_mat;
-    end
-    test_matrix = atanh(nanmean(test_mat_tmp,4));
+    % repeat for test matrix
+    test_matrix = weighted_average(test_mat, false, opts);
+    test_matrix = atanh(nanmean(test_matrix,4));
     
 else
     % then average across each participants' sessions
