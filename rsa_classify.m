@@ -51,10 +51,6 @@ test_dat = test_data(test_order, :,:,:);
 
 model_labs = model_labels(train_order);
 model_dat = model_data(train_order, :,:,:);
-
-%% remove where we have all NaNs
-% 
-% [model_dat, test_dat] = remove_empty_rows_and_cols(model_data, test_data, model_dat, test_dat)
     
 %% Build similarity structures
 % Transform the model_data into similiarty or dissimilarity structures for each session by
