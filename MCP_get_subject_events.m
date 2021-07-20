@@ -120,7 +120,7 @@ for hemo = 1:length(hemo_types)
     % remove mask
     [x,y] = find(hemo_timeser == 0);
     if length(x)/length(unique(y)) == size(hemo_timeser,1)
-        hemo_timser(:,unique(y)) = NaN;
+        hemo_timeser(:,unique(y)) = NaN;
     end
     
 
