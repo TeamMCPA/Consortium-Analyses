@@ -1,3 +1,4 @@
+
 function [results_of_comparisons, list_of_comparisons] = pairwise_rsa_test(test_matrix, training_matrix)
 % PAIRWISE_RSA_TEST Perform all pairwise (two-alternative forced choice)
 % comparisons between two similarity structures larger than 4x4.
@@ -12,11 +13,6 @@ function [results_of_comparisons, list_of_comparisons] = pairwise_rsa_test(test_
 %   tested using: combnk(1:n,2). List of comparisons (COMP) also available:
 %   [ ACC, COMP ] = PAIRWISE_RSA_TEST( M1, M2 )
 
-%% Sanity Check
-if sum(isnan(test_matrix(:)))==numel(test_matrix) || sum(isnan(training_matrix(:)))==numel(training_matrix)
-    disp('\nOne or both input matrices contains all NaN values. I quit!');
-    return
-end
 
 %% Prep some basic values
 
@@ -27,6 +23,12 @@ number_classes = size(test_matrix,1);
 list_of_comparisons = combnk([1:number_classes],2);
 number_of_comparisons = size(list_of_comparisons,1);
 results_of_comparisons = nan(number_of_comparisons,1);
+
+%% Sanity Check
+if sum(isnan(test_matrix(:)))==numel(test_matrix) || sum(isnan(training_matrix(:)))==numel(training_matrix)
+    disp('\nOne or both input matrices contains all NaN values. I quit!');
+    return
+end
 
 %% Loop through all comparisons and test
 for this_comp = 1:number_of_comparisons
