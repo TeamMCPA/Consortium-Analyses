@@ -111,8 +111,18 @@ for hemo = 1:length(hemo_types)
         transformation_mat = transformation_mat ./ weight;
     end
 
+    % mask nan'd out data with 0's
+    hemo_timeser(isnan(hemo_timeser)) = 0;
+    
     % transform the hemodynamic timeseries
     hemo_timeser = hemo_timeser * transformation_mat;
+    
+    % remove mask
+    [x,y] = find(hemo_timeser == 0);
+    if length(x)/length(unique(y)) == size(hemo_timeser,1)
+        hemo_timeser(:,unique(y)) = NaN;
+    end
+    
 
 
     for type_i = 1 : length(event_types)
