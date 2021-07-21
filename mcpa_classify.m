@@ -40,67 +40,16 @@ test_dat = test_data(test_order, :);
 model_labs = model_labels(train_order);
 model_dat = model_data(train_order, :);
 
-%% remove where we have all NaNs
-% pdist doesn't have built in ways to handle NaN's, so when we convert to
-% Brodmann's we need a way to handle areas that are entirely NaN. This
-% section finds NaN cells in the test and train matrix, then removes
-% columns where both test and train were entirely NaN
-
-empty_x_vals_model = [];
-empty_y_vals_model = [];
-for i = 1:size(model_data,4)
-    for j = 1:size(model_data,3)
-        [x,y] = find(isnan(model_dat(:,:,j,i)));
-        if length(unique(x)) == size(model_dat,1) && length(unique(y)) == size(model_dat,2)
-            continue;
-        else
-            empty_x_vals_model = [empty_x_vals_model; x];
-            empty_y_vals_model = [empty_y_vals_model; y];
-        end
-    end      
-end
-empty_x_vals_model = unique(empty_x_vals_model);
-empty_y_vals_model = unique(empty_y_vals_model);
-
-
-empty_x_vals_test = [];
-empty_y_vals_test = [];
-for i = 1:size(test_data,4)
-    for j = 1:size(test_data,3)
-        [x,y] = find(isnan(test_data(:,:,j,i)));
-        if length(unique(x)) == size(test_data,1) && length(unique(y)) == size(test_data,2)
-            continue;
-        else
-            empty_x_vals_test = [empty_x_vals_test; x];
-            empty_y_vals_test = [empty_y_vals_test; y];
-        end
-    end      
-end
-
-empty_x_vals_test = unique(empty_x_vals_test);
-empty_y_vals_test = unique(empty_y_vals_test);
-
-cols = 1:size(model_data,2);
-rows = 1:size(model_data,1);
-
-if length(empty_x_vals_model) == size(model_data,1) && length(empty_y_vals_model) ~= size(model_data,2)
-    % remove columns if the whole column is empty
-    remove_cols = union(empty_y_vals_model, empty_y_vals_test);
-    keep = ~ismember(cols, remove_cols);
-    model_dat = model_dat(:,keep', :,:);
-    test_dat = test_dat(:, keep', :,:);   
-elseif length(empty_x_vals_model) == size(model_data,1) && length(empty_y_vals_model) == size(model_data,2)
-    % this is an empty session
-    warning('There is no data in this session')
-end
-    
-
 
 %% Average across training data to get model features for each class
 model_patterns = nan(size(model_dat,2),length(model_classes));
+test_patterns = nan(length(model_classes), size(test_dat,2));
 for class_idx = 1:length(model_classes)
     model_patterns(:,class_idx) = nanmean(model_dat(strcmp(model_classes{class_idx},model_labs),:),1)';
+    test_patterns(class_idx,:) = nanmean(test_dat(strcmp(model_classes{class_idx}, test_labs),:),1);
 end
+
+test_dat= test_patterns;
 
 %% Perform correlation (default: Pearson) between all model patterns and the test patterns
 % This is a quick and easy way to compute all the test items at once.
@@ -129,6 +78,15 @@ if opts.exclusive && length(model_classes)==size(test_dat,1) && ~opts.pairwise
     % Isolate the columns representing the model_patterns, and the rows
     % representing the test_data to get the correlations for each item
     % in test data against all the model patterns.
+    if sum(isnan(test_dat(:)))==numel(test_dat) 
+        comparisons = test_labels;
+        classification = cell(size(test_labels));
+        classification(:) = {NaN};
+        
+        disp('\nOne or both input matrices contains all NaN values. I quit!');
+        return
+    end
+    
     test_model_corrs = comparison_matrix(length(model_classes)+1:end,1:length(model_classes));
 
     if size(test_model_corrs,1)==2 && strcmp(opts.comparison_type, 'correlation')
@@ -186,6 +144,15 @@ elseif opts.exclusive && length(model_classes)==size(test_dat,1) && opts.pairwis
     list_of_comparisons = combnk([1:number_classes],2);
     number_of_comparisons = size(list_of_comparisons,1);
     results_of_comparisons = cell(2, 2, number_of_comparisons);
+    
+    if sum(isnan(test_dat(:)))==numel(test_dat) 
+        results_of_comparisons(:) = {NaN};
+        comparisons = list_of_comparisons;
+        classification = results_of_comparisons;
+        
+        disp('\nOne or both input matrices contains all NaN values. I quit!');
+        return
+    end
 
     for this_comp = 1:number_of_comparisons
         test_classes = list_of_comparisons(this_comp,:);
@@ -203,6 +170,7 @@ elseif opts.exclusive && length(model_classes)==size(test_dat,1) && opts.pairwis
                 % If both options are equal, randomly assign the two labels to
                 % the two observations.
                 if ~isfield(opts,'tiebreak') || opts.tiebreak
+                    disp('tiebreak')
                     order = randperm(2); % returns [1 2] or [2 1] with equal probability
                     classification(1) = model_classes(test_classes(order(1)));
                     classification(2) = model_classes(test_classes(order(2)));
