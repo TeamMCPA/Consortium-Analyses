@@ -172,7 +172,7 @@ current_folding_function = stack.name;
 allsubj_results.test_type = current_folding_function;
 
 %% Begin the n-fold process: Select one test subj at a time from MCPA struct
-for s_idx = 2%1:n_subj
+for s_idx = 1:n_subj
     
     if input_struct.verbose
         fprintf('Running %g feature subsets for Subject %g / %g',n_sets,s_idx,n_subj);
