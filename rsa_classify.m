@@ -51,10 +51,6 @@ test_dat = test_data(test_order, :,:,:);
 
 model_labs = model_labels(train_order);
 model_dat = model_data(train_order, :,:,:);
-
-%% remove where we have all NaNs
-% 
-% [model_dat, test_dat] = remove_empty_rows_and_cols(model_data, test_data, model_dat, test_dat)
     
 %% Build similarity structures
 % Transform the model_data into similiarty or dissimilarity structures for each session by
@@ -108,15 +104,21 @@ if opts.verbose
     rsa_visualize_test_and_training_matrices(training_matrix, model_labels, test_matrix, test_labels)
 end
 
-%% Sanity Check
-if sum(isnan(test_matrix(:)))==(numel(test_matrix)-8) || sum(isnan(test_matrix(:)))==numel(test_matrix) || sum(isnan(training_matrix(:)))==numel(training_matrix)
-     warning('One or both input matrices contains all NaN values. this one triggered');
-end
 
 %% Save out the classification results based on greatest correlation coefficient for each test pattern
 % Initialize empty cell matrix for classifications
 
 if ~isfield(opts,'pairwise') || ~opts.pairwise
+    
+    if sum(isnan(test_matrix(:)))==(numel(test_matrix)-8) || sum(isnan(test_matrix(:)))==numel(test_matrix) || sum(isnan(training_matrix(:)))==numel(training_matrix)
+        
+        comparisons = test_labels(reorder_test);
+
+        classification = cell(size(comparisons));
+        classification(:) = {NaN};
+        
+        warning('One or both input matrices contains all NaN values.');
+    end
     
     % Number of stimulus classes to compare, based on the number of rows
     number_classes = size(test_matrix,1);
@@ -149,7 +151,7 @@ if ~isfield(opts,'pairwise') || ~opts.pairwise
     % put the labels back in the order they were put in as
     [~,reorder_test] = sort(test_order);
     classification = classification(reorder_test);
-    comparisons = reorder_test;
+    comparisons = test_labels(reorder_test);
     
     
 else

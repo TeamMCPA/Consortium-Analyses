@@ -383,7 +383,9 @@ for s_idx = 1:n_subj
                 end
 
             else
-                subj_acc = strcmp(predicted_labels, test_labels);
+                subj_acc = double(strcmp(predicted_labels, test_labels));
+                nan_idx = cellfun(@isnan, predicted_labels);
+                subj_acc(nan_idx) = NaN;
                 for cond_idx = 1:n_cond
                     cond_acc = nanmean(subj_acc(comparisons == cond_idx));
                     allsubj_results.accuracy(cond_idx).subsetXsubj(:,s_idx) = cond_acc;
