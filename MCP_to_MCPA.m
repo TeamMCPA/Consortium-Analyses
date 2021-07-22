@@ -93,7 +93,7 @@ end
 % rounds off sampling frequencies to 8 places to accomodate floating point
 % errors
 Fs_val = unique(round(arrayfun(@(x) x.fNIRS_Data.Sampling_frequency,mcp_multiple),8));
-if length(Fs_val) > 1
+if length(Fs_val) > 1 && ( (1/min(Fs_val) - 1/max(Fs_val)) > (1/3600) ) % 1 sec drift per hour
     minFs = min(Fs_val);
     maxFs = max(Fs_val);
     warning([num2str(length(Fs_val)) ' different sampling frequencies found, ranging from ' num2str(minFs) ' to ' num2str(maxFs) ' Hz. '...
@@ -193,3 +193,4 @@ end
 
 
 end
+
