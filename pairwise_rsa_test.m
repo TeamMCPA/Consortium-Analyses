@@ -25,7 +25,7 @@ number_of_comparisons = size(list_of_comparisons,1);
 results_of_comparisons = nan(number_of_comparisons,1);
 
 %% Sanity Check
-if sum(isnan(test_matrix(:)))==numel(test_matrix) || sum(isnan(training_matrix(:)))==numel(training_matrix)
+if sum(isnan(test_matrix(:)))==(numel(test_matrix)-length(diag(test_matrix))) || sum(isnan(test_matrix(:)))==numel(test_matrix) || sum(isnan(training_matrix(:)))==numel(training_matrix)
     disp('\nOne or both input matrices contains all NaN values. I quit!');
     return
 end
