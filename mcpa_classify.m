@@ -1,4 +1,4 @@
-function [classification, rating] = mcpa_classify(model_data, model_labels, test_data, test_labels, opts)
+function [classification, comparisons] = mcpa_classify(model_data, model_labels, test_data, test_labels, opts)
 %% mcpa_classify implements a correlation-based, channel-space classifier
 % following Emberson, Zinszer, Raizada & Aslin's (2017, PLoS One) method
 % and extending this approach to multiple conditions (>2). The MCPA
@@ -22,46 +22,7 @@ function [classification, rating] = mcpa_classify(model_data, model_labels, test
 % set to false, the classifier will prefer classes appearing earlier in the
 % training set.
 %
-% All-possible-pairwise comparison (opts.pairwise) is under development.
-
-%% If the options struct is not provided, set default parameters
-if ~exist('opts','var') || isempty(opts) 
-    opts = struct;
-end
-if ~isfield(opts, 'comparison_type')
-    if isfield(opts, 'metric')
-        switch opts.metric
-            case {'spearman', 'pearson', 'kendall'}
-                warning('Similarity or Dissimilarity space has not been defined. Based on your chosen metric, we will put the data in similarity space.')
-                opts.comparison_type = 'correlation';
-            otherwise
-                warning('Similarity or Dissimilarity space has not been defined. Based on your chosen metric, we will put the data in dissimilarity space.')
-                opts.comparison_type = 'distance';
-        end
-    else
-        warning('Similarity or Dissimilarity space has not been defined. We will put the data in similarity space with the Spearman correlation.')
-        opts.comparison_type = 'correlation';
-    end
-end
-if ~isfield(opts, 'metric')
-    if strcmp(opts.comparison_type, 'correlation')
-        opts.metric = 'spearman';
-    else
-        opts.metric = 'euclidean';
-    end
-end
-if ~isfield(opts, 'exclusive')
-    opts.exclusive = true;
-end
-if ~isfield(opts, 'pairwise')
-    opts.pairwise = false;
-end
-if ~isfield(opts, 'tiebreak')
-    opts.tiebreak = true;
-end
-if ~isfield(opts, 'pairwise')
-    opts.pairwise = false;
-end
+% All-possible-pairwise comparison (opts.pairwise) is under development
 
 %% Pull a list of all the unique classes / conditions, preserving order
 model_classes = unique(model_labels,'stable');
@@ -79,69 +40,16 @@ test_dat = test_data(test_order, :);
 model_labs = model_labels(train_order);
 model_dat = model_data(train_order, :);
 
-%% remove where we have all NaNs
-% pdist doesn't have built in ways to handle NaN's, so when we convert to
-% Brodmann's we need a way to handle areas that are entirely NaN. This
-% section finds NaN cells in the test and train matrix, then removes
-% columns where both test and train were entirely NaN
-
-empty_x_vals_model = [];
-empty_y_vals_model = [];
-for i = 1:size(model_data,4)
-    for j = 1:size(model_data,3)
-        [x,y] = find(isnan(model_dat(:,:,j,i)));
-        if length(unique(x)) == size(model_dat,1) && length(unique(y)) == size(model_dat,2)
-            continue;
-        else
-            empty_x_vals_model = [empty_x_vals_model; x];
-            empty_y_vals_model = [empty_y_vals_model; y];
-        end
-    end      
-end
-empty_x_vals_model = unique(empty_x_vals_model);
-empty_y_vals_model = unique(empty_y_vals_model);
-
-
-empty_x_vals_test = [];
-empty_y_vals_test = [];
-for i = 1:size(test_data,4)
-    for j = 1:size(test_data,3)
-        [x,y] = find(isnan(test_data(:,:,j,i)));
-        
-        
-        if length(unique(x)) == size(test_data,1) && length(unique(y)) == size(test_data,2)
-            continue;
-        else
-            empty_x_vals_test = [empty_x_vals_test; x];
-            empty_y_vals_test = [empty_y_vals_test; y];
-        end
-    end      
-end
-
-empty_x_vals_test = unique(empty_x_vals_test);
-empty_y_vals_test = unique(empty_y_vals_test);
-
-cols = 1:size(model_data,2);
-rows = 1:size(model_data,1);
-
-if length(empty_x_vals_model) == size(model_data,1) && length(empty_y_vals_model) ~= size(model_data,2)
-    % remove columns
-    remove_cols = union(empty_y_vals_model, empty_y_vals_test);
-    keep = ~ismember(cols, remove_cols);
-    model_dat = model_dat(:,keep', :,:);
-    test_dat = test_dat(:, keep', :,:);   
-elseif length(empty_x_vals_model) == size(model_data,1) && length(empty_y_vals_model) == size(model_data,2)
-    % this is an empty session
-    warning('There is no data in this session')
-end
-    
-
 
 %% Average across training data to get model features for each class
 model_patterns = nan(size(model_dat,2),length(model_classes));
+test_patterns = nan(length(model_classes), size(test_dat,2));
 for class_idx = 1:length(model_classes)
     model_patterns(:,class_idx) = nanmean(model_dat(strcmp(model_classes{class_idx},model_labs),:),1)';
+    test_patterns(class_idx,:) = nanmean(test_dat(strcmp(model_classes{class_idx}, test_labs),:),1);
 end
+
+test_dat= test_patterns;
 
 %% Perform correlation (default: Pearson) between all model patterns and the test patterns
 % This is a quick and easy way to compute all the test items at once.
@@ -156,17 +64,29 @@ else
     comparison_matrix = squareform(pdist([model_patterns,test_dat']', opts.metric)); 
 end
     
-
-% Isolate the columns representing the model_patterns, and the rows
-% representing the test_data to get the correlations for each item
-% in test data against all the model patterns.
-
-
 %% Save out the classification results based on greatest correlation coefficient for each test pattern
 % Initialize empty cell matrix for classifications
 classification = cell(size(test_dat,1),1);
 
 if opts.exclusive && length(model_classes)==size(test_dat,1) && ~opts.pairwise 
+    %% case for exclusive labels
+    % wherein each class can only be assigned to one row of test data
+    % (e.g., at Participant level when you are looking at
+    % condition-averaged data, and only one pattern per condition)
+    % only works for 2 categories
+    
+    % Isolate the columns representing the model_patterns, and the rows
+    % representing the test_data to get the correlations for each item
+    % in test data against all the model patterns.
+    if sum(isnan(test_dat(:)))==numel(test_dat) 
+        comparisons = test_labels;
+        classification = cell(size(test_labels));
+        classification(:) = {NaN};
+        
+        disp('\nOne or both input matrices contains all NaN values. I quit!');
+        return
+    end
+    
     test_model_corrs = comparison_matrix(length(model_classes)+1:end,1:length(model_classes));
 
     if size(test_model_corrs,1)==2 && strcmp(opts.comparison_type, 'correlation')
@@ -213,21 +133,33 @@ if opts.exclusive && length(model_classes)==size(test_dat,1) && ~opts.pairwise
         disp('Currently no method for exclusive labeling with >2 test cases');
     end
     
-    rating = [];
+    comparisons = test_labels;
 elseif opts.exclusive && length(model_classes)==size(test_dat,1) && opts.pairwise 
-    number_classes = size(test_data,1);
+    %% case for pairwise classification
+    % works for multiple classes
+    
+    number_classes = length(model_classes);
 
     % Generate a list of every pairwise comparison and the results array
     list_of_comparisons = combnk([1:number_classes],2);
     number_of_comparisons = size(list_of_comparisons,1);
     results_of_comparisons = cell(2, 2, number_of_comparisons);
+    
+    if sum(isnan(test_dat(:)))==numel(test_dat) 
+        results_of_comparisons(:) = {NaN};
+        comparisons = list_of_comparisons;
+        classification = results_of_comparisons;
+        
+        disp('\nOne or both input matrices contains all NaN values. I quit!');
+        return
+    end
 
     for this_comp = 1:number_of_comparisons
         test_classes = list_of_comparisons(this_comp,:);
 
         test_model_corrs = comparison_matrix(length(model_classes)+test_classes,test_classes);
 
-        if size(test_model_corrs,1)==2 && strcmp(opts.comparison_type, 'correlation')
+        if strcmp(opts.comparison_type, 'correlation')
             if trace(test_model_corrs) > trace(rot90(test_model_corrs))
                 classification(1) = model_classes(test_classes(1));
                 classification(2) = model_classes(test_classes(2));
@@ -238,6 +170,7 @@ elseif opts.exclusive && length(model_classes)==size(test_dat,1) && opts.pairwis
                 % If both options are equal, randomly assign the two labels to
                 % the two observations.
                 if ~isfield(opts,'tiebreak') || opts.tiebreak
+                    disp('tiebreak')
                     order = randperm(2); % returns [1 2] or [2 1] with equal probability
                     classification(1) = model_classes(test_classes(order(1)));
                     classification(2) = model_classes(test_classes(order(2)));
@@ -272,13 +205,14 @@ elseif opts.exclusive && length(model_classes)==size(test_dat,1) && opts.pairwis
         results_of_comparisons(2,2,this_comp) = model_classes(test_classes(2));
     end
 
-
-    rating = list_of_comparisons;
+    comparisons = list_of_comparisons;
     classification = results_of_comparisons;
 
     
 else
-    % If doing n-way classification (not all-possible-pairwise)
+    %% case for n-way classification (not all-possible-pairwise)
+    % works for more than 2 classes
+    
     if ~isfield(opts,'pairwise') || opts.pairwise==false
         test_model_corrs = comparison_matrix(length(model_classes)+1:end,1:length(model_classes));
         % Adjust all values in test_model_corrs by <1% of the smallest
@@ -290,11 +224,13 @@ else
         test_model_corrs = test_model_corrs + rand(size(test_model_corrs))*min_diff/100;
         
         % Classify based on the maximum correlation
-        [rating, test_class_idx] = max(test_model_corrs,[],2);
+        [~, test_class_idx] = max(test_model_corrs,[],2);
         classification = model_classes(test_class_idx);
         
     end
     % put the labels back in the order they were put in as
     [~,reorder_test] = sort(test_order);
     classification = classification(reorder_test);
+    
+    comparisons = 1:length(test_labels);
 end

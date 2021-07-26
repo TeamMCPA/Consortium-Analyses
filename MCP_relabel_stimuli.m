@@ -92,7 +92,7 @@ old_cond_onsets = old_mcp_struct.fNIRS_Data.Onsets_Matrix(:,old_onset_col);
 % first case, we can just do a big batch-replace. In the second case, it's
 % just an error and needs to be bounced back.
 
-if length(new_labels) ~= sum(old_cond_onsets)
+if length(new_labels) ~= sum(old_cond_onsets>0)
     % Case (1): Prepare to replace all instances of old with the new label.
     if length(new_labels) == 1
         disp(['Only one new label provided for ' num2str(sum(old_cond_onsets)) ' onsets. Applying label to all onsets.']);
@@ -103,12 +103,24 @@ if length(new_labels) ~= sum(old_cond_onsets)
         % code below for individual trial labeling. It also creates new
         % columns even though the new is exact duplicate of the old.
         %new_labels = repmat(new_labels,max(sum(old_cond_onsets)),1);
-    % Case (2): Throw an error and quit.
+    elseif length(new_labels)==1 && sum(old_cond_onsets)==1
+        % Case (2): In the occasional instance that there is only one onset, it
+        % won't meet the criteria above, but we still just want to do a label
+        % swap in the Conditions rather than adding a new column.
+        disp('Only one onset found for this label. Replacing');
+        new_mcp_file = old_mcp_struct;
+        new_mcp_file.Experiment.Conditions(old_cond_index).Name = new_labels{:};
+        return
+       
+    % Case (3): Throw an error and quit.
     else
         new_mcp_file = old_mcp_struct;
         error('Provided %g new labels to replace %g items in existing condition! These values must be equal.',length(new_labels),sum(old_cond_onsets));
         return
     end
+    
+    
+    
 end
 
 % Turn the list of labels into a set of integers which can be acted upon.

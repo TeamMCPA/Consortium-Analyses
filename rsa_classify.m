@@ -6,11 +6,11 @@ function [classification, comparisons] = rsa_classify(model_data, model_labels, 
 %
 % opts: a struct that contains options for the classifier.
 %
-% opts.similarity_space determines how the features will be abstracted:
-%    'similarity_space' if true, will use correlation-based similarity
+% opts.comparison_type determines how the features will be abstracted:
+%    'comparison_type' if true, will use correlation-based similarity
 %    space (larger values more similar). opts.metric can be set to 
 %    'spearman', 'pearson', or 'kendall'.
-%    'similarity_space' if false, will use pdist-based dissimilarity matrix
+%    'comparison_type' if false, will use pdist-based dissimilarity matrix
 %    (larger values are less similar). Any of the distance metrics from the
 %    pdist function (e.g., 'cosine', 'euclidean', 'seuclidean') can be set
 %    for the opts.metric value.
@@ -35,44 +35,6 @@ function [classification, comparisons] = rsa_classify(model_data, model_labels, 
 % (hyperbolic arctangent) correlation matrices are displayed for all
 % subjects, sessions, etc.
 
-%% If the options struct is not provided, set default parameters
-if ~exist('opts','var') || isempty(opts) 
-    opts = struct;
-end
-if ~isfield(opts, 'similarity_space')
-    if isfield(opts, 'metric')
-        switch opts.metric
-            case {'spearman', 'pearson', 'kendall'}
-                warning('Similarity or Dissimilarity space has not been defined. Based on your chosen metric, we will put the data in similarity space.')
-                opts.similarity_space = true;
-            otherwise
-                warning('Similarity or Dissimilarity space has not been defined. Based on your chosen metric, we will put the data in dissimilarity space.')
-                opts.similarity_space = false;
-        end
-    else
-        warning('Similarity or Dissimilarity space has not been defined. We will put the data in similarity space with the Spearman correlation.')
-        opts.similarity_space = true;
-    end
-end
-if ~isfield(opts, 'metric')
-    if opts.similarity_space
-        opts.metric = 'spearman';
-    else
-        opts.metric = 'euclidean';
-    end
-end
-if ~isfield(opts, 'exclusive')
-    opts.exclusive = true;
-end
-if ~isfield(opts, 'pairwise')
-    opts.pairwise = false;
-end
-if ~isfield(opts, 'tiebreak')
-    opts.tiebreak = true;
-end
-if ~isfield(opts, 'verbose')
-    opts.verbose = 0;
-end
 
 %% Pull a list of all the unique classes / conditions, preserving order
 model_classes = unique(model_labels(:),'stable');
@@ -83,210 +45,80 @@ model_classes = unique(model_labels(:),'stable');
 [~,train_order] = sort(model_labels);
 [~,test_order] = sort(test_labels);
 
-%% sort test data based on the re-ordered data
+% sort test data based on the re-ordered data
 test_labs = test_labels(test_order);
 test_dat = test_data(test_order, :,:,:);
 
 model_labs = model_labels(train_order);
 model_dat = model_data(train_order, :,:,:);
-
-%% remove where we have all NaNs
-
-% empty_x_vals_model = [];
-% empty_y_vals_model = [];
-% for i = 1:size(model_data,4)
-%     for j = 1:size(model_data,3)
-%         [x,y] = find(isnan(model_dat(:,:,j,i)));
-%         if length(unique(x)) == size(model_dat,1) && length(unique(y)) == size(model_dat,2)
-%             continue;
-%         else
-%             empty_x_vals_model = [empty_x_vals_model; x];
-%             empty_y_vals_model = [empty_y_vals_model; y];
-%         end
-%     end      
-% end
-% empty_x_vals_model = unique(empty_x_vals_model);
-% empty_y_vals_model = unique(empty_y_vals_model);
-% 
-% 
-% empty_x_vals_test = [];
-% empty_y_vals_test = [];
-% for i = 1:size(test_data,4)
-%     for j = 1:size(test_data,3)
-%         [x,y] = find(isnan(test_data(:,:,j,i)));
-%         
-%         
-%         if length(unique(x)) == size(test_data,1) && length(unique(y)) == size(test_data,2)
-%             continue;
-%         else
-%             empty_x_vals_test = [empty_x_vals_test; x];
-%             empty_y_vals_test = [empty_y_vals_test; y];
-%         end
-%     end      
-% end
-% 
-% empty_x_vals_test = unique(empty_x_vals_test);
-% empty_y_vals_test = unique(empty_y_vals_test);
-% 
-% cols = 1:size(model_data,2);
-% rows = 1:size(model_data,1);
-% 
-% if size(model_data,2) > 8
-%     if length(empty_x_vals_model) == size(model_data,1) && length(empty_y_vals_model) ~= size(model_data,2)
-%         % remove columns
-%         remove_cols = union(empty_y_vals_model, empty_y_vals_test);
-%         keep = ~ismember(cols, remove_cols);
-%         model_dat = model_dat(:,keep', :,:);
-%         test_dat = test_dat(:, keep', :,:);   
-%     elseif length(empty_x_vals_model) == size(model_data,1) && length(empty_y_vals_model) == size(model_data,2)
-%         % this is an empty session
-%         warning('There is no data in this session')
-%     end
-% else
-%     if length(empty_x_vals_test) == size(model_data,1) && length(empty_y_vals_test) ~= size(test_data,2)
-%         test_cols = 1:size(test_dat,2);
-%         remove_cols = union(empty_y_vals_model, empty_y_vals_test);
-%         keep = ~ismember(test_cols, remove_cols);
-%         test_dat = test_dat(:, keep', :,:);
-%     end 
-% end
-%     
-%     
-% 
-
+    
 %% Build similarity structures
 % Transform the model_data into similiarty or dissimilarity structures for each session by
 % correlating between conditions or finding pairwise differences between conditions and then 
 % average the similarity/dissimilarity structures together into a single model.
 
-if opts.similarity_space % create similarity structures
-    %  iterate through all the layers (3rd dimension) and create
-    % correlation matrices 
-    
-    if ndims(model_dat) > 2
-        model_mat = nan(size(model_dat,1),size(model_dat,1),size(model_dat,3),size(model_dat,4));
-        for i = 1: (size(model_dat,3)*size(model_dat,4))
-            model_mat(:,:,i) = corr(model_dat(:,:,i)', 'type', opts.metric);
-        end
+% if using a premade training model (like a semantic model), don't
+% need to do anything to model_dat
+% if we're doing leave one out (participant or session), first want
+% to correlate the model data within session, then average across sessions
 
-        % then average across each participants' sessions
-        training_matrix = nanmean(model_mat,3);
-        % then average across participants
-        training_matrix = nanmean(training_matrix,4);
-        training_matrix = atanh(training_matrix);
-    else
-        training_matrix = model_dat;
-    end
-
-    % then repeat to create test data
-    test_mat = nan(size(test_dat,1),size(test_dat,1),size(test_dat,3),size(test_dat,4));
-    for i = 1: (size(test_dat,3)*size(test_dat,4))
-        test_mat(:,:,i) = corr(test_dat(:,:,i)', 'type', opts.metric);
-    end
-    test_matrix = nanmean(test_mat,3);
-    test_matrix = nanmean(test_matrix,4);
-
-    test_matrix = atanh(test_matrix);
-
-   
-else % create dissimilarity structures
-    
-    if ndims(model_data) > 2
-        % loop through each participants' sessions to find pairwise differences
-        model_mat = nan(size(model_dat,1),size(model_dat,1),size(model_dat,3),size(model_dat,4));
-        for i = 1: (size(model_dat,3)*size(model_dat,4))
-            model_mat(:,:,i) = squareform(pdist(model_dat(:,:,i), opts.metric));
-        end
-        % then average across each participants' sessions
-        training_matrix = nanmean(model_mat,3);
-        % then average across participants
-        training_matrix = nanmean(training_matrix,4);
-    else
-        training_matrix = model_dat;
-    end
-    
-    % then repeat to create test data
-    test_mat = nan(size(test_dat,1),size(test_dat,1),size(test_dat,3),size(test_dat,4));
-    for i = 1: (size(test_dat,3)*size(test_dat,4))
-        test_mat(:,:,i) = squareform(pdist(test_dat(:,:,i), opts.metric));
-    end
-    test_matrix = nanmean(test_mat,3);
-    test_matrix = nanmean(test_matrix,4);
+% build the matrices
+if ndims(model_dat) == 2 && size(model_dat,1) == length(model_classes)
+    model_mat = model_dat;
+else
+    model_mat = opts.similarity_function(model_dat, opts);
 end
 
+test_mat = opts.similarity_function(test_dat, opts);
+
+% then average across sessions and subjects
+if opts.weighted_average
+    training_matrix = weighted_average(model_mat, true, opts);
+    training_matrix = atanh(nanmean(training_matrix,4));
+    
+    % repeat for test matrix
+    test_matrix = weighted_average(test_mat, false, opts);
+    test_matrix = atanh(nanmean(test_matrix,4));
+    
+else
+    % then average across each participants' sessions
+    training_matrix = nanmean(model_mat,3);
+    % then average across participants
+    training_matrix = nanmean(training_matrix,4);
+    training_matrix = atanh(training_matrix);
+    
+    % repeat for test matrix
+    test_matrix = nanmean(test_mat,3);
+    test_matrix = nanmean(test_matrix,4);
+    test_matrix = atanh(test_matrix);
+    
+end
 
 %% Visualize the matrices
 
 if opts.verbose > 1
-    
-    plot_idx = 1;
-    figure
-    for session_idx = 1:size(model_data,3)
-        for subject_idx = 1:size(model_data,4)
-            subplot(size(model_data,3),size(model_data,4),plot_idx);
-            imagesc(model_mat(:,:,session_idx, subject_idx))
-            title(['Subj ' num2str(subject_idx) ' Sess ' num2str(session_idx)])
-            xticklabels([])
-            yticklabels([])
-            caxis([-.5,.5])
-            colorbar('hot')
-            plot_idx = plot_idx + 1;
-        end
-    end
-    
-    plot_idx = 1;
-    figure
-    for session_idx = 1:size(test_data,3)
-        for subject_idx = 1:size(test_data,4)
-            subplot(size(test_data,3),size(test_data,4),plot_idx);
-            imagesc(test_mat(:,:,session_idx, subject_idx))
-            title(['Subject ' num2str(subject_idx) ' Session ' num2str(session_idx)])
-            xticklabels([])
-            yticklabels([])
-            caxis([-.5,.5])
-            colorbar('hot')
-            plot_idx = plot_idx + 1;
-        end
-    end
-    
-end
-if opts.verbose
-    figure();
-    % Training data
-    subplot(1,2,1)
-    imagesc(training_matrix)
-    title('Training Data')
-    xticklabels(model_labels)
-    yticklabels(model_labels)
-    %caxis([min(min(tril(training_matrix,-1))),max(max(tril(training_matrix,-1)))])
-    caxis([-.5,.5])
-    
-    colorbar('hot')
-    [i, j, ~] = find(~isnan(training_matrix));
-    text(i-.3,j,num2str(round(training_matrix(~isnan(training_matrix)),2)));
-    
-    % Test data
-    subplot(1,2,2)
-    imagesc(test_matrix)
-    title('Test Data')
-    xticklabels(test_labels)
-    yticklabels(test_labels)
-    %caxis([min(min(tril(test_matrix,-1))),max(max(tril(test_matrix,-1)))])
-    caxis([-.5,.5])
-    colorbar('hot')
-    [i, j, ~] = find(~isnan(test_matrix));
-    text(i-.3,j,num2str(round(test_matrix(~isnan(test_matrix)),2)));
+    rsa_visualize_similarity_matrices(model_data, test_data, model_mat, test_mat)    
 end
 
-%% Sanity Check
-if sum(isnan(test_matrix(:)))==(numel(test_matrix)-8) || sum(isnan(test_matrix(:)))==numel(test_matrix) || sum(isnan(training_matrix(:)))==numel(training_matrix)
-     warning('One or both input matrices contains all NaN values. this one triggered');
+if opts.verbose
+    rsa_visualize_test_and_training_matrices(training_matrix, model_labels, test_matrix, test_labels)
 end
+
 
 %% Save out the classification results based on greatest correlation coefficient for each test pattern
 % Initialize empty cell matrix for classifications
 
 if ~isfield(opts,'pairwise') || ~opts.pairwise
+    
+    if sum(isnan(test_matrix(:)))==(numel(test_matrix)-8) || sum(isnan(test_matrix(:)))==numel(test_matrix) || sum(isnan(training_matrix(:)))==numel(training_matrix)
+        
+        comparisons = test_labels(reorder_test);
+
+        classification = cell(size(comparisons));
+        classification(:) = {NaN};
+        
+        warning('One or both input matrices contains all NaN values.');
+    end
     
     % Number of stimulus classes to compare, based on the number of rows
     number_classes = size(test_matrix,1);
@@ -319,7 +151,7 @@ if ~isfield(opts,'pairwise') || ~opts.pairwise
     % put the labels back in the order they were put in as
     [~,reorder_test] = sort(test_order);
     classification = classification(reorder_test);
-    comparisons = comparisons(reorder_test);
+    comparisons = test_labels(reorder_test);
     
     
 else
@@ -345,15 +177,12 @@ else
         end
     end
     
-    comparisons = model_classes(comparisons);
-    
+    true_labels = model_classes(comparisons); 
     results_of_comparisons = cell(size(classification,2), 2, size(classification,1));
-        for comp = 1:size(classification,1)
-            results_of_comparisons(:,1,comp) = classification(comp,:)';
-            results_of_comparisons(:,2,comp) = comparisons(comp,:)';
-        end
-        
-
+    for comp = 1:size(classification,1)
+        results_of_comparisons(:,1,comp) = classification(comp,:)';
+        results_of_comparisons(:,2,comp) = true_labels(comp,:)';
+    end
     classification = results_of_comparisons;
     
     

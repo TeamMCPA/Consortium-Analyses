@@ -10,7 +10,7 @@ function allsubj_results = nfold_classify_ParticipantLevel_permutationTest(resul
 
 
 %% Prep some basic parameters
-n_subj = length(results_struct.incl_subj);
+n_subj = length(results_struct.incl_subjects);
 n_sets = size(results_struct.subsets,1);
 n_feature = length(results_struct.incl_features);
 try n_cond = length(unique(results_struct.conditions)); catch, n_cond = length(results_struct.conditions); end

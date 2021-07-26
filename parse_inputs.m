@@ -1,4 +1,4 @@
-function p = parse_inputs(MCP_struct, varargin)
+function input_struct = parse_inputs(MCP_struct, varargin)
 %% input parser 
 % takes input from function that calls it and creates a struct to store
 % clasification parameters
@@ -7,6 +7,9 @@ function p = parse_inputs(MCP_struct, varargin)
 % Arguments:
 % MCP_struct: MCP data structure
 % varargin: input to main function
+
+% created by Anna Herbolzheimer and Ben Zinszer 2019
+% updated by Anna Herbolzheimer summer 2020
 
 p = inputParser;
 
@@ -38,10 +41,15 @@ addParameter(p,'scale_data', false, @islogical);
 addParameter(p,'verbose',true,@islogical);
 addParameter(p, 'summarize_dimensions', {});
 addParameter(p, 'final_dimensions', {});
-addParameter(p, 'oxy_or_deoxy', 'Oxy', @ischar);
+addParameter(p, 'hemoglobin', 'Oxy', @ischar);
+addParameter(p, 'suppress_warnings', false);
 
-% for within subjects decoding with 1 session
-addParameter(p, 'test_percent', []);
+% for within subjects 
+addParameter(p, 'approach', 'loo', @ischar); 
+addParameter(p, 'randomized_or_notrand', 'notrand', @ischar); 
+addParameter(p, 'test_percent', .2); % for kf 
+addParameter(p, 'randomsubset', []); % for kf 
+addParameter(p, 'balance_classes', true);
 
 % parameters for working in different feature spaces
 addParameter(p, 'feature_space', 'channel_space', @ischar);
@@ -57,5 +65,7 @@ addParameter(p,'cond_key',{});
 addParameter(p,'test_marks',{});
 
 parse(p,varargin{:});
+
+input_struct = p.Results;
 
 end
