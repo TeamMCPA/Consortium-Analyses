@@ -43,6 +43,7 @@ addParameter(p, 'summarize_dimensions', {});
 addParameter(p, 'final_dimensions', {});
 addParameter(p, 'hemoglobin', 'Oxy', @ischar);
 addParameter(p, 'suppress_warnings', false);
+addParameter(p, 'permutation_test', false);
 
 % for within subjects 
 addParameter(p, 'approach', 'loo', @ischar); 
