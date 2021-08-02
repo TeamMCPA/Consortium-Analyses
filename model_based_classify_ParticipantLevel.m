@@ -36,24 +36,25 @@ end
 
 %% if data has already been summarized, leave as is. Otherwise, setup MCPA data and summarize it
 if ~any(cellfun(@(x) strcmp(x, 'results_struct'), varargin(find(rem(1:length(varargin), 2)))))
-    allsubj_results = varargin{2};    
+    allsubj_results = setup_MCPA_data(MCP_struct,varargin);    
 else
-    allsubj_results = setup_MCPA_data(MCP_struct,varargin);
+    allsubj_results = varargin{find(rem(1:length(varargin), 2))+1};
 end
+    
 
 %% Make sure that semantic model is a correlation matrix and if not, turn it into one
-[semantic_model,semantic_model_labels] = validate_model_matrix(semantic_model, semantic_model_labels, input_struct.conditions, input_struct);
+[semantic_model,semantic_model_labels] = validate_model_matrix(semantic_model, semantic_model_labels, allsubj_results.conditions, allsubj_results);
 
 %% Prep some basic parameters
-n_subj = length(input_struct.incl_subjects);
-n_sets = size(sets,1);
-n_feature = length(input_struct.incl_features);
-try n_cond = length(unique(input_struct.conditions)); catch, n_cond = length(input_struct.conditions); end
+n_subj = length(allsubj_results.incl_subjects);
+n_sets = size(allsubj_results.subsets,1);
+n_feature = length(allsubj_results.incl_features);
+try n_cond = length(unique(allsubj_results.conditions)); catch, n_cond = length(allsubj_results.conditions); end
 
 
 %% Begin the n-fold process: Select one test subj at a time from MCPA struct
-for s_idx = 1:length(mcpa_summ.incl_subjects)
-    if input_struct.verbose
+for s_idx = 1:length(allsubj_results.incl_subjects)
+    if allsubj_results.verbose
         fprintf('Running %g feature subsets for Subject %g / %g',n_sets,s_idx,n_subj);
     end
     tic;
@@ -72,40 +73,40 @@ for s_idx = 1:length(mcpa_summ.incl_subjects)
     % not be appropriate for other classifiers (like SVM).
        
     [~, ~, test_data, test_labels] = split_test_and_train(s_idx,...
-        input_struct.conditions,...
-        mcpa_summ.patterns,...
-        mcpa_summ.event_types,...
-        final_dimensions,...
-        mcpa_summ.dimensions, [], []);
+        allsubj_results.conditions,...
+        allsubj_results.patterns,...
+        allsubj_results.event_types,...
+        allsubj_results.final_dimensions,...
+        allsubj_results.dimensions, [], []);
     
     % permute the group labels if significance testing 
-    if input_struct.permutation_test
+    if allsubj_results.permutation_test
         num_labels = length(semantic_model_labels);
         permuted_idx = randperm(num_labels)';
         semantic_model_labels = semantic_model_labels(permuted_idx);
     end 
       
     %% Run classifier and compare output with correct labels
-    for set_idx = 1:min(n_sets,input_struct.max_sets)
+    for set_idx = 1:min(n_sets,allsubj_results.max_sets)
         %% Progress reporting bit (not important to function. just sanity)
         % Report at every 5% progress
-        if input_struct.verbose
+        if allsubj_results.verbose
             status_jump = floor(n_sets/20);
             if ~mod(set_idx,status_jump)
                 fprintf(' .')
             end
         end
         % Select the features for this subset
-        set_features = sets(set_idx,:);
+        set_features = allsubj_results.subsets(set_idx,:);
 
         %% Classify
-        inds = pad_dimensions(final_dimensions, 'feature', set_features);
-        [predicted_labels, comparisons] = input_struct.test_handle(...
+        inds = pad_dimensions(allsubj_results.final_dimensions, 'feature', set_features);
+        [predicted_labels, comparisons] = allsubj_results.test_handle(...
                 semantic_model, ...
                 semantic_model_labels,...
                 test_data(inds{:}),...
                 test_labels,...
-                input_struct.opts_struct);
+                allsubj_results.opts_struct);
         %% Record results 
         if size(predicted_labels,2) > 1 % test labels will be a column vector if we don't do pairwise          
             subj_acc = nanmean(strcmp(predicted_labels(:,1,:), predicted_labels(:,2,:)));
@@ -129,7 +130,7 @@ for s_idx = 1:length(mcpa_summ.incl_subjects)
         end
                   
         %% Progress reporting
-        if input_struct.verbose
+        if allsubj_results.verbose
             fprintf(' %0.1f mins\n',toc/60);
         end
     end % end set_idx loop

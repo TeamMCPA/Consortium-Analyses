@@ -52,10 +52,10 @@ end
 
 %% if data has already been summarized, leave as is. Otherwise, setup MCPA data and summarize it
 if ~any(cellfun(@(x) strcmp(x, 'results_struct'), varargin(find(rem(1:length(varargin), 2)))))
-    allsubj_results = varargin{2};    
+    allsubj_results = setup_MCPA_data(MCP_struct,varargin);    
 else
-    allsubj_results = setup_MCPA_data(MCP_struct,varargin);
-end
+    allsubj_results = varargin{find(rem(1:length(varargin), 2))+1};
+end   
 
 %% Make sure that semantic model is a correlation matrix and if not, turn it into one
 [semantic_model,semantic_model_labels] = validate_model_matrix(semantic_model, semantic_model_labels, allsubj_results.conditions, allsubj_results);
@@ -157,10 +157,10 @@ for s_idx = 1:length(MCP_struct)
                 end
             end
             % Select the features for this subset
-            set_features = sets(set_idx,:);
+            set_features = allsubj_results.subsets(set_idx,:);
 
              %% Classify
-            inds = pad_dimensions(final_dimensions, 'feature', set_features);
+            inds = pad_dimensions(allsubj_results.final_dimensions, 'feature', set_features);
             [predicted_labels, comparisons] = allsubj_results.test_handle(...
                     semantic_model, ...
                     semantic_model_labels,...
