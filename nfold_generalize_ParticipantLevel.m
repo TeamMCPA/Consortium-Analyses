@@ -43,132 +43,24 @@ if isstring(MCP_struct) || ischar(MCP_struct)
     MCP_struct = eval(['MCP_struct.' varname{1}]);
 end
 
-%% Parse out the input data
-input_struct = parse_inputs(MCP_struct, varargin{:});  
-
-%% validate classification options
-input_struct.opts_struct = validate_classification_options_input(MCP_struct,input_struct, input_struct.suppress_warnings);
-
-%% Setting up the combinations of feature subsets
-% Create all possible subsets. If setsize is equal to the total number of
-% features, there will only be one 'subset' which is the full feature
-% array. If setsize is less than the total number of features, there will
-% be n-choose-k subsets to analyze.
-%
-% The size of the subsets can grow extremely quickly with the size of
-% incl_features. Consequently, there is a default max of 1000000 sets,
-% which can be customized. If the total number of sets is larger than the
-% max number of allowed sets, the list of sets will be subsampled.
-
-% Determine how many sets will be generated. Can use this later for warning
-% messages or other branching. Sets variable turns into a huge memory hog.
-
-unmapped_sets = find_feature_sets(input_struct);
-sets = map_features_to_sets(input_struct, unmapped_sets);
-
-%% norm check - do we want to scale individual participant data?
-if input_struct.scale_data
-    MCP_struct = scale_individuals(MCP_struct, input_struct);
-end
-
-%% Build MCPA struct for all subjects in the MCP
-% Step 1: Epoching the data by time window
-
-mcpa_struct = MCP_to_MCPA(MCP_struct,...
-    input_struct.incl_subjects,...
-    input_struct.incl_features,...
-    input_struct.incl_channels,...
-    input_struct.time_window,...
-    input_struct.baseline_window,...
-    input_struct.hemoglobin);
-
-% Subset patterns by session
-inds = pad_dimensions(mcpa_struct.dimensions, 'session', input_struct.incl_sessions);
-mcpa_struct.patterns = mcpa_struct.patterns(inds{:}); % Replace patterns matrix with the subsetted sessions data
-
-%% summarize MCPA struct
-% Step 2: Apply the desired function (e.g., @nanmean) for summarizing time
-% window data. You can write custom functions to deal with time- and
-% feature-domain data however you want. Default behavior is to apply the
-% function along the first dimension of the MCPA pattern (instance) and then the second dimension (time),
-% but this can also be changed.
-%% first decide how we want to concatenate or average over our dimensions
-% intermediary step: see if the user specified the summarizing dimensions. If not,
-% recommend what dimensions to average over
-
-if ~isempty(input_struct.summarize_dimensions) || ~isfield(input_struct, 'summarize_dimensions')
-    summarize_dimensions = input_struct.summarize_dimensions;
+%% if data has already been summarized, leave as is. Otherwise, setup MCPA data and summarize it
+if ~any(cellfun(@(x) strcmp(x, 'results_struct'), varargin(find(rem(1:length(varargin), 2)))))
+    allsubj_results = varargin{2};
+    
 else
-    isWithinSubjects = false;
-    warning('summarize_dimensions not specified. Consulting recommend_dimensions.')
-    
-    [summarize_dimensions, ~] = recommend_dimensions(input_struct, isWithinSubjects);
-    
-    fprintf('Summarizing dimensions with %s:\n',func2str(input_struct.summary_handle))
-    fprintf('%s ',summarize_dimensions{:})
-    fprintf('\n')
-end
-
-% then see if the user specified the final dimensions the data should take
-% before going into classification
-if ~isempty(input_struct.final_dimensions) || ~isfield(input_struct, 'final_dimensions')
-    final_dimensions = input_struct.final_dimensions;
-else
-    isWithinSubjects = false;
-    warning('final_dimensions not specified. Consulting recommend_dimensions.')
-    
-    [~, final_dimensions] = recommend_dimensions(input_struct, isWithinSubjects);
-    
-    fprintf('The format the data will be in when it enters the classifier wrapper is: %s', final_dimensions{:});
-    fprintf('\n')
-end
-
-%% then do the summarizing
-if input_struct.verbose
-    disp('Summarizing MCPA patterns with dimensions:');
-    disp(strjoin(mcpa_struct.dimensions,' x '));
-    disp(strjoin(cellfun(@num2str, num2cell(size(mcpa_struct.patterns)),'UniformOutput',false),' x '));
-end
-
-mcpa_summ = summarize_MCPA_Struct(input_struct.summary_handle,...
-    mcpa_struct,...
-    summarize_dimensions);
-
-if input_struct.verbose
-    disp('MCPA patterns have been summarized to:')
-    disp(strjoin(mcpa_summ.dimensions,' x '));
-    disp(strjoin(cellfun(@num2str, num2cell(size(mcpa_summ.patterns)),'UniformOutput',false),' x '));
+    allsubj_results = setup_MCPA_data(MCP_struct,varargin);
 end
 
 %% Prep some basic parameters
-n_subj = length(input_struct.incl_subjects);
-n_sets = size(sets,1);
-n_feature = length(input_struct.incl_features);
+n_subj = length(allsubj_results.incl_subjects);
+n_sets = size(allsubj_results.subsets,1);
+n_feature = length(allsubj_results.incl_features);
 % n_events = max(arrayfun(@(x) max(sum(x.fNIRS_Data.Onsets_Matrix)),MCP_struct));
-n_cond = length(unique(input_struct.conditions));
-groups = unique(input_struct.cond_key(:,2));
+n_cond = length(unique(allsubj_results.conditions));
+groups = unique(allsubj_results.cond_key(:,2));
 n_group = length(groups);
 
-%% Set up the results structure which includes a copy of MCPA_pattern
-
-allsubj_results = create_results_struct(false,...
-    mcpa_summ,...
-    input_struct,...
-    sets,...
-    n_subj,...
-    n_sets,...
-    n_feature,...
-    n_group,...
-    final_dimensions);
-
-stack = dbstack;
-current_folding_function = stack.name;
-allsubj_results.test_type = current_folding_function;
-
 allsubj_results.groups = groups;
-allsubj_results.summary_handle = input_struct.summary_handle;
-allsubj_results.cond_key = input_struct.cond_key;
-allsubj_results.test_marks = input_struct.test_marks;
 
 
 % This renames the conditions for the accuracy field - currently create_results_struct operates as
@@ -181,7 +73,7 @@ end
 
 %% Begin the n-fold process: Select one test subj at a time from MCPA struct
 for s_idx = 1:n_subj
-    if input_struct.verbose
+    if allsubj_results.verbose
         fprintf('Running %g feature subsets for Subject %g / %g',n_sets,s_idx,n_subj);
     end
     tic
@@ -189,7 +81,7 @@ for s_idx = 1:n_subj
     %% Run over feature subsets
     temp_set_results_cond = nan(n_group,n_sets,n_feature);
     
-    if isempty(input_struct.test_marks)
+    if isempty(allsubj_results.test_marks)
         % If the marks to use in test set are not already specified,
         % then throw an error and quit. TO DO: throw an warning instead
         % and randomly select half of each superordinate category.
@@ -199,9 +91,9 @@ for s_idx = 1:n_subj
         % then create the list of superordinate groups
         % (event_groups), the test conditions (test_events), and
         % the training conditions (train_events)
-        mcpa_summ.event_groups = cellfun(@(x) input_struct.cond_key{strcmp(x,input_struct.cond_key(:,1)),2},mcpa_summ.event_types, 'UniformOutput',false);
-        mcpa_summ.test_events = cellfun(@(x) any(strcmp(x,input_struct.test_marks)),mcpa_summ.event_types);
-        mcpa_summ.train_events = cellfun(@(x) all(~strcmp(x,input_struct.test_marks)),mcpa_summ.event_types);
+        allsubj_results.event_groups = cellfun(@(x) allsubj_results.cond_key{strcmp(x,allsubj_results.cond_key(:,1)),2},allsubj_results.event_types, 'UniformOutput',false);
+        allsubj_results.test_events = cellfun(@(x) any(strcmp(x,allsubj_results.test_marks)),allsubj_results.event_types);
+        allsubj_results.train_events = cellfun(@(x) all(~strcmp(x,allsubj_results.test_marks)),allsubj_results.event_types);
     end
     
     
@@ -216,25 +108,32 @@ for s_idx = 1:n_subj
     % not be appropriate for other classifiers (like SVM).
     
     [group_data, group_labels, subj_data, subj_labels] = split_test_and_train(s_idx,...
-        input_struct.conditions,...
-        mcpa_summ.patterns,...
-        mcpa_summ.event_groups,...
-        final_dimensions,...
-        mcpa_summ.dimensions,...
-        mcpa_summ.test_events,...
-        mcpa_summ.train_events);
+        allsubj_results.conditions,...
+        allsubj_results.patterns,...
+        allsubj_results.event_groups,...
+        allsubj_results.final_dimensions,...
+        allsubj_results.dimensions,...
+        allsubj_results.test_events,...
+        allsubj_results.train_events);
+    
+    % permute the group labels if significance testing 
+    if allsubj_results.permutation_test
+        num_labels = length(group_labels);
+        permuted_idx = randperm(num_labels)';
+        group_labels = group_labels(permuted_idx);
+    end
     
     for set_idx = 1:n_sets
         %% Progress reporting bit (not important to function. just sanity)
         % Report at every 5% progress
-        if input_struct.verbose
+        if allsubj_results.verbose
             status_jump = floor(n_sets/20);
             if ~mod(set_idx,status_jump)
                 fprintf(' .')
             end
         end
         % Select the features for this subset
-        set_features = sets(set_idx,:);
+        set_features = allsubj_results.subsets(set_idx,:);
         
         %% classify
         % call differently based on if we do RSA or not
@@ -248,34 +147,34 @@ for s_idx = 1:n_subj
         % labels.
         
         % RSA
-        if strcmp(func2str(input_struct.test_handle),'rsa_classify')
-            [test_labels, comparisons] = input_struct.test_handle(...
+        if strcmp(func2str(allsubj_results.test_handle),'rsa_classify')
+            [test_labels, comparisons] = allsubj_results.test_handle(...
                 group_data(:,set_features,:,:), ...
                 group_labels,...
                 subj_data(:,set_features,:),...
                 subj_labels,...
-                input_struct.opts_struct);
+                allsubj_results.opts_struct);
             
         else
 %             if any(strcmp('incl_sessions',varargin))
 %                 error('incl_sessions parameter not available for non-rsa classifiers at this moment.');
 %             end
-            [test_labels, comparisons] = input_struct.test_handle(...
+            [test_labels, comparisons] = allsubj_results.test_handle(...
                 group_data(:,set_features), ...
                 group_labels,...
                 subj_data(:,set_features),...
                 subj_labels,...
-                input_struct.opts_struct);
+                allsubj_results.opts_struct);
         end
         
         %% Compare the labels output by the classifier to the known labels
         if size(test_labels,2) > 1 % test labels will be a column vector if we don't do pairwise
             
-            if s_idx==1 && set_idx == 1, allsubj_results.accuracy_matrix = nan(n_cond,n_cond,min(n_sets,input_struct.max_sets),n_subj); end
+            if s_idx==1 && set_idx == 1, allsubj_results.accuracy_matrix = nan(n_cond,n_cond,min(n_sets,allsubj_results.max_sets),n_subj); end
             
             if iscell(comparisons)
                 subj_acc = nanmean(strcmp(test_labels(:,1,:), test_labels(:,2,:)));
-                comparisons = cellfun(@(x) find(strcmp(x,unique(mcpa_summ.event_groups))),comparisons);
+                comparisons = cellfun(@(x) find(strcmp(x,unique(allsubj_results.event_groups))),comparisons);
             else
                 subj_acc = nanmean(strcmp(test_labels(:,1,:), test_labels(:,2,:)));
             end
@@ -305,22 +204,22 @@ for s_idx = 1:n_subj
         
     end %set_idx loop
     %% Progress reporting
-    if input_struct.verbose
+    if allsubj_results.verbose
         fprintf(' %0.1f mins\n',toc/60);
     end
 end % s_idx loop
 
 %% Visualization
-if input_struct.verbose
-    if n_sets > 1 && length(input_struct.conditions)==2
+if allsubj_results.verbose
+    if n_sets > 1 && length(allsubj_results.conditions)==2
         
         figure
         errorbar(1:size(allsubj_results.accuracy.cond1.subjXfeature,2),mean(allsubj_results.accuracy.cond1.subjXfeature),std(allsubj_results.accuracy.cond1.subjXfeature)/sqrt(size(allsubj_results.accuracy.cond1.subjXfeature,1)),'r')
         hold;
         errorbar(1:size(allsubj_results.accuracy.cond2.subjXfeature,2),mean(allsubj_results.accuracy.cond2.subjXfeature),std(allsubj_results.accuracy.cond2.subjXfeature)/sqrt(size(allsubj_results.accuracy.cond2.subjXfeature,1)),'k')
         title('Decoding Accuracy across all features: Red = Cond1, Black = Cond2')
-        set(gca,'XTick',[1:length(input_struct.incl_features)])
-        set(gca,'XTickLabel',input_struct.incl_features)
+        set(gca,'XTick',[1:length(allsubj_results.incl_features)])
+        set(gca,'XTickLabel',allsubj_results.incl_features)
         hold off;
         
         figure
@@ -328,7 +227,7 @@ if input_struct.verbose
         hold;
         errorbar(1:size(allsubj_results.accuracy.cond2.subjXfeature,1),mean(allsubj_results.accuracy.cond2.subjXfeature'),repmat(std(mean(allsubj_results.accuracy.cond2.subjXfeature'))/sqrt(size(allsubj_results.accuracy.cond2.subjXfeature,2)),1,size(allsubj_results.accuracy.cond2.subjXfeature,1)),'k')
         title('Decoding Accuracy across all subjects: Red = Cond1, Black = Cond2')
-        set(gca,'XTick',[1:input_struct.incl_subjects])
+        set(gca,'XTick',[1:allsubj_results.incl_subjects])
         hold off;
         
     end

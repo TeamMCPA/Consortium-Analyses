@@ -44,158 +44,48 @@ function allsubj_results = model_based_classify_SessionLevel(MCP_struct, semanti
 
 
 %% Load MCP struct if necessary
-
 if isstring(MCP_struct) || ischar(MCP_struct)
     MCP_struct = load(MCP_struct,'-mat');
     varname = fieldnames(MCP_struct);
     MCP_struct = eval(['MCP_struct.' varname{1}]);
 end
 
-%% Parse out the input data
-input_struct = parse_inputs(MCP_struct, varargin{:});  
-
-%% validate classification options
-input_struct.opts_struct = validate_classification_options_input(MCP_struct, input_struct, input_struct.suppress_warnings);
-
-%% Setting up the combinations of feature subsets
-% Create all possible subsets. If setsize is equal to the total number of
-% features, there will only be one 'subset' which is the full feature
-% array. If setsize is less than the total number of features, there will
-% be n-choose-k subsets to analyze.
-%
-% The size of the subsets can grow extremely quickly with the size of
-% incl_features. Consequently, there is a default max of 1000000 sets,
-% which can be customized. If the total number of sets is larger than the
-% max number of allowed sets, the list of sets will be subsampled.
-
-% Determine how many sets will be generated. Can use this later for warning
-% messages or other branching. Sets variable turns into a huge memory hog.
-
-unmapped_sets = find_feature_sets(input_struct);
-sets = map_features_to_sets(input_struct, unmapped_sets);
-
-%% norm check - do we want to scale individual participant data?
-
-if input_struct.scale_data
-    MCP_struct = scale_individuals(MCP_struct, input_struct);
-end
-
-
-%% Build MCPA struct for all subjects in the MCP
-
-mcpa_struct = MCP_to_MCPA(MCP_struct,...
-     input_struct.incl_subjects,...
-     input_struct.incl_features,...
-     input_struct.incl_channels,...
-     input_struct.time_window,...
-     input_struct.baseline_window,...
-     input_struct.hemoglobin);
-
-% Subset patterns by session
-inds = pad_dimensions(mcpa_struct.dimensions, 'session', input_struct.incl_sessions);
-mcpa_struct.patterns = mcpa_struct.patterns(inds{:}); % Replace patterns matrix with the subsetted sessions data
-
-                     
-%% summarize MCPA struct
-% Step 2: Apply the desired function (e.g., @nanmean) for summarizing time
-% window data. You can write custom functions to deal with time- and
-% feature-domain data however you want. Default behavior is to apply the
-% function along the first dimension of the MCPA pattern (instance) and then the second dimension (time),
-% but this can also be changed.
-
-%% first decide how we want to concatenate or average over our dimensions
-% intermediary step: see if the user specified the summarizing dimensions. If not,
-% recommend what dimensions to average over
-
-if ~isempty(input_struct.summarize_dimensions) || ~isfield(input_struct, 'summarize_dimensions')
-    summarize_dimensions = input_struct.summarize_dimensions;   
+%% if data has already been summarized, leave as is. Otherwise, setup MCPA data and summarize it
+if ~any(cellfun(@(x) strcmp(x, 'results_struct'), varargin(find(rem(1:length(varargin), 2)))))
+    allsubj_results = varargin{2};    
 else
-    isWithinSubjects = true;
-    warning('summarize_dimensions not specified. Consulting recommend_dimensions.')
-    
-    [summarize_dimensions, ~] = recommend_dimensions(input_struct, isWithinSubjects);
-    
-    fprintf('Summarizing dimensions with %s:\n',func2str(input_struct.summary_handle))
-    fprintf('%s ',summarize_dimensions{:})
-    fprintf('\n')
-end
-
-% then see if the user specified the final dimensions the data should take
-% before going into classification
-if ~isempty(input_struct.final_dimensions) || ~isfield(input_struct, 'final_dimensions')
-    final_dimensions = input_struct.final_dimensions;
-else
-    isWithinSubjects = true;
-    warning('final_dimensions not specified. Consulting recommend_dimensions.')
-    
-    [~, final_dimensions] = recommend_dimensions(input_struct, isWithinSubjects);
-   
-    fprintf('The format the data will be in when it enters the classifier wrapper is: %s', final_dimensions{:});
-    fprintf('\n')
-end
-
-%% then do the summarizing
-if input_struct.verbose
-    disp('Summarizing MCPA patterns with dimensions:');
-    disp(strjoin(mcpa_struct.dimensions,' x '));
-    disp(strjoin(cellfun(@num2str, num2cell(size(mcpa_struct.patterns)),'UniformOutput',false),' x '));
-end
-
-mcpa_summ = summarize_MCPA_Struct(input_struct.summary_handle,...
-    mcpa_struct,...
-    summarize_dimensions);
-
-if input_struct.verbose
-    disp('MCPA patterns have been summarized to:')
-    disp(strjoin(mcpa_summ.dimensions,' x '));
-    disp(strjoin(cellfun(@num2str, num2cell(size(mcpa_summ.patterns)),'UniformOutput',false),' x '));
+    allsubj_results = setup_MCPA_data(MCP_struct,varargin);
 end
 
 %% Make sure that semantic model is a correlation matrix and if not, turn it into one
-[semantic_model,semantic_model_labels] = validate_model_matrix(semantic_model, semantic_model_labels, input_struct.conditions, input_struct);
+[semantic_model,semantic_model_labels] = validate_model_matrix(semantic_model, semantic_model_labels, allsubj_results.conditions, allsubj_results);
 
 %% Prep some basic parameters
-
-n_subj = length(input_struct.incl_subjects);
-n_sets = size(sets,1);
-n_feature = length(input_struct.incl_features);
-s = size(mcpa_summ.patterns);
+n_subj = length(allsubj_results.incl_subjects);
+n_sets = size(allsubj_results.subsets,1);
+n_feature = length(allsubj_results.incl_features);
+s = size(allsubj_results.patterns);
 n_sessions = s(end-1);
-try n_cond = length(unique(input_struct.conditions)); catch, n_cond = length(input_struct.conditions); end
+try n_cond = length(unique(allsubj_results.conditions)); catch, n_cond = length(allsubj_results.conditions); end
 
-%% Set up the results structure which includes a copy of MCPA_pattern
-
-allsubj_results = create_results_struct(true,...
-    mcpa_summ,...
-    input_struct,...
-    sets,...
-    n_subj,...
-    n_sets,...
-    n_feature,...
-    n_cond,...
-    final_dimensions);
-                                          
-stack = dbstack;
-current_folding_function = stack.name;
-allsubj_results.test_type = current_folding_function;
-allsubj_results.approach = input_struct.approach;
-allsubj_results.randomized = input_struct.randomized_or_notrand;
+allsubj_results.approach = allsubj_results.approach;
+allsubj_results.randomized = allsubj_results.randomized_or_notrand;
 
 %% now begin the fold
 
 for s_idx = 1:length(MCP_struct)
     
-    if input_struct.verbose
+    if allsubj_results.verbose
         fprintf('Running %g feature subsets for Subject %g / %g \n',n_sets,s_idx,n_subj);
     end
     tic;
     
     % might want to get rid of this part later - purpose is to subset out
     % the participant for this round of CV
-    if length(size(mcpa_summ.patterns)) == 5
-        subject_patterns = mcpa_summ.patterns(:,:,:,:,s_idx);
+    if length(size(allsubj_results.patterns)) == 5
+        subject_patterns = allsubj_results.patterns(:,:,:,:,s_idx);
     else
-        subject_patterns = mcpa_summ.patterns(:,:,:,s_idx);
+        subject_patterns = allsubj_results.patterns(:,:,:,s_idx);
     end
     
     %% do we have more than one session to classify on?
@@ -207,10 +97,10 @@ for s_idx = 1:length(MCP_struct)
         fold_dim = ndims(subject_patterns);
         num_data = size(subject_patterns,fold_dim);
         
-        if ~isfield(input_struct, 'test_percent') || isempty(input_struct.test_percent)
+        if ~isfield(allsubj_results, 'test_percent') || isempty(allsubj_results.test_percent)
             test_percent = .2;
         else
-            test_percent = input_struct.test_percent;
+            test_percent = allsubj_results.test_percent;
         end
         num_in_fold = num_data*test_percent;
         num_folds = num_data/num_in_fold;
@@ -243,61 +133,68 @@ for s_idx = 1:length(MCP_struct)
         % not be appropriate for other classifiers (like SVM).
         
         [~, ~, test_data, test_labels] = split_test_and_train(fold,...
-            input_struct.conditions,...
+            allsubj_results.conditions,...
             subject_patterns,...
-            mcpa_summ.event_types,...
-            final_dimensions,...
-            mcpa_summ.dimensions, [], []);
+            allsubj_results.event_types,...
+            allsubj_results.final_dimensions,...
+            allsubj_results.dimensions, [], []);
+        
+        % permute the group labels if significance testing 
+        if allsubj_results.permutation_test
+            num_labels = length(semantic_model_labels);
+            permuted_idx = randperm(num_labels)';
+            semantic_model_labels = semantic_model_labels(permuted_idx);
+        end 
                                                                             
-            %% Run classifier and compare output with correct labels
-            for set_idx = 1:min(n_sets,input_struct.max_sets)    
-                %% Progress reporting bit (not important to function. just sanity)
-                % Report at every 5% progress
-                if input_struct.verbose
-                    status_jump = floor(n_sets/20);
-                    if ~mod(set_idx,status_jump)
-                        fprintf(' .')
-                    end
+        %% Run classifier and compare output with correct labels
+        for set_idx = 1:min(n_sets,allsubj_results.max_sets)    
+            %% Progress reporting bit (not important to function. just sanity)
+            % Report at every 5% progress
+            if allsubj_results.verbose
+                status_jump = floor(n_sets/20);
+                if ~mod(set_idx,status_jump)
+                    fprintf(' .')
                 end
-                % Select the features for this subset
-                set_features = sets(set_idx,:);
+            end
+            % Select the features for this subset
+            set_features = sets(set_idx,:);
 
-                 %% Classify
-                inds = pad_dimensions(final_dimensions, 'feature', set_features);
-                [predicted_labels, comparisons] = input_struct.test_handle(...
-                        semantic_model, ...
-                        semantic_model_labels,...
-                        test_data(inds{:}),...
-                        test_labels,...
-                        input_struct.opts_struct);
+             %% Classify
+            inds = pad_dimensions(final_dimensions, 'feature', set_features);
+            [predicted_labels, comparisons] = allsubj_results.test_handle(...
+                    semantic_model, ...
+                    semantic_model_labels,...
+                    test_data(inds{:}),...
+                    test_labels,...
+                    allsubj_results.opts_struct);
 
-                %% Record results 
-                if size(predicted_labels,2) > 1 % test labels will be a column vector if we don't do pairwise          
-                    subj_acc = nanmean(strcmp(predicted_labels(:,1,:), predicted_labels(:,2,:)));
-                    nan_idx = cellfun(@(x) any(isnan(x)), predicted_labels(:,1,:), 'UniformOutput', false);
-                    subj_acc(:,:,[nan_idx{1,:,:}]) = nan;
+            %% Record results 
+            if size(predicted_labels,2) > 1 % test labels will be a column vector if we don't do pairwise          
+                subj_acc = nanmean(strcmp(predicted_labels(:,1,:), predicted_labels(:,2,:)));
+                nan_idx = cellfun(@(x) any(isnan(x)), predicted_labels(:,1,:), 'UniformOutput', false);
+                subj_acc(:,:,[nan_idx{1,:,:}]) = nan;
 
-                    % Then loop through comparisons and save accuracy to the results struct
-                    for comp = 1:size(comparisons,1)
-                        allsubj_results.accuracy_matrix(comparisons(comp,1),comparisons(comp,2),set_idx, folding_idx, s_idx) = subj_acc(comp);
-                    end
-
-                else
-                    subj_acc = double(strcmp(predicted_labels, test_labels));
-                    nan_idx = cellfun(@isnan, predicted_labels);
-                    subj_acc(nan_idx) = NaN;
-                    for cond_idx = 1:n_cond
-                        cond_acc = nanmean(subj_acc(comparisons == cond_idx));
-                        allsubj_results.accuracy(cond_idx).subsetXsubj(:,s_idx) = cond_acc;
-                        allsubj_results.accuracy(cond_idx).subjXfeature(s_idx,:) = cond_acc;
-                        allsubj_results.accuracy(cond_idx).subjXsession(s_idx,folding_idx) = nanmean(temp_set_results_cond(cond_idx,:,:),3);
-                    end
+                % Then loop through comparisons and save accuracy to the results struct
+                for comp = 1:size(comparisons,1)
+                    allsubj_results.accuracy_matrix(comparisons(comp,1),comparisons(comp,2),set_idx, folding_idx, s_idx) = subj_acc(comp);
                 end
-                
-                
-            end % end set_idx
+
+            else
+                subj_acc = double(strcmp(predicted_labels, test_labels));
+                nan_idx = cellfun(@isnan, predicted_labels);
+                subj_acc(nan_idx) = NaN;
+                for cond_idx = 1:n_cond
+                    cond_acc = nanmean(subj_acc(comparisons == cond_idx));
+                    allsubj_results.accuracy(cond_idx).subsetXsubj(:,s_idx) = cond_acc;
+                    allsubj_results.accuracy(cond_idx).subjXfeature(s_idx,:) = cond_acc;
+                    allsubj_results.accuracy(cond_idx).subjXsession(s_idx,folding_idx) = nanmean(temp_set_results_cond(cond_idx,:,:),3);
+                end
+            end
+
+
+        end % end set_idx
     %% Progress reporting
-    if input_struct.verbose
+    if allsubj_results.verbose
         fprintf(' %0.1f mins\n',toc/60);
     end
     end % end session loop

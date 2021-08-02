@@ -62,153 +62,38 @@ if isstring(MCP_struct) || ischar(MCP_struct)
     MCP_struct = eval(['MCP_struct.' varname{1}]);
 end
 
-%% Parse out the input data
-input_struct = parse_inputs(MCP_struct, varargin{:});  
-
-%% validate classification options
-input_struct.opts_struct = validate_classification_options_input(MCP_struct, input_struct, input_struct.suppress_warnings);
-
-%% Setting up the combinations of feature subsets
-
-% Create all possible subsets. If setsize is equal to the total number of
-% features, there will only be one 'subset' which is the full feature
-% array. If setsize is less than the total number of features, there will
-% be n-choose-k subsets to analyze.
-%
-% The size of the subsets can grow extremely quickly with the size of
-% incl_features. Consequently, there is a default max of 1000000 sets,
-% which can be customized. If the total number of sets is larger than the
-% max number of allowed sets, the list of sets will be subsampled.
-
-% Determine how many sets will be generated. Can use this later for warning
-% messages or other branching. Sets variable turns into a huge memory hog.
-
-unmapped_sets = find_feature_sets(input_struct);
-sets = map_features_to_sets(input_struct, unmapped_sets);
-
-
-%% norm check - do we want to scale individual participant data?
-
-if input_struct.scale_data
-    MCP_struct = scale_individuals(MCP_struct, input_struct);
-end
-
-%% Build MCPA struct for all subjects in the MCP
-
-mcpa_struct = MCP_to_MCPA(MCP_struct,...
-     input_struct.incl_subjects,...
-     input_struct.incl_features,...
-     input_struct.incl_channels,...
-     input_struct.time_window,...
-     input_struct.baseline_window,...
-     input_struct.hemoglobin);
-
-% Subset patterns by session
-inds = pad_dimensions(mcpa_struct.dimensions, 'session', input_struct.incl_sessions);
-mcpa_struct.patterns = mcpa_struct.patterns(inds{:}); % Replace patterns matrix with the subsetted sessions data
-
-
-%% summarize MCPA struct
-
-% Step 2: Apply the desired function (e.g., @nanmean) for summarizing time
-% window data. You can write custom functions to deal with time- and
-% feature-domain data however you want. Default behavior is to apply the
-% function along the first dimension of the MCPA pattern (instance) and then the second dimension (time),
-% but this can also be changed.
-
-%% first decide how we want to concatenate or average over our dimensions
-
-% intermediary step: see if the user specified the summarizing dimensions. If not,
-% recommend what dimensions to average over
-
-if ~isempty(input_struct.summarize_dimensions) || ~isfield(input_struct, 'summarize_dimensions')
-    summarize_dimensions = input_struct.summarize_dimensions;   
+%% if data has already been summarized, leave as is. Otherwise, setup MCPA data and summarize it
+if ~any(cellfun(@(x) strcmp(x, 'results_struct'), varargin(find(rem(1:length(varargin), 2)))))
+    allsubj_results = varargin{2};
+    
 else
-    isWithinSubjects = true;
-    warning('summarize_dimensions not specified. Consulting recommend_dimensions.')
-    
-    [summarize_dimensions, ~] = recommend_dimensions(input_struct, isWithinSubjects);
-    
-    fprintf('Summarizing dimensions with %s:\n',func2str(input_struct.summary_handle))
-    fprintf('%s ',summarize_dimensions{:})
-    fprintf('\n')
-end
-
-% then see if the user specified the final dimensions the data should take
-% before going into classification
-if ~isempty(input_struct.final_dimensions) || ~isfield(input_struct, 'final_dimensions')
-    final_dimensions = input_struct.final_dimensions;
-else
-    isWithinSubjects = true;
-    warning('final_dimensions not specified. Consulting recommend_dimensions.')
-    
-    [~, final_dimensions] = recommend_dimensions(input_struct, isWithinSubjects);
-   
-    fprintf('The format the data will be in when it enters the classifier wrapper is: %s', final_dimensions{:});
-    fprintf('\n')
-end
-
-%% then do the summarizing
-
-if input_struct.verbose
-    disp('Summarizing MCPA patterns with dimensions:');
-    disp(strjoin(mcpa_struct.dimensions,' x '));
-    disp(strjoin(cellfun(@num2str, num2cell(size(mcpa_struct.patterns)),'UniformOutput',false),' x '));
-end
-
-mcpa_summ = summarize_MCPA_Struct(input_struct.summary_handle,...
-    mcpa_struct,...
-    summarize_dimensions);
-
-if input_struct.verbose
-    disp('MCPA patterns have been summarized to:')
-    disp(strjoin(mcpa_summ.dimensions,' x '));
-    disp(strjoin(cellfun(@num2str, num2cell(size(mcpa_summ.patterns)),'UniformOutput',false),' x '));
+    allsubj_results = setup_MCPA_data(MCP_struct,varargin);
 end
 
 %% Prep some basic parameters
 
-n_subj = length(input_struct.incl_subjects);
-n_sets = size(sets,1);
-n_feature = length(input_struct.incl_features);
-s = size(mcpa_summ.patterns);
+n_subj = length(allsubj_results.incl_subjects);
+n_sets = size(allsubj_results.subsets,1);
+n_feature = length(allsubj_results.incl_features);
+s = size(allsubj_results.patterns);
 n_sessions = s(end-1);
-try n_cond = length(unique(input_struct.conditions)); catch, n_cond = length(input_struct.conditions); end
-
-%% Set up the results structure which includes a copy of MCPA_pattern
-
-allsubj_results = create_results_struct(true,...
-    mcpa_summ,...
-    input_struct,...
-    sets,...
-    n_subj,...
-    n_sets,...
-    n_feature,...
-    n_cond,...
-    final_dimensions);
-                                          
-stack = dbstack;
-current_folding_function = stack.name;
-allsubj_results.test_type = current_folding_function;
-allsubj_results.approach = input_struct.approach;
-allsubj_results.randomized = input_struct.randomized_or_notrand;
+try n_cond = length(unique(allsubj_results.conditions)); catch, n_cond = length(allsubj_results.conditions); end
 
 %% for one subject at a time...
-
 for s_idx = 1:n_subj
     
-    if input_struct.verbose
+    if allsubj_results.verbose
         fprintf('Running %g feature subsets for Subject %g / %g \n',n_sets,s_idx,n_subj);
     end
     tic;
     
     inds = pad_dimensions(allsubj_results.dimensions, 'subject', s_idx);
-    subject_patterns = mcpa_summ.patterns(inds{:});
+    subject_patterns = allsubj_results.patterns(inds{:});
     
+    %% set up indexing for either k-fold(kf) or leave one out (loo) CV
     %% K-Fold (kf)
-    
-    if strcmp(input_struct.approach, 'kf')   
-        subject_labels = repmat(mcpa_summ.event_types, (size(subject_patterns,1)/n_cond),1);
+    if strcmp(allsubj_results.approach, 'kf')   
+        subject_labels = repmat(allsubj_results.event_types, (size(subject_patterns,1)/8),1);
 
         % remove empty rows
         remove = [];
@@ -221,9 +106,9 @@ for s_idx = 1:n_subj
         subject_patterns(remove,:) = [];
         subject_labels(remove) = [];
 
-        % find balanced classes
+        % find indices for each fold
         num_data = size(subject_patterns,1);
-        num_in_fold = floor(num_data*input_struct.test_percent);
+        num_in_fold = floor(num_data*allsubj_results.test_percent);
         num_folds = floor(num_data/num_in_fold);
         fold_end_idx_array = [num_in_fold: num_in_fold: num_in_fold*num_folds];
         fold_end_idx_array(end) = num_data;
@@ -231,7 +116,7 @@ for s_idx = 1:n_subj
 
         
         % should we randomize the rows?
-        if strcmp(input_struct.randomized_or_notrand, 'randomized')
+        if strcmp(allsubj_results.randomized_or_notrand, 'randomized')
             rng('default')
             rand_inds = randperm(size(subject_patterns,1));
             subject_patterns(rand_inds, :);
@@ -240,11 +125,11 @@ for s_idx = 1:n_subj
         
         
         % should we balance the classes?
-        if input_struct.balance_classes
-            num_repetitions = num_data/length(input_struct.conditions);
+        if allsubj_results.balance_classes
+            num_repetitions = num_data/length(allsubj_results.conditions);
             new_kfold_mat = validate_balanced_classes(fold_start_idx_array,...
                 fold_end_idx_array,...
-                input_struct,...
+                allsubj_results,...
                 num_folds,...
                 subject_labels,...
                 num_repetitions);
@@ -254,18 +139,18 @@ for s_idx = 1:n_subj
         event_types = subject_labels;
 
     %% Leave-One-Out (loo)
-    elseif strcmp(input_struct.approach, 'loo')   
+    elseif strcmp(allsubj_results.approach, 'loo')   
         % randomize trials, if needed
-        if strcmp(input_struct.randomized_or_notrand, 'randomized') 
+        if strcmp(allsubj_results.randomized_or_notrand, 'randomized') 
             new_index = randperm(size(subject_patterns,ndims(subject_patterns)));
             subject_patterns = subject_patterns(:,:,new_index);
         end
         
         % define where test and train labels are derived from
-        event_types = mcpa_summ.event_types;
+        event_types = allsubj_results.event_types;
         
         % define the fold
-        num_folds = length(MCP_struct(s_idx).Experiment.Runs);
+        num_folds = size(subject_patterns, ndims(subject_patterns));
     end
     
     %% Begin cross-validation
@@ -273,29 +158,23 @@ for s_idx = 1:n_subj
         %% Define fold_idx: indices in subject_patterns that will be test data
         temp_set_results_cond = nan(n_cond,n_sets,n_feature);
         
-        if strcmp(input_struct.approach, 'kf')
+        if strcmp(allsubj_results.approach, 'kf')
             fold = new_kfold_mat(folding_idx,~isnan(new_kfold_mat(folding_idx,:)));
         else
             fold = folding_idx;
         end
 
-        %% Folding & Dispatcher: Here's the important part
-        
-        % Right now, the data have to be treated differently for 2
-        % conditions vs. many conditions. In MCPA this is because 2
-        % conditions can only be compared in feature space (or, hopefully,
-        % MNI space some day). If there are a sufficient number of
-        % conditions (6ish or more), we abstract away from feature space
-        % using RSA methods. Then classifier is trained/tested on the RSA
-        % structures. This works for our previous MCPA studies, but might
-        % not be appropriate for other classifiers (like SVM).
+        %% Split data into test and train 
+        % on each fold, one participant's data will be left out as the test
+        % set, the rest of the participants data will be combined according to
+        % final_dimensions. 
         
         [train_data, train_labels, test_data, test_labels] = split_test_and_train(fold,...
-            input_struct.conditions,...
+            allsubj_results.conditions,...
             subject_patterns,... 
             event_types,...
-            final_dimensions,...
-            mcpa_summ.dimensions, [], []);
+            {},...
+            allsubj_results.dimensions, [], []);
                 
         % Skip an iteration if all of train_data or all of test_data is NaN
         if sum(~isnan(train_data(:)))==0 || sum(~isnan(test_data(:)))==0
@@ -312,16 +191,16 @@ for s_idx = 1:n_subj
         % datasets. If what you'er trying to sample is less than the
         % available dataset, this function will sample without replacement.
         
-        if strcmp(input_struct.approach, 'kf') && (~isfield(input_struct, 'randomsubset')||isempty(input_struct.randomsubset))
+        if strcmp(allsubj_results.approach, 'kf') && (~isfield(allsubj_results, 'randomsubset')||isempty(allsubj_results.randomsubset))
             allsubj_results.kf_randomsubset = 'no: using the whole dataset';
             allsubj_results.kf_sampling = 'no sampling';  
             
-        elseif strcmp(input_struct.approach, 'kf') && isfield(input_struct, 'randomsubset')
+        elseif strcmp(allsubj_results.approach, 'kf') && isfield(allsubj_results, 'randomsubset')
             n_test = size(test_data,1);
             n_train = size(train_data,1);
             
-            subset_test = floor(input_struct.randomsubset*input_struct.test_percent);
-            subset_train = floor(input_struct.randomsubset*(1-input_struct.test_percent));
+            subset_test = floor(allsubj_results.randomsubset*allsubj_results.test_percent);
+            subset_train = floor(allsubj_results.randomsubset*(1-allsubj_results.test_percent));
             allsubj_results.kf_randomsubset = sprintf('yes: %d out of %d test data and %d out of %d train data', subset_test, n_test, subset_train, n_train); 
 
             if subset_test <= n_test
@@ -348,11 +227,10 @@ for s_idx = 1:n_subj
             
         end
 
-        %% Run classifier and compare output with correct labels
-        
-        for set_idx = 1:min(n_sets,input_struct.max_sets)    
+        %% Run classifier and compare output with correct labels        
+        for set_idx = 1:min(n_sets,allsubj_results.max_sets)    
 
-            if input_struct.verbose
+            if allsubj_results.verbose
                 status_jump = floor(n_sets/20);
                 if ~mod(set_idx,status_jump)
                     fprintf(' .')
@@ -360,16 +238,16 @@ for s_idx = 1:n_subj
             end
             
             % Select the features for this subset
-            set_features = sets(set_idx,:);
+            set_features = allsubj_results.subsets(set_idx,:);
 
             %% Classify
-            inds = pad_dimensions(final_dimensions, 'feature', set_features);
-            [predicted_labels, comparisons] = input_struct.test_handle(...
+            inds = pad_dimensions(allsubj_results.final_dimensions, 'feature', set_features);
+            [predicted_labels, comparisons] = allsubj_results.test_handle(...
                     train_data(inds{:}), ...
                     train_labels,...
                     test_data(inds{:}),...
                     test_labels,...
-                    input_struct.opts_struct);
+                    allsubj_results.opts_struct);
 
             %% Record results 
             if size(predicted_labels,2) > 1 % test labels will be a column vector if we don't do pairwise          
@@ -393,10 +271,10 @@ for s_idx = 1:n_subj
                     allsubj_results.accuracy(cond_idx).subjXsession(s_idx,folding_idx) = nanmean(temp_set_results_cond(cond_idx,:,:),3);
                 end
             end
-            
+
         end % end set_idx
         
-    if input_struct.verbose
+    if allsubj_results.verbose
         fprintf(' %0.1f mins\n',toc/60);
     end
     end % end session loop
