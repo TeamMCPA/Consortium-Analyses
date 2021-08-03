@@ -1,5 +1,6 @@
-
 function parsed_opts = parse_opts(opts)
+%% Converts classification options struct into name value pairs for MATLAB’s classifiers (e.g. fitcknn)
+
     if isempty(opts)
         opts = struct;
     end
