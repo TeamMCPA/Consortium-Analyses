@@ -1,8 +1,5 @@
 function input_struct = parse_inputs(MCP_struct, varargin)
-%% input parser 
-% takes input from function that calls it and creates a struct to store
-% clasification parameters
-% if not input is provided for a particular variable, it creates default values
+%% Takes input into cross validation wrappers and creates a struct storing all parameters needed for classification
 
 % Arguments:
 % MCP_struct: MCP data structure
