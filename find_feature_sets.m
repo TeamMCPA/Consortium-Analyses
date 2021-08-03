@@ -2,7 +2,7 @@ function sets = find_feature_sets(results)
 %% check memory capacity and create all possible subsets
 % Arguments:
 % results: the results struct from parse_inputs - contains all parameters
-    % for classification. Must be passed through as p.Results
+    % for classification. 
     
 n_all_sets = nchoosek(length(results.incl_features), results.setsize);
 size_of_sets_inmem = n_all_sets*results.setsize*8+100;
