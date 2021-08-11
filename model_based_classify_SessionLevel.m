@@ -1,17 +1,9 @@
 function allsubj_results = model_based_classify_SessionLevel(MCP_struct, semantic_model,semantic_model_labels, varargin)
-%% function to classify sessions from individual participants
-% n-fold within subjects cross-validation for n subjects with m sessions
-% to classify individual sessions' average response patterns.
-
-
-% This wrapper allows the user to choose if
-% features will be averaged within-participants to produce a single
-% participant-level observation or if individual events will be preserved.
-% If the featuers are averaged within-participants, the training set
-% is constrained to the number of participants minus 1. Otherwise the
-% training set will be (participants - 1) * (number of instances of an
-% object).
-
+%% model_based_classify_SessionLevel takes an MCP struct and performs
+%RSA classification for n subjects to classify individual
+%sessions' average response patterns using a semantic model. This wrapper assumes that
+%features will be averaged within-session to produce a single
+%session-level observation. 
 % Several parameters can be changed,
 % including which functions are used to generate features and what
 % classifier is trained. See Arguments below:
