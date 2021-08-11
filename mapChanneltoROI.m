@@ -1,35 +1,43 @@
-function mcp_struct = create_transformation_matrix(mcp_struct, convert_to_ROI, pos_pathname, probe_loc_file, database, areas, session_idx, use_proportional, mapping_function)
-%% create a transformation matrix for each subjects' sessions
-% input:
-% mcp_struct - mcp data structure for one participant
-% convert_to_ROI - true or false of whether we want ROI space or
-% channel space
-% pos_pathname - path to where that participant's session probe location data can be found
-% probe_loc_file - name of file where that session's probe locations are
-% stored (usually POS.mat)
-% ROIdatabase - database with MNI coordiantes where ROIs can be found
-% areas - name of ROIs to co-register to as they appear in MNI database
-% use_proportional - use proportional assignment instead of assinging one channel to one ROI
-% mapping_function - function used to map channels into ROIs or voxels
+function transformation_mat = mapChanneltoROI(n_chan, brain_atlas, channel_locs, areas, use_proportional)
+%% co-register channels to a region of interest
+% n_chan = number of channels on nirs cap, not number included in analysis
+% n_areas = number of regions of interest
+% brain_atlas = file path to find the TDdatabase
+% channel_locs = channel_locs file that contains where the probes sat for a single
+% participant's session
+% use_proportional = true/false on whether to use proportional channel assignment
 
-%% check that only one subject was entered at a time
-if length(mcp_struct) > 1
-    error('Only one subject can be entered into create_transformation_matrix at a time. Please specify which participant to use.')
+%% initialize variables
+n_areas = length(areas);
+transformation_mat = zeros(n_chan, n_areas);
+brain_map = brain_atlas;
+
+%% then find distance for every channel
+channel_locations = channel_locs.R.ch.xyzC';
+
+
+if use_proportional
+    rad = 15; 
+    for chan = 1:n_chan    
+        for area = 1:length(areas)
+            eval(['areaMNI = wholeMaskMNIAll.',areas{area},';']);
+            transformation_mat(chan, area) = sum(sqrt(sum((areaMNI - channel_locations(chan,:)).^2,2)) <= rad);
+        end
+        transformation_mat(chan, :) = transformation_mat(chan, :)./sum(transformation_mat(chan, :));
+    end
+else
+    for chan = 1:n_chan
+    areaDist = nan(1,n_areas);
+    for area = 1:n_areas
+        eval(['areaMNI = brain_map.',areas{area},';']);
+        if isempty(areaMNI)
+            continue;
+        end
+        areaDist(area) = min(sqrt(sum((areaMNI - repmat(channel_locations(chan,:),size(areaMNI,1),1)).^2,2)));
+    end
+    %areaDist = areaDist(areaDist ~= 0);
+    [val, chan_area] = min(areaDist);
+    transformation_mat(chan, chan_area) = 1;
 end
-
-%% create transformation matrices
-n_channels = length(mcp_struct.Experiment.Probe_arrays.Channels);
-
-if convert_to_ROI
-    
-    pos_mat = load([pos_pathname probe_loc_file]); % pos file
-    transformation_mat = mapping_function(n_channels, database, pos_mat, areas, use_proportional);
-
-else    
-    transformation_mat = eye(n_channels);
-end
-
-mcp_struct.Experiment.Runs(session_idx).Transformation_Matrix = transformation_mat;
-
 
 end
