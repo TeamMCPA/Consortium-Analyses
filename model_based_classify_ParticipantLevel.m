@@ -1,12 +1,10 @@
 function allsubj_results = model_based_classify_ParticipantLevel(MCP_struct, semantic_model, semantic_model_labels, varargin)
-%% rsa_classify_IndividualSubjects takes an MCP struct and performs
+%% model_based_classify_ParticipantLevel takes an MCP struct and performs
 % RSA classification for n subjects to classify individual
 % participants' average response patterns using a semantic model. This wrapper assumes that
 % features will be averaged within-participants to produce a single
-% participant-level observation. Thus the training set is constrained to
-% the number of participants minus 1. Several parameters can be changed,
-% including which functions are used to generate features and what
-% classifier is trained. See Arguments below:
+% participant-level observation. Several parameters can be changed,
+% including which functions are used to generate features. See Arguments below:
 %
 % Arguments:
 % MCP_struct: either an MCP-formatted struct or the path to a Matlab file
