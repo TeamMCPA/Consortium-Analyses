@@ -1,6 +1,17 @@
 function [train_data, train_labels, test_data, test_labels] = split_test_and_train(fold_idx, conditions, pattern_data, event_types, final_dimensions, dimension_labels, test_events, train_events, subject_labels) 
 %% step 1: find the locations of the conditions we would like to classify
-% only need them if we aren't supplying test and train events
+% fold_idx: index of the held out subject, session, or trials (if k-fold)
+% conditions: conditions used for classification
+% pattern_data: summarized multivariate patterns
+% event_types: all events or conditions in this experiment
+% final_dimensions: dimensions the data should have when leaving this function
+% dimension_labels: current dimensions the data is in (after leaving summarize_MCPA_struct)
+% test_events: [] if not using nfold_generalize_ParticipantLevel, otherwise, this corresponds to which exemplars are in the test set
+% train_events: [] if not using nfold_generalize_ParticipantLevel, otherwise, this corresponds to which exemplars are in the train set
+% subject_labels: [] unless doing k-fold, otherwise, the k-fold wrapper initializes the subject labels outside of this function
+
+
+%% only need them if we aren't supplying test and train events
 if isempty(test_events) && ndims(pattern_data) ~= 2
     % Set logical flags for indexing the conditions that will be compared.
     % Loop through the whole list of conditions and create flags for each.
