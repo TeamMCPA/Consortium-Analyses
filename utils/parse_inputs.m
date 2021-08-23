@@ -25,22 +25,25 @@ end
 % parameters used for all kinds of classifiers
 addParameter(p,'incl_channels',[1:max(arrayfun(@(x) size(x.Experiment.Runs(1).Transformation_Matrix,1),MCP_struct))],@isnumeric);
 addParameter(p,'incl_subjects',[1:length(MCP_struct)],@isnumeric);
-addParameter(p,'incl_sessions',[1:max(arrayfun(@(x) length(x.Experiment.Runs),MCP_struct))],@isnumeric);
-addParameter(p,'time_window',[2,6],@isnumeric);
-addParameter(p,'baseline_window',[-5 0],@isnumeric);
 addParameter(p,'conditions',unique(cellstr(char(cellfun(@(x) char(x{:}), arrayfun(@(x) unique({x.Experiment.Conditions.Name},'stable'),MCP_struct, 'UniformOutput',false),'UniformOutput',false))),'stable'),@iscell);
 addParameter(p,'summary_handle',@nanmean);
 addParameter(p,'setsize',max(arrayfun(@(x) size(x.Experiment.Runs(1).Transformation_Matrix,2),MCP_struct)),@isnumeric);
 addParameter(p,'max_sets',1000000,@isnumeric);
 addParameter(p,'test_handle',@mcpa_classify);
 addParameter(p,'opts_struct',[],@isstruct);
-addParameter(p,'scale_data', false, @islogical);
-addParameter(p,'verbose',true,@islogical);
+addParameter(p,'verbose',true);
 addParameter(p, 'summarize_dimensions', {});
 addParameter(p, 'final_dimensions', {});
-addParameter(p, 'hemoglobin', 'Oxy', @ischar);
 addParameter(p, 'suppress_warnings', false);
 addParameter(p, 'permutation_test', false);
+
+% parameters that can have more than one value set
+addParameter(p, 'hemoglobin', 'Oxy');
+addParameter(p,'time_window',[2,6]);
+addParameter(p,'baseline_window',[-5 0]);
+addParameter(p,'scale_data', false);
+addParameter(p,'incl_sessions',[1:max(arrayfun(@(x) length(x.Experiment.Runs),MCP_struct))]);
+
 
 % for within subjects 
 addParameter(p, 'approach', 'loo', @ischar); 
