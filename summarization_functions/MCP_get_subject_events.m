@@ -128,7 +128,8 @@ for hemo = 1:length(hemo_types)
     for type_i = 1 : length(event_types)
 
         matched_conditions = cell2mat(arrayfun(@(x) strcmp(event_types{type_i},x.Name), mcp_struct.Experiment.Conditions,'UniformOutput',false)); 
-        event_marks = [mcp_struct.Experiment.Conditions(matched_conditions).Mark];
+        %event_marks = [mcp_struct.Experiment.Conditions(matched_conditions).Mark];
+        event_marks = find(matched_conditions);
 
         % Each instance of a given condition (i.e., each individual event) is
         % extracted and entered into the event_matrix. Since there are often an

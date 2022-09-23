@@ -21,12 +21,12 @@ SD = MCP_data.Experiment.Probe_arrays.Geometry;
 %% DELETE THIS CODE BLOCK AFTER REPAIRING THE MCP DATA
 % It manually switches the sources and detectors, whose positions were
 % incorrectly coded in the SD struct originally used to import the data.
-warning('HARD-CODED SWAP OF SOURCE AND DETECTOR POSITIONS');
-warning('This swap is a correction for incorrect SD data used to build the Consortium data. Remove for new data.');
-SD2 = SD;
-SD2.SrcPos = SD.DetPos;
-SD2.DetPos = SD.SrcPos;
-SD = SD2;
+% warning('HARD-CODED SWAP OF SOURCE AND DETECTOR POSITIONS');
+% warning('This swap is a correction for incorrect SD data used to build the Consortium data. Remove for new data.');
+% SD2 = SD;
+% SD2.SrcPos = SD.DetPos;
+% SD2.DetPos = SD.SrcPos;
+% SD = SD2;
 
 %% Initiate the figure
 chanfig = figure;

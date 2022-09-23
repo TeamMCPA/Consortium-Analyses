@@ -1,5 +1,5 @@
 function MCP_Struct = build_MCP(data_file_array, subject_id, probe_array_id, marks_matrix_name)
-%BUILD_MCP Grabs data from the struct in Homer2-formatted .nirs files and 
+%BUILD_MCP Grabs data from the struct in Homer2-formatted .nirs files and
 %creates an MCP struct for multivariate pattern analyses
 %
 % NOTICE: The funtion is a wrapper for combining multiple probes and runs
@@ -18,13 +18,13 @@ function MCP_Struct = build_MCP(data_file_array, subject_id, probe_array_id, mar
 % hierarchical structure must still be used, as follows:
 % data_file_array = { {Subj1.nirs}, {Subj2.nirs}, {Subj3.nirs} };
 if iscell(data_file_array)
-if iscell(data_file_array{1,1})
-    if ischar(subject_id), subject_id = cellstr(subject_id); end
-    for subj_num = 1:length(data_file_array)
-        MCP_Struct(subj_num) = build_MCP(data_file_array{subj_num},subject_id{subj_num},probe_array_id,marks_matrix_name);
+    if iscell(data_file_array{1,1})
+        if ischar(subject_id), subject_id = cellstr(subject_id); end
+        for subj_num = 1:length(data_file_array)
+            MCP_Struct(subj_num) = build_MCP(data_file_array{subj_num},subject_id{subj_num},probe_array_id,marks_matrix_name);
+        end
+        return
     end
-    return
-end
 end
 
 %% Convert char arrays to cell arrays, in case somebody tries to input char.
@@ -78,7 +78,8 @@ for current_run = 1:number_of_runs
     
     for current_probe = 1:number_of_probes
         % Extract the MCP formatted data for each individual probe file
-        mcp_data(current_probe) = homer2_to_mcp(data_file_array{current_run,current_probe},subject_id,probe_array_id{current_probe},marks_matrix_name);
+        mcp_data(current_probe) = homer_to_mcp(data_file_array{current_run,current_probe},subject_id,probe_array_id{current_probe},marks_matrix_name);
+        
         % Note the directory that this probe's data was found in
         MCP_Struct.Experiment.Runs(current_run).Directory{current_probe} = mcp_data(current_probe).Subject.Directory;
         
@@ -130,44 +131,46 @@ for current_run = 1:number_of_runs
         ];
     
     % Copy the conditions data from the probe with the longest timeseries
-    this_run_conditions = mcp_data(probe_with_most_data).Experiment.Conditions;
-    
-    % Cycle through all the conditions and integrate them into the main
-    % struct MCP_Struct.Experiment.Conditions by matching names
-    for this_cond = 1:length(this_run_conditions)
-        this_cond_name = this_run_conditions(this_cond).Name;
+    if isfield(mcp_data(probe_with_most_data).Experiment,'Conditions')
+        this_run_conditions = mcp_data(probe_with_most_data).Experiment.Conditions;
         
-        % Compare the name of the condition in the new data to the list of
-        % existing conditions in the MCP_Struct. Create an index vector to
-        % indicate where that condition exists (if it does!).
-        index_in_main_struct = arrayfun(@(x)(strcmp(x.Name,this_cond_name)),MCP_Struct.Experiment.Conditions);
-        
-        % Test whether this condition already exists in the main experiment
-        if sum(index_in_main_struct)>0 % The condition already exists
-            % Insert the onsets vector for this condition in the
-            % appropriate column of onsets matrix
-            working_onsets_matrix(MCP_Struct.Experiment.Runs(current_run).Index:end,index_in_main_struct) = new_onsets_matrix(:,this_cond);
-        
-        else % If a condition by that name does not yet exist
-            % Add the condition to the main list of conditions
-            MCP_Struct.Experiment.Conditions = [ MCP_Struct.Experiment.Conditions, this_run_conditions(this_cond) ];
-            % Add a new column of zeros on the left of the main Onsets matrix
-            working_onsets_matrix(:,end+1) = 0;
-            % Fill the current run data (to the end) with that condition's
-            % onsets data
-            working_onsets_matrix(MCP_Struct.Experiment.Runs(current_run).Index,end) = new_onsets_matrix(:,this_cond);
-        
+        % Cycle through all the conditions and integrate them into the main
+        % struct MCP_Struct.Experiment.Conditions by matching names
+        for this_cond = 1:length(this_run_conditions)
+            this_cond_name = this_run_conditions(this_cond).Name;
+            
+            % Compare the name of the condition in the new data to the list of
+            % existing conditions in the MCP_Struct. Create an index vector to
+            % indicate where that condition exists (if it does!).
+            index_in_main_struct = arrayfun(@(x)(strcmp(x.Name,this_cond_name)),MCP_Struct.Experiment.Conditions);
+            
+            % Test whether this condition already exists in the main experiment
+            if sum(index_in_main_struct)>0 % The condition already exists
+                % Insert the onsets vector for this condition in the
+                % appropriate column of onsets matrix
+                working_onsets_matrix(MCP_Struct.Experiment.Runs(current_run).Index:end,index_in_main_struct) = new_onsets_matrix(:,this_cond);
+                
+            else % If a condition by that name does not yet exist
+                % Add the condition to the main list of conditions
+                MCP_Struct.Experiment.Conditions = [ MCP_Struct.Experiment.Conditions, this_run_conditions(this_cond) ];
+                % Add a new column of zeros on the left of the main Onsets matrix
+                working_onsets_matrix(:,end+1) = 0;
+                % Fill the current run data (to the end) with that condition's
+                % onsets data
+                working_onsets_matrix(MCP_Struct.Experiment.Runs(current_run).Index,end) = new_onsets_matrix(:,this_cond);
+                
+            end
+            
         end
         
+        % Overwrite the main onsets matrix with the working version.
+        MCP_Struct.fNIRS_Data.Onsets_Matrix = working_onsets_matrix;
     end
-    
-    % Overwrite the main onsets matrix with the working version.
-    MCP_Struct.fNIRS_Data.Onsets_Matrix = working_onsets_matrix;
     
     % Build the oxy- deoxy- and total data matrices as nans
     this_run_oxy = nan(max_index_this_run,current_num_channels);
     this_run_deoxy = nan(max_index_this_run,current_num_channels);
-    this_run_total = nan(max_index_this_run,current_num_channels);    
+    this_run_total = nan(max_index_this_run,current_num_channels);
     
     for current_probe = 1:number_of_probes
         this_run_oxy(1:max_index_each_probe(current_probe),MCP_Struct.Experiment.Probe_arrays(current_probe).Channels) = mcp_data(current_probe).fNIRS_Data.Hb_data.Oxy;
