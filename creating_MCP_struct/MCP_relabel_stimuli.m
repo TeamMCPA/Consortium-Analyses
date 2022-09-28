@@ -9,7 +9,7 @@ function new_mcp_file = MCP_relabel_stimuli(mcp_file,old_label_name,new_labels,s
 %
 % mcp_file: may be either a Matlab file (*.mcp extension) or an MCP struct
 % in the current workspace.
-% 
+%
 % old_label_name: may be either numeric trigger number or a char-type
 % containing the previous name (e.g., 'm3' or 'cats')
 %
@@ -51,7 +51,7 @@ end
 if isnumeric(old_label_name)
     old_label_char = num2str(old_label_name);
 else
-    old_label_char = old_label_name; 
+    old_label_char = old_label_name;
 end
 
 if length(old_mcp_struct) > 1
@@ -80,7 +80,13 @@ else % otherwise assume Name is specified
     % Otherwise look in the Name field
     old_cond_index = arrayfun(@(x)(strcmp(x.Name,old_label_name)),old_mcp_struct.Experiment.Conditions);
 end
-old_onset_col = [old_mcp_struct.Experiment.Conditions(old_cond_index).Mark];
+
+% Updated 27 Sept 2022 (bz) because the Mark value (obtained from .nirs
+% file) is no longer the correct column of the Onsets matrix. Onsets matrix
+% follows the indexing of Conditions. If the FIRST condition is m2, then
+% the first column of Onsets_Matrix will have the correct data.
+%old_onset_col = [old_mcp_struct.Experiment.Conditions(old_cond_index).Mark];
+old_onset_col = old_cond_index;
 old_cond_onsets = old_mcp_struct.fNIRS_Data.Onsets_Matrix(:,old_onset_col);
 
 %% Compare the new labels and the old label
@@ -98,7 +104,7 @@ if length(new_labels) ~= sum(old_cond_onsets>0)
         disp(['Only one new label provided for ' num2str(sum(old_cond_onsets)) ' onsets. Applying label to all onsets.']);
         new_mcp_file = old_mcp_struct;
         new_mcp_file.Experiment.Conditions(old_cond_index).Name = new_labels{:};
-        return
+
         % This was the old way of doing it, less efficient but reuses the
         % code below for individual trial labeling. It also creates new
         % columns even though the new is exact duplicate of the old.
@@ -110,50 +116,64 @@ if length(new_labels) ~= sum(old_cond_onsets>0)
         disp('Only one onset found for this label. Replacing');
         new_mcp_file = old_mcp_struct;
         new_mcp_file.Experiment.Conditions(old_cond_index).Name = new_labels{:};
-        return
-       
-    % Case (3): Throw an error and quit.
+        
+        % Case (3): Throw an error and quit.
     else
         new_mcp_file = old_mcp_struct;
         error('Provided %g new labels to replace %g items in existing condition! These values must be equal.',length(new_labels),sum(old_cond_onsets));
         return
     end
     
+elseif length(new_labels) == 1 && sum(old_cond_onsets>0) == 1
+    % Case (4): There's one new label for an old condition with only one
+    % onset.
+    disp(['New label ' new_labels{:} ' provided for ' num2str(sum(old_cond_onsets)) ' onsets of ' old_mcp_struct.Experiment.Conditions(old_cond_index).Name '. Applying.']);
+    new_mcp_file = old_mcp_struct;
+    new_mcp_file.Experiment.Conditions(old_cond_index).Name = new_labels{:};
+    return
     
+else
+    
+    % Case (5): The list of labels is matched to the number of onsets. This
+    % situation may arise, for example, if only a single trigger (1) was used
+    % for every stimulus, but the researcher maintains a list of the order that
+    % the stimuli were presented. This ordered list (if matched to the number
+    % of triggers) can be used to generate separate conditions based on the
+    % unique labels contained within the list.
+    
+    % Turn the list of labels into a set of integers which can be acted upon.
+    num_existing_conds = length(old_mcp_struct.Experiment.Conditions);
+    [ unique_new, unique_integers, new_integer_labels ] = unique(new_labels);
+    num_new_conds = length(unique_integers);
+    
+    % Fill out a new set of onsets, first as integers in a single vector.
+    new_cond_onsets = old_cond_onsets;
+    new_cond_onsets(new_cond_onsets==1) = new_integer_labels;
+    % Second, as a matrix with a column for each integer-label and logicals for
+    % the onsets of that integer-label in the time series
+    new_cond_onsets = repmat(new_cond_onsets,1,num_new_conds) == repmat(new_integer_labels(unique_integers)',size(new_cond_onsets));
+    
+    % Copy the old MCP file
+    new_mcp_file = old_mcp_struct;
+    
+    % Append the new onsets matrix to the right edge of the old onsets matrix
+    new_mcp_file.fNIRS_Data.Onsets_Matrix = [old_mcp_struct.fNIRS_Data.Onsets_Matrix new_cond_onsets];
+    
+    for new_cond = 1:length(unique_new)
+        % Append the new condition names to the list of conditions
+        new_mcp_file.Experiment.Conditions(num_existing_conds+new_cond).Name = unique_new{new_cond};
+        % Assign a new mark number that refers to the column of Onsets_Matrix
+        new_mcp_file.Experiment.Conditions(num_existing_conds+new_cond).Mark = size(old_mcp_struct.fNIRS_Data.Onsets_Matrix,2)+new_cond;
+    end
+    
+    % After conversion is finished, delete the old condition. It turns out this
+    % is kind of necessary because otherwise it gums up the RSA matrix later
+    %new_mcp_file.Experiment.Conditions(old_cond_index)=[];
+    %new_mcp_file.fNIRS_Data.Onsets_Matrix(:,old_mcp_struct.Experiment.Conditions(old_cond_index).Mark)=[];
+    % Turns out this was a bad idea because is scrambles up the correspondance
+    % between Mark # and the column of Onsets_Matrix
     
 end
-
-% Turn the list of labels into a set of integers which can be acted upon.
-num_existing_conds = length(old_mcp_struct.Experiment.Conditions);
-[ unique_new, unique_integers, new_integer_labels ] = unique(new_labels);
-num_new_conds = length(unique_integers);
-
-% Fill out a new set of onsets, first as integers in a single vector.
-new_cond_onsets = old_cond_onsets;
-new_cond_onsets(new_cond_onsets==1) = new_integer_labels;
-% Second, as a matrix with a column for each integer-label and logicals for
-% the onsets of that integer-label in the time series
-new_cond_onsets = repmat(new_cond_onsets,1,num_new_conds) == repmat(new_integer_labels(unique_integers)',size(new_cond_onsets));
-
-% Copy the old MCP file
-new_mcp_file = old_mcp_struct;
-
-% Append the new onsets matrix to the right edge of the old onsets matrix
-new_mcp_file.fNIRS_Data.Onsets_Matrix = [old_mcp_struct.fNIRS_Data.Onsets_Matrix new_cond_onsets];
-
-for new_cond = 1:length(unique_new)
-    % Append the new condition names to the list of conditions
-    new_mcp_file.Experiment.Conditions(num_existing_conds+new_cond).Name = unique_new{new_cond};
-    % Assign a new mark number that refers to the column of Onsets_Matrix
-    new_mcp_file.Experiment.Conditions(num_existing_conds+new_cond).Mark = size(old_mcp_struct.fNIRS_Data.Onsets_Matrix,2)+new_cond;
-end
-
-% After conversion is finished, delete the old condition. It turns out this
-% is kind of necessary because otherwise it gums up the RSA matrix later
-%new_mcp_file.Experiment.Conditions(old_cond_index)=[];
-%new_mcp_file.fNIRS_Data.Onsets_Matrix(:,old_mcp_struct.Experiment.Conditions(old_cond_index).Mark)=[];
-% Turns out this was a bad idea because is scrambles up the correspondance
-% between Mark # and the column of Onsets_Matrix
 
 %% If the save_flag is true, write the data out.
 if save_flag, save([mcpdir mcpfile '_r.mcp'],'-struct','new_mcp_file'); end
