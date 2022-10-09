@@ -86,11 +86,11 @@ base_window_samp = round(base_window.*Fs_val); % converting time (s) to number o
 % The output matrix setup(time x features x type repetition x types)
 num_samps = max(time_window_samp) - min(time_window_samp) + 1;
 num_feats = max(arrayfun(@(x) size(x.Transformation_Matrix,2),mcp_struct.Experiment.Runs));
-
+num_chans = max(arrayfun(@(x) size(x.Transformation_Matrix,1),mcp_struct.Experiment.Runs));
 %%
 
 hemo_types = strsplit(hemoglobin, '+');
-event_matrix = nan(num_samps, num_feats*length(hemo_types), size(marks_mat, 1), length(event_types));
+event_matrix = nan(num_samps, num_chans*length(hemo_types), size(marks_mat, 1), length(event_types));
 
 for hemo = 1:length(hemo_types)
     
@@ -170,7 +170,9 @@ for hemo = 1:length(hemo_types)
                 else
                     rebaseline_data = 0;
                 end
-                event_matrix(:,hemo:length(hemo_types):end,event_j,type_i) = event_data - nanmean(rebaseline_data);
+                feats_idx = channels*length(hemo_types)-(length(hemo_types)-hemo);
+                event_matrix(:,feats_idx,event_j,type_i) = event_data - nanmean(rebaseline_data);
+                %event_matrix(:,hemo:length(hemo_types):end,event_j,type_i) = event_data - nanmean(rebaseline_data);
 
             % For events that might get truncated (start or end of recording)
             else
@@ -180,7 +182,9 @@ for hemo = 1:length(hemo_types)
                 if ~isnan(marks_mat(event_j,event_marks))
                     warning('discarding trials where the baseline or time window are out of bounds')
                 end
-                event_matrix(:,hemo:length(hemo_types):end,event_j:end,type_i) = NaN;
+                feats_idx = channels*length(hemo_types)-(length(hemo_types)-hemo);
+                event_matrix(:,feats_idx,event_j:end,type_i) = NaN;
+                %event_matrix(:,hemo:length(hemo_types):end,event_j:end,type_i) = NaN;
             end
         end
 
